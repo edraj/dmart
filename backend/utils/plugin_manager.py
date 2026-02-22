@@ -7,6 +7,8 @@ from pathlib import Path
 import aiofiles
 from fastapi import Depends, FastAPI
 from fastapi.logger import logger
+
+from models import api
 from models.core import (
     ActionType,
     PluginWrapper,
@@ -30,6 +32,8 @@ class PluginManager:
     plugins_wrappers: dict[
         ActionType, list[PluginWrapper]
     ] = {}  # {action_type: list_of_plugins_wrappers]}
+
+    active_plugins: list[str] = []
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
@@ -91,6 +95,10 @@ class PluginManager:
                     plugin_wrapper.object = getattr(module, "Plugin")()
 
                     self.store_plugin_in_its_action_dict(plugin_wrapper)
+
+                self.active_plugins.append(plugin_wrapper.shortname)
+                print(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
+                logger.info(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
             except Exception as e:
                 logger.error(
                     f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
@@ -138,6 +146,14 @@ class PluginManager:
 
         return True
 
+    async def _safe_coroutine_execution(self, coro, plugin_model):
+        try:
+            await coro
+        except api.Exception as e:
+            logger.error(f"Plugin:{plugin_model} raised api.Exception: {str(e)}")
+        except Exception as e:
+            logger.error(f"Plugin:{plugin_model}:{str(e)}")
+
     async def before_action(self, event: Event):
         if event.action_type not in self.plugins_wrappers:
             return
@@ -148,7 +164,6 @@ class PluginManager:
             return
         space_plugins = space.active_plugins
 
-        loop = asyncio.get_event_loop()
         for plugin_model in self.plugins_wrappers[event.action_type]:
             if (
                 plugin_model.shortname in space_plugins
@@ -161,9 +176,10 @@ class PluginManager:
                     if isinstance(object, PluginBase):
                         plugin_execution = object.hook(event)
                         if iscoroutine(plugin_execution):
-                            loop.create_task(plugin_execution)
+                            await plugin_execution
+                except api.Exception as e:
+                    raise e
                 except Exception as e:
-                    # print(f"Plugin:{plugin_model}:{str(e)}")
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
     async def after_action(self, event: Event):
@@ -192,7 +208,9 @@ class PluginManager:
                         if isinstance(object, PluginBase):
                             plugin_execution = object.hook(event)
                             if iscoroutine(plugin_execution):
-                                loop.create_task(plugin_execution)
+                                loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
+                    except api.Exception as e:
+                        raise e
                     except Exception as e:
                         logger.error(f"Plugin:{plugin_model}:{str(e)}")
         except Exception as e:

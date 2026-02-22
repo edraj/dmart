@@ -3,14 +3,14 @@ supervisor=supervise-daemon
 name="DMART Backend service"
 description="Headless content respository"
 
-command="/home/venv/bin/python3"
+command="/home/venv/bin/dmart"
 # To run as a single process/thread mode
-command_args="/home/dmart/backend/main.py"
+command_args="serve --cxb-config /root/.dmart/config.json"
 # TO RUN via hypercorn (multi process)
-# command_args="-m hypercorn main:app --config file:utils/hypercorn_config.py"
+# command_args="hyper"
 # command_user="imx:imx"
 command_background="true"
-directory="/home/dmart/backend"
+# directory="/home/dmart/backend"
 output_log="/home/logs/dmart-out"
 error_log="/home/logs/dmart-err"
 

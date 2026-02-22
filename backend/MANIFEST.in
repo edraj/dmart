@@ -2,7 +2,12 @@ include *.json
 include *.toml
 include *.sh
 include *.sample
+include alembic.ini
+include cli.py
 recursive-include config *.json
 recursive-include languages *.json
 recursive-include requirements *.txt
 recursive-include utils/templates *
+recursive-include cxb *
+recursive-include alembic *
+recursive-include sample *

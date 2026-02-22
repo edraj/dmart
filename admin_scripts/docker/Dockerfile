@@ -1,35 +1,33 @@
-FROM alpine:3.23
+FROM python:3.14-alpine
+# FROM alpine:latest
+
+ARG VERSION=unknown
+
+ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/dmart.sysv /root/dmart.sysv
+ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/Caddyfile /root/Caddyfile
+ADD https://raw.githubusercontent.com/edraj/dmart/refs/heads/master/admin_scripts/docker/config.json /root/config.json
 
 RUN set -eux \
   && apk add postgresql18 postgresql18-contrib postgresql18-openrc \
   && mkdir -p /run/postgresql && chown -R postgres:postgres /run/postgresql \
   && tr -dc A-Za-z0-9 </dev/urandom | head -c 13 > /tmp/pgpass \
-  && su - postgres -c 'initdb --auth=md5 -U dmart --pwfile=/tmp/pgpass /var/lib/postgresql/18/data' \
+  && su - postgres -c 'initdb --auth=scram-sha-256 -U dmart --pwfile=/tmp/pgpass /var/lib/postgresql/18/data' \
   && su - postgres -c 'pg_ctl start -t 5000 -D /var/lib/postgresql/18/data' \
   && export PGPASSWORD=$(cat /tmp/pgpass) \
   && createdb -h 127.0.0.1 -U dmart dmart \
-  && apk add git curl jq uv openrc python3 caddy bash file coreutils tzdata \
+  && apk add curl jq uv openrc caddy bash file coreutils tzdata \
   && adduser -DH dmart \
-  && git clone --depth 1 https://github.com/edraj/dmart.git /home/dmart \
-  && cp /home/dmart/admin_scripts/docker/dmart.sysv /etc/init.d/dmart \
-  && cp /home/dmart/admin_scripts/docker/config.ts /home/dmart/frontend/src/ \
-  && apk add --virtual buildpkgs nodejs yarn \
-  && cp /home/dmart/admin_scripts/docker/Caddyfile /etc/caddy/ \
+  && cp /root/dmart.sysv /etc/init.d/dmart \
+  && chmod a+x /etc/init.d/dmart \
+  && cp /root/Caddyfile /etc/caddy/ \
   && uv venv /home/venv \
   && source /home/venv/bin/activate \
-  && uv pip install -r /home/dmart/backend/requirements/core.txt \
+  && uv pip install dmart \
   && uv cache clean \
-  && cd /home/dmart/frontend/ \
-  && sed -i 's/sysadmin//g' /home/dmart/frontend/src/App.svelte /home/dmart/frontend/vite.config.ts \
-  && yarn \
-  && yarn build \
-  && rm -rf node_modules \
-  && yarn cache clean --all \
-  && apk del buildpkgs \
-  && rm -rf /tmp/js-offline \
-  && rm -rf /root/.cache /root/.local /var/cache/apk/ \
-  # && apk add --no-cache su-exec tzdata openrc jq curl python3 py3-virtualenv caddy bash coreutils file \
-  && mkdir -p /home/logs/dmart \
+  && mkdir -p /home/logs/ \
+  && touch /home/logs/caddy.log \
+  && chmod -R g+xw /home/logs/ \
+  && chown -R root:caddy /home/logs \
   && sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
   && sed -i \
      -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
@@ -47,29 +45,38 @@ RUN set -eux \
      /etc/init.d/machine-id \
   && > /usr/libexec/rc/sh/rc-cgroup.sh \
   && sed -i 's/VSERVER/DOCKER/Ig' /usr/libexec/rc/sh/init.sh \
-  && cp /home/dmart/backend/config.env.sample /home/dmart/backend/config.env \
-  && echo "JWT_SECRET='$(tr -dc A-Za-z0-9 </dev/urandom | head -c 26)'" >> /home/dmart/backend/config.env \
-  && echo "DATABASE_USERNAME='dmart'" >> /home/dmart/backend/config.env \
-  && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /home/dmart/backend/config.env \
-  && echo "ACTIVE_DATA_DB='sql'" >> /home/dmart/backend/config.env \
-  && echo "BASE_PATH='/dmart'" >> /home/dmart/backend/config.env \
-  && rm -rf /tmp/* \
   && source /home/venv/bin/activate \
-  && cd /home/dmart/backend \
+  && dmart init \
+  # && cp /home/dmart/backend/config.env.sample /home/dmart/backend/config.env \
+  # && echo "JWT_SECRET='$(tr -dc A-Za-z0-9 </dev/urandom | head -c 26)'" >> /home/dmart/backend/config.env \
+  && echo "DATABASE_NAME='dmart'" >> /root/.dmart/config.env \
+  && echo "DATABASE_DRIVER='postgresql+psycopg'" >> /root/.dmart/config.env \
+  && echo "DATABASE_USERNAME='dmart'" >> /root/.dmart/config.env \
+  && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /root/.dmart/config.env \
+  && echo "ACTIVE_DATA_DB='sql'" >> /root/.dmart/config.env \
+  && echo "BASE_PATH='/dmart'" >> /root/.dmart/config.env \
+  && cp /root/config.json /root/.dmart/ \
+  && rm -rf /tmp/* \
+  # && cd /home/dmart/backend \
   # && su - postgres -c 'pg_ctl restart -t 5000 -D /var/lib/postgresql/18/data' \
-  && alembic upgrade head \
-  && /home/venv/bin/python ./migrate.py json_to_db \
+  && dmart migrate \
+  && dmart json_to_db \
   # && echo 'data_dir="/var/lib/postgresql/18/data"' >> /etc/conf.d/postgresql \ 
   && rc-update add postgresql \
   && rc-update add dmart \
   && rc-update add caddy
 
-LABEL org.label-schema.name="dmart" \
-      org.label-schema.vendor="dmart.cc" \
-      org.label-schema.description="Docker image for DMART with PostgreSQL (SQL MODE)" \
-      org.label-schema.vcs-url="https://github.com/edraj/dmart" \
-      org.label-schema.version="1.0" \
-      org.label-schema.license="AGPLv3+"
+LABEL name="dmart" \
+      vendor="dmart.cc" \
+      version="${VERSION}" \
+      license="AGPLv3+" \
+      org.opencontainers.image.name="dmart" \
+      org.opencontainers.image.vendor="dmart.cc" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.description="Continer image for DMART with PostgreSQL (SQL MODE)" \
+      org.opencontainers.image.url="https://dmart.cc" \
+      org.opencontainers.image.source="https://github.com/edraj/dmart" \
+      org.opencontainers.image.license="AGPLv3+"
 
 # Optional external mount points
 # VOLUME ["/home"]

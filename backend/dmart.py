@@ -4,32 +4,32 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import shutil
 import ssl
 import subprocess
 import sys
+import os
+import secrets
+sys.path.append(os.path.dirname(__file__))
+
+from utils.settings import settings, get_env_file
+from utils.logger import logging_schema
 import time
 import warnings
-from multiprocessing import freeze_support
+import webbrowser
+import re
+# from multiprocessing import freeze_support
 from pathlib import Path
 
 from hypercorn.config import Config
 from hypercorn.run import run
 
-from data_adapters.file.archive import archive
-from data_adapters.file.create_index import main as create_index
-from data_adapters.file.health_check import main as health_check
-from data_adapters.sql.json_to_db_migration import main as json_to_db_migration
-from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
-from main import main as server
-from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
-from utils.settings import settings
+# freeze_support()
 
-freeze_support()
-
-commands = """    server
+commands = """
+    serve
     hyper
+    cli
     health-check
     create-index
     export
@@ -38,18 +38,129 @@ commands = """    server
     archive
     json_to_db
     db_to_json
+    update_query_policies
     help
     version 
     info
+    init
+    migrate
+    test
+    apply_plugin_config
 """
 
 sentinel = object()
 
+def ensure_dmart_home():
+    dmart_home = Path.home() / ".dmart"
+    dmart_home.mkdir(parents=True, exist_ok=True)
+
+    config_env = dmart_home / "config.env"
+    if not config_env.exists():
+        try:
+            (dmart_home / "logs").mkdir(parents=True, exist_ok=True)
+            (dmart_home / "spaces").mkdir(parents=True, exist_ok=True)
+            (dmart_home / "spaces" / "custom_plugins").mkdir(parents=True, exist_ok=True)
+            
+            jwt_secret = secrets.token_urlsafe(32)
+            
+            config_content = f"""# dmart configuration
+JWT_SECRET="{jwt_secret}"
+JWT_ALGORITHM="HS256"
+LOG_FILE="{dmart_home / 'logs' / 'dmart.ljson.log'}"
+WS_LOG_FILE="{dmart_home / 'logs' / 'websocket.ljson.log'}"
+
+# Database configuration
+ACTIVE_DATA_DB="file"
+SPACES_FOLDER="{dmart_home / 'spaces'}"
+DATABASE_DRIVER="sqlite+pysqlite"
+DATABASE_NAME="{dmart_home / 'dmart.db'}"
+
+# Server configuration
+LISTENING_HOST="0.0.0.0"
+LISTENING_PORT=8282
+"""
+            config_env.write_text(config_content)
+            print(f"Created default config.env at {config_env}")
+        except Exception as e:
+            print(f"Warning: Failed to create default config.env at {config_env}: {e}")
+
+    cli_ini = dmart_home / "cli.ini"
+    if not cli_ini.exists():
+        try:
+            default_config = ""
+            sample_path = Path(__file__).resolve().parent / "config.ini.sample"
+            if sample_path.exists():
+                with open(sample_path, "r") as f:
+                    default_config = f.read()
+            else:
+                default_config = (
+                    'url = "http://localhost:8282"\\n'
+                    'shortname = "dmart"\\n'
+                    'password = "xxxx"\\n'
+                    'query_limit = 50\\n'
+                    'retrieve_json_payload = True\\n'
+                    'default_space = "management"\\n'
+                    'pagination = 50\\n'
+                )
+
+            login_creds_path = dmart_home / "login_creds.sh"
+            if login_creds_path.exists():
+                try:
+                    with open(login_creds_path, "r") as f:
+                        creds_content = f.read()
+                    
+                    match = re.search(r"export SUPERMAN='(.*?)'", creds_content)
+                    if match:
+                        creds_json = match.group(1)
+                        creds = json.loads(creds_json)
+                        if "shortname" in creds:
+                            default_config = re.sub(r'shortname = ".*"', f'shortname = "{creds["shortname"]}"', default_config)
+                        if "password" in creds:
+                            default_config = re.sub(r'password = ".*"', f'password = "{creds["password"]}"', default_config)
+                except Exception as e:
+                    print(f"Warning: Failed to parse login_creds.sh: {e}")
+
+            with open(cli_ini, "w") as f:
+                f.write(default_config)
+            print(f"Created default cli.ini at {cli_ini}")
+        except Exception as e:
+            print(f"Warning: Failed to create default cli.ini at {cli_ini}: {e}")
+
+    cxb_config = dmart_home / "config.json"
+    if not cxb_config.exists():
+        try:
+            sample_cxb_path = Path(__file__).resolve().parent / "cxb" / "config.sample.json"
+            if sample_cxb_path.exists():
+                shutil.copy2(sample_cxb_path, cxb_config)
+                print(f"Created default config.json at {cxb_config}")
+            else:
+                default_cxb_config = {
+                  "title": "DMART Unified Data Platform",
+                  "footer": "dmart.cc unified data platform",
+                  "short_name": "dmart",
+                  "display_name": "dmart",
+                  "description": "dmart unified data platform",
+                  "default_language": "en",
+                  "languages": { "ar": "العربية", "en": "English" },
+                  "backend": "http://localhost:8282",
+                  "websocket": "ws://0.0.0.0:8484/ws",
+                  "cxb_url": "/cxb"
+                }
+                with open(cxb_config, "w") as f:
+                    json.dump(default_cxb_config, f, indent=2)
+                print(f"Created default config.json at {cxb_config}")
+        except Exception as e:
+            print(f"Warning: Failed to create default config.json at {cxb_config}: {e}")
+
+ensure_dmart_home()
 
 def hypercorn_main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "application", help="The application to dispatch to as path.to.module:instance.path"
+        "application",
+        help="The application to dispatch to as path.to.module:instance.path",
+        nargs="?",
+        default="main:app"
     )
     parser.add_argument("--access-log", help="Deprecated, see access-logfile", default=sentinel)
     parser.add_argument(
@@ -83,7 +194,7 @@ def hypercorn_main() -> int:
         "-c",
         "--config",
         help="Location of a TOML config file, or when prefixed with `file:` a Python file, or when prefixed with `python:` a Python module.",  # noqa: E501
-        default=None,
+        default="hypercorn_config.toml",
     )
     parser.add_argument(
         "--debug",
@@ -210,6 +321,22 @@ def hypercorn_main() -> int:
     parser.add_argument(
         "-u", "--user", help="User to own any unix sockets.", default=sentinel, type=int
     )
+    parser.add_argument(
+        "--open-cxb",
+        help="Open CXB page in browser after server starts",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--cxb-config",
+        help="Path to CXB config.json",
+        default=sentinel,
+    )
+    parser.add_argument(
+        "--dmart-config",
+        help="Path to dmart config.env",
+        default=sentinel,
+    )
 
     def _convert_verify_mode(value: str) -> ssl.VerifyMode:
         try:
@@ -239,7 +366,15 @@ def hypercorn_main() -> int:
         type=int,
     )
     args = parser.parse_args(sys.argv[1:])
-    config = Config.from_toml(args.config)
+    
+    if args.config == "hypercorn_config.toml" and not os.path.exists(args.config):
+        config = Config()
+        config.backlog = 2000
+        config.workers = 1
+        config.bind = ["localhost:8282"]
+    else:
+        config = Config.from_toml(args.config)
+        
     config.application_path = args.application
 
     if args.log_level is not sentinel:
@@ -314,6 +449,27 @@ def hypercorn_main() -> int:
         config.websocket_ping_interval = args.websocket_ping_interval
     if args.workers is not sentinel:
         config.workers = args.workers
+    
+    config.logconfig_dict = logging_schema
+
+    if args.dmart_config is not sentinel:
+        os.environ["BACKEND_ENV"] = args.dmart_config
+
+    if args.cxb_config is not sentinel:
+        os.environ["DMART_CXB_CONFIG"] = args.cxb_config
+        
+    if args.dmart_config is not sentinel or args.cxb_config is not sentinel:
+        settings.reload()
+
+    if config.accesslog is None:
+        config.accesslog = settings.log_file
+
+    if config.errorlog is None:
+        config.errorlog = settings.log_file
+
+    env_file = get_env_file()
+    if env_file and os.path.exists(env_file):
+        config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
 
     if len(args.binds) > 0:
         config.bind = args.binds
@@ -324,7 +480,116 @@ def hypercorn_main() -> int:
     if len(args.server_names) > 0:
         config.server_names = args.server_names
 
+    if args.open_cxb:
+        port = 8282
+        host = "127.0.0.1"
+
+        if len(args.binds) > 0:
+            try:
+                bind_parts = args.binds[0].split(":")
+                if len(bind_parts) == 2:
+                    host = bind_parts[0]
+                    port = int(bind_parts[1])
+                elif len(bind_parts) == 1:
+                    host = bind_parts[0]
+            except Exception as e:
+                print(e)
+                pass
+        
+        if host == "0.0.0.0":
+            host = "127.0.0.1"
+
+        url = f"http://{host}:{port}{settings.cxb_url}/"
+        
+        def open_browser():
+            time.sleep(2)
+            webbrowser.open(url)
+            
+        import threading
+        threading.Thread(target=open_browser, daemon=True).start()
+
     return run(config)
+
+
+def patch_plugin_configs():
+    dmart_home = Path.home() / ".dmart"
+    plugins_config_path = dmart_home / "plugins_config.json"
+    
+    if not plugins_config_path.exists():
+        print(f"No plugins_config.json found at {plugins_config_path}")
+        return
+
+    try:
+        with open(plugins_config_path, "r") as f:
+            patches = json.load(f)
+    except Exception as e:
+        print(f"Error reading {plugins_config_path}: {e}")
+        return
+
+    backend_dir = Path(__file__).resolve().parent
+    plugins_dir = backend_dir / "plugins"
+
+    if not plugins_dir.exists():
+        print(f"Plugins directory not found at {plugins_dir}")
+        return
+
+    def deep_update(source, overrides):
+        for key, value in overrides.items():
+            if isinstance(value, dict) and value:
+                node = source.get(key, {})
+                if not isinstance(node, dict):
+                    node = {}
+                source[key] = deep_update(node, value)
+            else:
+                source[key] = value
+        return source
+
+    for plugin_name, patch_data in patches.items():
+        plugin_config_path = plugins_dir / plugin_name / "config.json"
+        
+        if not plugin_config_path.exists():
+            print(f"Warning: Config for plugin '{plugin_name}' not found at {plugin_config_path}")
+            continue
+            
+        try:
+            with open(plugin_config_path, "r") as f:
+                original_config = json.load(f)
+            
+            updated_config = deep_update(original_config, patch_data)
+            
+            with open(plugin_config_path, "w") as f:
+                json.dump(updated_config, f, indent=2)
+                
+            print(f"Patched config for plugin: {plugin_name}")
+            
+        except Exception as e:
+            print(f"Error patching plugin '{plugin_name}': {e}")
+
+
+def print_formatted(data):
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            pass
+
+    if isinstance(data, (dict, list)):
+        output = json.dumps(data, indent=4)
+        lexer_name = "json"
+    else:
+        output = str(data)
+        lexer_name = "text"
+
+    if sys.stdout.isatty():
+        try:
+            from pygments import highlight, lexers, formatters
+            lexer = lexers.get_lexer_by_name(lexer_name)
+            print(highlight(output, lexer, formatters.TerminalFormatter()).strip())
+            return
+        except ImportError:
+            pass
+    
+    print(output)
 
 
 def main():
@@ -336,15 +601,109 @@ def main():
 
     match sys.argv[0]:
         case "hyper":
-            if len(sys.argv) == 1:
-                print("Running Hypercorn with default settings")
-                default_params = "main:app --config hypercorn_config.toml"
-                print(f">{default_params}")
-                sys.argv = ["hyper"] + default_params.split(" ")
             hypercorn_main()
-        case "server":
+        case "cli":
+            config_file = None
+            if "--config" in sys.argv:
+                idx = sys.argv.index("--config")
+                if idx + 1 < len(sys.argv):
+                    config_file = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                    sys.argv.pop(idx)
+
+            if not config_file:
+                if os.path.exists("cli.ini"):
+                    config_file = "cli.ini"
+                else:
+                    home_config = Path.home() / ".dmart" / "cli.ini"
+                    if home_config.exists():
+                        config_file = str(home_config)
+            
+            if config_file:
+                os.environ["BACKEND_ENV"] = config_file
+            
+            last_import_error = None
+            try:
+                dmart_dir = Path(__file__).resolve().parent
+                if str(dmart_dir) not in sys.path:
+                    sys.path.append(str(dmart_dir))
+                import cli # type: ignore
+                cli.main()
+                return
+            except ImportError as e:
+                last_import_error = e
+                if e.name and e.name != 'cli':
+                    print(f"Error: Missing dependency for CLI: {e}")
+                    sys.exit(1)
+            except Exception as e:
+                print(f"Error: Failed to start CLI: {e}")
+                sys.exit(1)
+
+            cli_path = Path(__file__).resolve().parent.parent / "cli"
+            if cli_path.exists():
+                sys.path.append(str(cli_path))
+                try:
+                    import cli # type: ignore
+                    cli.main()
+                    return
+                except ImportError as e:
+                    last_import_error = e
+                    if e.name and e.name != 'cli':
+                        print(f"Error: Missing dependency for CLI: {e}")
+                        sys.exit(1)
+                except Exception as e:
+                    print(f"Error: Failed to start CLI: {e}")
+                    sys.exit(1)
+
+            if last_import_error:
+                 print(f"Error: Could not load cli.py: {last_import_error}")
+            else:
+                 print("Error: cli.py not found.")
+            sys.exit(1)
+        case "serve":
+            open_cxb = False
+            if "--open-cxb" in sys.argv:
+                open_cxb = True
+                sys.argv.remove("--open-cxb")
+            
+            reload_settings = False
+            if "--dmart-config" in sys.argv:
+                idx = sys.argv.index("--dmart-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["BACKEND_ENV"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                reload_settings = True
+
+            if "--cxb-config" in sys.argv:
+                idx = sys.argv.index("--cxb-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["DMART_CXB_CONFIG"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                reload_settings = True
+            
+            if reload_settings:
+                settings.reload()
+            else:
+                settings.load_cxb_config()
+                
+            if open_cxb:
+                host = settings.listening_host
+                if host == "0.0.0.0":
+                    host = "127.0.0.1"
+                url = f"http://{host}:{settings.listening_port}{settings.cxb_url}/"
+                def open_browser():
+                    time.sleep(2)
+                    webbrowser.open(url)
+                
+                import threading
+                threading.Thread(target=open_browser, daemon=True).start()
+
+            from main import main as server
             asyncio.run(server())
         case "health-check":
+            from data_adapters.file.health_check import main as health_check
             parser = argparse.ArgumentParser(
                 description="This created for doing health check functionality",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -358,6 +717,7 @@ def main():
             asyncio.run(health_check(args.type, args.space, args.schemas))
             print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
         case "create-index":
+            from data_adapters.file.create_index import main as create_index
             parser = argparse.ArgumentParser(
                 description="Recreate Redis indices based on the available schema definitions",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -377,6 +737,7 @@ def main():
 
             asyncio.run(create_index(args.space, args.schemas, args.subpaths, args.flushall))
         case "export":
+            from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
             parser = argparse.ArgumentParser()
             parser.add_argument(
                 "--config", required=True, help="Json config relative path from the script"
@@ -429,10 +790,11 @@ def main():
                 f"Output path: {os.path.abspath(os.path.join(output_path, OUTPUT_FOLDER_NAME))}"
             )
         case "settings":
-            print(settings.model_dump_json())
+            print_formatted(settings.model_dump_json())
         case "set_password":
             import set_admin_passwd  # noqa: F401
         case "archive":
+            from data_adapters.file.archive import archive
             parser = argparse.ArgumentParser(
                 description="Script for archiving records from different spaces and subpaths."
             )
@@ -459,55 +821,158 @@ def main():
             asyncio.run(archive(space, subpath, schema, olderthan))
             print("Done.")
         case "json_to_db":
+            from data_adapters.sql.json_to_db_migration import main as json_to_db_migration
             asyncio.run(json_to_db_migration())
         case "db_to_json":
+            from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
             db_to_json_migration()
+        case "update_query_policies":
+            from data_adapters.sql.update_query_policies import main as update_query_policies
+            update_query_policies()
         case "help":
             print("Available commands:")
             print(commands)
         case "version":
             info_json_path = Path(__file__).resolve().parent / "info.json"
+            tag = None
             if info_json_path.exists():
                 with open(info_json_path) as info:
-                    print(json.load(info).get("tag"))
+                    tag = json.load(info).get("tag")
             else:
-                tag_cmd = "git describe --tags"
-                result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE,
+                result, _ = subprocess.Popen(["git", "describe", "--tags"], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 tag = None if result is None or len(result) == 0 else result.decode().strip()
-                print(tag)
+            
+            print(tag)
         case "info":
             info_json_path = Path(__file__).resolve().parent / "info.json"
             if info_json_path.exists():
                 with open(info_json_path) as info:
-                    print(json.load(info))
+                    data = json.load(info)
             else:
-                branch_cmd = "git rev-parse --abbrev-ref HEAD"
-                result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE,
+                result, _ = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 branch = None if result is None or len(result) == 0 else result.decode().strip()
 
-                version_cmd = "git rev-parse --short HEAD"
-                result, _ = subprocess.Popen(version_cmd.split(" "), stdout=subprocess.PIPE,
+                result, _ = subprocess.Popen(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 version = None if result is None or len(result) == 0 else result.decode().strip()
 
-                tag_cmd = "git describe --tags"
-                result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE,
+                result, _ = subprocess.Popen(["git", "describe", "--tags"], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 tag = None if result is None or len(result) == 0 else result.decode().strip()
 
-                version_date_cmd = "git show --pretty=format:'%ad'"
-                result, _ = subprocess.Popen(version_date_cmd.split(" "), stdout=subprocess.PIPE,
+                result, _ = subprocess.Popen(["git", "show", "--pretty=format:%ad"], stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE).communicate()
                 version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
 
-                print({
+                data = {
                     "commit_hash": version,
                     "date": version_date,
                     "branch": branch,
                     "tag": tag
-                })
+                }
+            print_formatted(data)
+        case "init":
+            sample_spaces_path = Path(__file__).resolve().parent / "sample" / "spaces"
+            if not sample_spaces_path.exists():
+                print("Error: Sample spaces not found in the package.")
+                sys.exit(1)
+
+            target_path = Path.home() / ".dmart" / "spaces"
+
+            try:
+                if target_path.exists():
+                    shutil.rmtree(target_path)
+                shutil.copytree(sample_spaces_path, target_path)
+                print(f"Initialized sample spaces at {target_path}")
+            except Exception as e:
+                print(f"Error initializing sample spaces: {e}")
+                sys.exit(1)
+        case "migrate":
+            import configparser
+            import tempfile
+            
+            dmart_root = Path(__file__).resolve().parent
+            alembic_ini_path = dmart_root / "alembic.ini"
+            
+            if not alembic_ini_path.exists():
+                print(f"Error: alembic.ini not found at {alembic_ini_path}")
+                sys.exit(1)
+
+            config = configparser.ConfigParser()
+            config.read(alembic_ini_path)
+
+            if "sqlite" in settings.database_driver:
+                db_url = f"{settings.database_driver}:///{settings.database_name}"
+            else:
+                db_url = f"{settings.database_driver}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+
+            config.set('alembic', 'sqlalchemy.url', db_url)
+            config.set('alembic', 'script_location', str(dmart_root / "alembic"))
+            config.set('alembic', 'prepend_sys_path', str(dmart_root))
+
+            temp_config_path = ""
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=".ini") as temp_config_file:
+                    config.write(temp_config_file)
+                    temp_config_path = temp_config_file.name
+
+                alembic_cli_args = sys.argv[1:]
+                if not alembic_cli_args:
+                    alembic_cli_args = ["upgrade", "head"]
+
+                command = [sys.executable, "-m", "alembic", "-c", temp_config_path] + alembic_cli_args
+                
+                result = subprocess.run(command, capture_output=True, text=True, check=False) # type: ignore
+
+                if result.returncode == 0:
+                    print("Alembic command finished.")
+                    if result.stdout:
+                        print(result.stdout)
+                    if result.stderr:
+                        print(result.stderr)
+                else:
+                    print(f"Error during alembic command (exit code: {result.returncode}):")
+                    if result.stdout:
+                        print("--- stdout ---")
+                        print(result.stdout)
+                    if result.stderr:
+                        print("--- stderr ---")
+                        print(result.stderr)
+                    sys.exit(1)
+
+            finally:
+                if temp_config_path and os.path.exists(temp_config_path):
+                    os.remove(temp_config_path)
+        case "test":
+            script_dir = Path(__file__).resolve().parent
+            source_script_path = script_dir / "curl.pypi.sh"
+            
+            if not source_script_path.exists():
+                print("Error: curl.sh not found in the package.")
+                sys.exit(1)
+            
+            dmart_home_dir = Path.home() / ".dmart"
+            dmart_home_dir.mkdir(parents=True, exist_ok=True)
+            
+            target_script_path = dmart_home_dir / "curl.sh"
+            if not target_script_path.exists():
+                shutil.copy2(source_script_path, target_script_path)
+            
+            source_test_dir = script_dir / "sample" / "test"
+            target_test_dir = dmart_home_dir / "test"
+            
+            if source_test_dir.exists() and not target_test_dir.exists():
+                shutil.copytree(source_test_dir, target_test_dir)
+
+            try:
+                subprocess.run(["bash", str(target_script_path)], check=True, cwd=dmart_home_dir)
+            except subprocess.CalledProcessError as e:
+                print(f"Error: The test script failed with exit code {e.returncode}.")
+                sys.exit(e.returncode)
+        case "apply_plugin_config":
+            patch_plugin_configs()
 
 if __name__ == "__main__":
     main()

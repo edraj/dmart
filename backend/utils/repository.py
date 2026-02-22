@@ -1,4 +1,5 @@
 import os
+import shutil
 import re
 import sys
 import asyncio
@@ -427,7 +428,7 @@ async def health_check_entry(
     payload_file_path = None
     if (
             entry_meta_obj.payload
-            and entry_meta_obj.payload.content_type == ContentType.image
+            and entry_meta_obj.payload.content_type in ContentType.image_types()
     ):
         payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
         if (
@@ -526,4 +527,4 @@ async def delete_space(space_name, record, owner_shortname):
         )
         await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
 
-    os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+    shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)

@@ -18,8 +18,11 @@ from utils.settings import settings
 from models import core
 import base64
 
-postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
-engine = create_engine(postgresql_url, echo=False)
+def get_engine():
+    if "sqlite" in settings.database_driver:
+        return create_engine(f"sqlite:///{settings.database_name}", echo=False)
+    postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    return create_engine(postgresql_url, echo=False)
 
 def subpath_checker(subpath: str):
     if subpath.endswith("/"):
@@ -141,7 +144,7 @@ def process_entries(session, space_folder):
                         f.write(_entry["payload"]["body"])
                     _entry["payload"]["body"] = f"{entry.shortname}.html"
                     
-            elif entry.payload["content_type"] == core.ContentType.image:
+            elif core.ContentType(entry.payload["content_type"]) in core.ContentType.image_types():
                 if _entry["payload"].get("body", None) is not None:
                     body_data = _entry["payload"]["body"]
                     
@@ -276,7 +279,7 @@ async def export_data_with_query(query, user_shortname):
 
     total, records = await serve_query(query, user_shortname)
 
-    with (Session(engine) as session):
+    with Session(get_engine()) as session:
         space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
         if space:
             dir_path = f"{space_folder}/{space.space_name}/.dm/"
@@ -461,7 +464,7 @@ async def export_data_with_query(query, user_shortname):
 def main():
     space_folder = os.path.relpath(str(settings.spaces_folder))
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         print("Processing spaces...")
         process_spaces(session, space_folder)
         print("Processing entries...")

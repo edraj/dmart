@@ -1,7 +1,13 @@
+import asyncio
 import os
-import random
+import secrets
 import string
 import time
+import json
+import aiofiles
+from email.message import EmailMessage
+
+import aiosmtplib
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.api import Error, Exception
@@ -24,12 +30,12 @@ headers = {"Content-Type": "application/json", "auth-key": settings.smpp_auth_ke
 
 def gen_alphanumeric(length=16):
     return "".join(
-        random.choice(string.ascii_letters + string.digits) for _ in range(length)
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(length)
     )
 
 
 def gen_numeric(length=6):
-    return "".join(random.choice(string.digits) for _ in range(length))
+    return "".join(secrets.choice(string.digits) for _ in range(length))
 
 
 async def mock_sending_otp(msisdn) -> dict:
@@ -64,11 +70,15 @@ async def send_otp(msisdn: str, language: str):
 
     await db.save_otp(f"users:otp:otps/{msisdn}", code)
     
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_otp_api,
             headers={**headers, "skel-accept-language": language},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
@@ -85,10 +95,10 @@ async def email_send_otp(email: str, language: str):
     if settings.mock_smtp_api:
         return await mock_sending_otp(email)
 
-    code = "".join(random.choice("0123456789") for _ in range(6))
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
     await db.save_otp(f"users:otp:otps/{email}", code)
     message = f"<p>Your OTP code is <b>{code}</b></p>"
-    return await send_email(settings.email_sender, email, message, "OTP", settings.send_email_otp_api)
+    return await send_email(email, message, "OTP")
 
 
 async def send_sms(msisdn: str, message: str) -> bool:
@@ -97,11 +107,15 @@ async def send_sms(msisdn: str, message: str) -> bool:
     if settings.mock_smpp_api:
         return True
         
+    sms_payload: dict = {"msisdn": msisdn, "text": message}
+    if settings.sms_sender:
+        sms_payload["sender"] = settings.sms_sender
+
     async with AsyncRequest() as client:
         response = await client.post(
             settings.send_sms_api,
             headers={**headers},
-            json={"msisdn": msisdn, "text": message},
+            json=sms_payload,
         )
         json = await response.json()
         status = response.status
@@ -122,55 +136,64 @@ async def send_sms(msisdn: str, message: str) -> bool:
     return True
 
 
-async def send_email(from_address: str, to_address: str, message: str, subject: str, send_email_api=settings.send_email_api) -> bool:
-    json = {}
-    status: int
+async def _do_send_email(to_address: str, message: str, subject: str) -> None:
+    """Actual SMTP send; runs in background."""
     start_time = time.time()
-    if settings.mock_smtp_api:
-        return True
-    
-    async with AsyncRequest() as client:
-        response = await client.post(
-            send_email_api,
-            headers={**headers},
-            json={
-                "from_address": from_address,
-                "to": to_address,
-                "msg": message,
-                "subject": subject,
-            },
+    from_header = f"{settings.mail_from_name} <{settings.mail_from_address}>" if settings.mail_from_name else settings.mail_from_address
+    msg = EmailMessage()
+    msg["From"] = from_header
+    msg["To"] = to_address
+    msg["Subject"] = subject
+    msg.set_content(message, subtype="html")
+    use_tls = settings.mail_use_tls
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.mail_host,
+            port=settings.mail_port,
+            username=settings.mail_username or None,
+            password=settings.mail_password or None,
+            use_tls=use_tls,
         )
-        json = await response.json()
-        status = response.status
         logger.info(
             "Email Service",
             extra={
                 "props": {
                     "duration": 1000 * (time.time() - start_time),
-                    "request": {
-                        "from_address": from_address,
-                        "to": to_address,
-                        "msg": message,
-                    },
-                    "response": {"status": status, "json": json},
+                    "to": to_address,
+                    "subject": subject,
                 }
             },
         )
-
-    if status != 200:
+    except Exception as e:
         logger.warning(
             "Email Service",
             extra={
                 "props": {
-                    "status": status,
-                    "response": json,
+                    "error": str(e),
                     "target": to_address,
-                    "sender": from_address
+                    "sender": settings.mail_from_address,
                 }
             },
         )
-        return False
 
+
+def _log_send_email_failure(t: asyncio.Task) -> None:
+    if t.cancelled():
+        logger.warning("Email send was cancelled")
+    elif t.exception() is not None:
+        logger.exception("Email send failed: %s", t.exception())
+
+
+async def send_email(to_address: str, message: str, subject: str) -> bool:
+    """Schedule email send in background and return immediately."""
+    if settings.mock_smtp_api:
+        return True
+    if settings.mail_driver != "smtp" or not settings.mail_host:
+        logger.warning("Email Service", extra={"props": {"reason": "mail_driver not smtp or mail_host missing"}})
+        return False
+    task = asyncio.create_task(_do_send_email(to_address, message, subject))
+    task.add_done_callback(_log_send_email_failure)
     return True
 
 async def get_shortname_from_identifier(key, value):
@@ -223,9 +246,21 @@ async def set_user_profile(profile, profile_user, user):
         # Clear the failed password attempts
         await db.clear_failed_password_attempts(profile.shortname)
     if "displayname" in profile.attributes:
-        user.displayname = profile_user.displayname.model_dump()
+        if isinstance(profile.attributes["displayname"], dict) and user.displayname:
+            existing = user.displayname
+            if hasattr(existing, "model_dump"):
+                existing = existing.model_dump()
+            user.displayname = core.deep_update(existing, profile.attributes["displayname"])
+        else:
+            user.displayname = profile.attributes["displayname"]
     if "description" in profile.attributes:
-        user.description = profile_user.description.model_dump()
+        if isinstance(profile.attributes["description"], dict) and user.description:
+            existing = user.description
+            if hasattr(existing, "model_dump"):
+                existing = existing.model_dump()
+            user.description = core.deep_update(existing, profile.attributes["description"])
+        else:
+            user.description = profile.attributes["description"]
     if "language" in profile.attributes:
         user.language = profile_user.language
     if "is_active" in profile.attributes:
@@ -241,20 +276,43 @@ async def get_otp_confirmation_email_or_msisdn(profile_user):
     return None
 
 
-async def update_user_payload(profile, profile_user, user, shortname):
+async def update_user_payload(profile, user):
     separate_payload_data = {}
-    user.payload = core.Payload(
-        content_type=ContentType.json,
-        schema_shortname=profile_user.payload.schema_shortname,
-        body="",
-    )
-    if profile.attributes["payload"]["body"]:
-        separate_payload_data = profile.attributes["payload"]["body"]
+    
+    if not user.payload:
+        user.payload = core.Payload(
+            content_type=ContentType.json,
+            schema_shortname=None,
+            body="",
+        )
+
+    payload = profile.attributes.get("payload")
+    if payload and isinstance(payload, dict) and payload.get("body") is not None:
+        separate_payload_data = payload["body"]
+        
+        existing_body = {}
+        if user.payload.body:
+            if settings.active_data_db == "file":
+                path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
+                file_path = path / str(user.payload.body)
+                if file_path.is_file():
+                    async with aiofiles.open(file_path, "r") as f:
+                        content = await f.read()
+                        if content:
+                            existing_body = json.loads(content)
+            elif isinstance(user.payload.body, dict):
+                existing_body = user.payload.body
+        
+        if isinstance(separate_payload_data, dict):
+            separate_payload_data = core.deep_update(existing_body, separate_payload_data)
+        
         if settings.active_data_db == "file":
-            user.payload.body = f"{shortname}.json"
+            user.payload.body = f"{user.shortname}.json"
+        else:
+            user.payload.body = separate_payload_data
 
     if user.payload and separate_payload_data:
-        if profile_user.payload.schema_shortname:
+        if user.payload.schema_shortname:
             await db.validate_payload_with_schema(
                 payload_data=separate_payload_data,
                 space_name=MANAGEMENT_SPACE,
@@ -267,4 +325,3 @@ async def update_user_payload(profile, profile_user, user, shortname):
         user,
         separate_payload_data,
     )
-    

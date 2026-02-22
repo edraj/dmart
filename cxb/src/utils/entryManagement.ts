@@ -24,7 +24,8 @@ export async function saveEntry(
     jeContent: any,
     space_name: string,
     subpath: string,
-    resource_type: ResourceType
+    resource_type: ResourceType,
+    originalJeContent?: any
 ): Promise<{ success: boolean; errorMessage?: string }> {
     const content = jsonEditorContentParser(jeContent);
 
@@ -42,8 +43,29 @@ export async function saveEntry(
         };
     }
 
-    if (resource_type === ResourceType.user && (content.password.startsWith("$argon2id")||content.password==='')) {
+    if (resource_type === ResourceType.user && content.password===null || (content.password && content.password.startsWith("$argon2id")||content.password==='')) {
         delete content.password;
+    }
+
+    if (content.password && content.password !== ''){
+        if(!content.old_password){
+            showToast(Level.warn, `Old password is required for password change`);
+            return
+        }
+    }
+
+    if (originalJeContent) {
+        if(originalJeContent?.payload?.content_type === 'json'){
+            const originalContent = jsonEditorContentParser(originalJeContent);
+            if (originalContent.payload && originalContent.payload.body && content.payload && content.payload.body) {
+                const originalKeys = Object.keys(originalContent.payload.body);
+                const currentKeys = Object.keys(content.payload.body);
+                const removedKeys = originalKeys.filter(key => !currentKeys.includes(key));
+                removedKeys.forEach(key => {
+                    content.payload.body[key] = null;
+                });
+            }
+        }
     }
 
     try {

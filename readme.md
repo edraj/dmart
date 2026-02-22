@@ -164,10 +164,10 @@ podman pull ghcr.io/edraj/dmart:latest
 podman run --name dmart -p 4443:4443 -p 8000:8000 -d -it dmart
 
 # Set the admin password
-podman exec -it -w /home/dmart/backend dmart /home/venv/bin/python3 ./set_admin_passwd.py
+podman exec -it dmart /home/venv/bin/dmart set_password
 
 # Run test to make sure all is good
-podman exec -it -w /home/dmart/backend dmart ./curl.sh
+podman exec -it dmart /home/venv/bin/dmart test
 
 # Open on the browser
 https://localhost:4443
@@ -330,7 +330,7 @@ DMART comes with a command line tool that can run from anywhere. It communicates
 cd cli
 
 # Create config.ini with proper access details (url, credentials ...etc)
-cp config.ini.sample config.ini
+cp config.ini.sample cli.ini
 
 # Install additional packages
 uv pip install --user  -r requirements.txt

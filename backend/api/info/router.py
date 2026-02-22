@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, status
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
+from utils.plugin_manager import plugin_manager
 import models.api as api
 from datetime import datetime
 import subprocess
@@ -22,20 +23,16 @@ if info_json_path.exists():
     with open(info_json_path) as info:
         git_info = json.load(info)
 else:
-    branch_cmd = "git rev-parse --abbrev-ref HEAD"
-    result, _ = subprocess.Popen(branch_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     branch = None if result is None or len(result) == 0 else result.decode().strip()
 
-    version_cmd = "git rev-parse --short HEAD"
-    result, _ = subprocess.Popen(version_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     version = None if result is None or len(result) == 0 else result.decode().strip()
 
-    tag_cmd = "git describe --tags"
-    result, _ = subprocess.Popen(tag_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(["git", "describe", "--tags"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     tag = None if result is None or len(result) == 0 else result.decode().strip()
 
-    version_date_cmd = "git show --pretty=format:'%ad'"
-    result, _ = subprocess.Popen(version_date_cmd.split(" "), stdout=subprocess.PIPE,
+    result, _ = subprocess.Popen(["git", "show", "--pretty=format:%ad"], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()
     version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
 
@@ -83,6 +80,7 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             "running_for": str(now - service_start_time)
         },
         "git": git_info,
+        "plugins": plugin_manager.active_plugins
     }
     return api.Response(status=api.Status.success, attributes=manifest)
 

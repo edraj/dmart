@@ -2,6 +2,7 @@ import csv
 import hashlib
 import json
 import os
+import subprocess
 import re
 import sys
 import tempfile
@@ -612,11 +613,13 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname=schema_shortname,
     )
 
-    if(
+    if (
         resource_type is not ResourceType.json
-        and (meta.payload is None
-        or meta.payload.body is None
-        or meta.payload.body != f"{shortname}.{ext}")
+        and (
+            meta.payload is None
+            or meta.payload.body is None
+            or (settings.active_data_db == 'file' and meta.payload.body != f"{shortname}.{ext}")
+        )
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -673,11 +676,7 @@ async def retrieve_entry_or_attachment_payload(
 
     data: BytesIO | None = await db.get_media_attachment(space_name, subpath, shortname)
     if data:
-        if meta.payload.body.endswith(".svg"):
-            mime_type = "image/svg+xml"
-        else:
-            mime_type = get_mime_type(meta.payload.content_type)
-        return StreamingResponse(iter_bytesio(data), media_type=mime_type)
+        return StreamingResponse(iter_bytesio(data), media_type=get_mime_type(meta.payload.content_type, meta.payload.body))
     return api.Response(status=api.Status.failed)
 
 @router.post(
@@ -975,6 +974,10 @@ async def retrieve_entry_meta(
             )
         )
 
+    if resource_type is ResourceType.user:
+        if hasattr(meta, 'password'):
+            setattr(meta, 'password', None)
+
     attachments = {}
     entry_path = (
             settings.spaces_folder
@@ -1094,8 +1097,12 @@ async def get_space_report(
             ),
         )
 
-    os.system(
-        f"./health_check.py -t {health_type} -s {space_name} &")
+    subprocess.Popen(
+        [sys.executable, "./health_check.py", "-t", health_type, "-s", space_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
     return api.Response(
         status=api.Status.success,
     )

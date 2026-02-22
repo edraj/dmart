@@ -1,6 +1,5 @@
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import models.api as api
@@ -16,7 +15,7 @@ from data_adapters.sql.create_tables import (
     Aggregated
 )
 from utils.helpers import (
-    str_to_datetime,
+    str_to_datetime, process_jsonl_file,
 )
 from utils.settings import settings
 
@@ -277,6 +276,7 @@ def parse_search_string(string):
         value_type = 'string'  # Default type 
         format_strings = {}
         all_boolean = True
+        all_numeric = True
         
         for i, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
@@ -284,11 +284,17 @@ def parse_search_string(string):
                 value_type = 'datetime'
                 format_strings[val] = format_string
                 all_boolean = False
-            elif val.lower() not in ['true', 'false']:
-                all_boolean = False
+                all_numeric = False
+            else:
+                if val.lower() not in ['true', 'false']:
+                    all_boolean = False
+                if not re.match(r'^-?\d+(?:\.\d+)?$', val):
+                    all_numeric = False
 
         if all_boolean and value_type == 'string':
             value_type = 'boolean'
+        elif all_numeric and value_type == 'string':
+            value_type = 'numeric'
 
         if field not in result:
             field_data = {
@@ -340,58 +346,14 @@ async def events_query(
     if not path.is_file():
         return total, records
 
-    result = []
-    if query.search:
-        p = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p = subprocess.Popen(
-            ["tail", "-n", f"{query.limit + query.offset}"],
-            stdin=p.stdout,
-            stdout=subprocess.PIPE,
-        )
-        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
-        if query.offset > 0:
-            p = subprocess.Popen(
-                ["sed", f"1,{query.offset}d"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-        r, _ = p.communicate()
-        result = list(filter(None, r.decode("utf-8").split("\n")))
-    else:
-        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-        if query.offset > 0:
-            cmd += f" | sed '1,{query.offset}d'"
-        result = list(
-            filter(
-                None,
-                subprocess.run(
-                    [cmd], capture_output=True, text=True, shell=True
-                ).stdout.split("\n"),
-            )
-        )
+    total, result = await process_jsonl_file(
+        path,
+        limit=query.limit,
+        offset=query.offset,
+        search=query.search,
+        reverse=True
+    )
 
-    if query.search:
-        p1 = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
-        r, _ = p2.communicate()
-        total = int(
-            r.decode(),
-            10,
-        )
-    else:
-        total = int(
-            subprocess.run(
-                [f"wc -l < {path}"],
-                capture_output=True,
-                text=True,
-                shell=True,
-            ).stdout,
-            10,
-        )
     for line in result:
         action_obj = json.loads(line)
         if (

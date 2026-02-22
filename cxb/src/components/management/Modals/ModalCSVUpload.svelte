@@ -127,7 +127,7 @@
                     { name: ResourceType.ticket.toString(), value: ResourceType.ticket }
                 ]} 
                 bind:value={selectedResourceType} 
-                onchange={() => resourceTypeError = false}
+                on:change={() => resourceTypeError = false}
             />
             {#if resourceTypeError}
                 <p class="text-red-500 text-xs mt-1">Resource type is required</p>
@@ -152,7 +152,7 @@
                     class="mt-2 {schemaError ? 'border-red-500' : ''}" 
                     items={parseQuerySchemaResponse(schemas)} 
                     bind:value={selectedSchema} 
-                    onchange={() => schemaError = false}
+                    on:change={() => schemaError = false}
                 />
                 {#if schemaError}
                     <p class="text-red-500 text-xs mt-1">Schema is required</p>
@@ -162,7 +162,7 @@
 
         <Label class="mt-3">
             CSV File
-            <input type="file" accept=".csv" onchange={handleFileChange} class="mt-2 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
+            <input type="file" accept=".csv" on:change={handleFileChange} class="mt-2 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
         </Label>
 
         <Label class="mt-3 flex items-start">

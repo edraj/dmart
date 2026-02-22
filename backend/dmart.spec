@@ -10,7 +10,7 @@ a = Analysis(
     ['dmart.py'],
     pathex=[],
     binaries=[],
-    datas=[('./info.json', '.')],
+    datas=[('./info.json', '.'), ('cxb', 'cxb')],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

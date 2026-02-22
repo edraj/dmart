@@ -91,7 +91,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
                         ]
                         attribute_val = [val for val in attribute_val if val is not None]
 
-            if attribute_val:
+            if attribute_val is not None:
                 keys_existence[column_title] = True
             """
             Extract array items in a separate row per item
@@ -121,7 +121,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
                 for row in rows:
                     row[column_title] = new_col
 
-            elif attribute_val and not isinstance(attribute_val, list):
+            elif attribute_val is not None and not isinstance(attribute_val, list):
                 new_col = attribute_val if column_key not in timestamp_fields else \
                     datetime.fromtimestamp(attribute_val).strftime(
                         '%Y-%m-%d %H:%M:%S')
@@ -182,9 +182,8 @@ async def send_sms_email_invitation(resource_obj, record):
         )
         if inv_link:
             await send_email(
-                from_address=settings.email_sender,
-                to_address=resource_obj.email,
-                message=generate_email_from_template(
+                resource_obj.email,
+                generate_email_from_template(
                     "activation",
                     {
                         "link": await repository.url_shortner(
@@ -197,7 +196,7 @@ async def send_sms_email_invitation(resource_obj, record):
                         "msisdn": resource_obj.msisdn,
                     },
                 ),
-                subject=generate_subject("activation"),
+                generate_subject("activation"),
             )
 
 
@@ -651,15 +650,13 @@ async def serve_request_update(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -839,15 +836,13 @@ async def serve_request_patch(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -967,15 +962,13 @@ async def serve_request_assign(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
@@ -1090,15 +1083,13 @@ async def serve_request_update_acl(request, owner_shortname: str):
             return rec, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
     
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
     return records, failed_records
@@ -1185,7 +1176,7 @@ async def serve_request_delete(request, owner_shortname: str):
                 )
             except api.Exception as e:
                 return None, {
-                    "record": record,
+                    "record": record.shortname,
                     "error": e.error.message,
                     "error_code": e.error.code,
                 }
@@ -1205,15 +1196,13 @@ async def serve_request_delete(request, owner_shortname: str):
             return record, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
@@ -1335,15 +1324,13 @@ async def serve_request_move(request, owner_shortname: str):
             return record, None
         except api.Exception as e:
             return None, {
-                "record": record,
+                "record": record.shortname,
                 "error": e.error.message,
                 "error_code": e.error.code,
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
     for rec, failed in results:
-        if rec is not None:
-            records.append(rec)
         if failed is not None:
             failed_records.append(failed)
 
@@ -1371,7 +1358,16 @@ def get_resource_content_type_from_payload_content_type(payload_file, payload_fi
     elif payload_file.content_type == "text/markdown":
         return ContentType.markdown
     elif payload_file.content_type and "image/" in payload_file.content_type:
-        return ContentType.image
+        mime = payload_file.content_type or ""
+        if "svg" in mime:
+            return ContentType.image_svg
+        if "png" in mime:
+            return ContentType.image_png
+        if "gif" in mime:
+            return ContentType.image_gif
+        if "webp" in mime:
+            return ContentType.image_webp
+        return ContentType.image_jpeg
     elif payload_file.content_type and "audio/" in payload_file.content_type:
         return ContentType.audio
     elif payload_file.content_type and "video/" in payload_file.content_type:
@@ -1859,13 +1855,17 @@ async def create_or_update_resource_with_payload_handler(
     return resource_obj, record
 
 
-def get_mime_type(content_type: ContentType) -> str:
+def get_mime_type(content_type: ContentType, payload_body: str | None = None) -> str:
     mime_types = {
         ContentType.text: "text/plain",
         ContentType.markdown: "text/markdown",
         ContentType.html: "text/html",
         ContentType.json: "application/json",
-        ContentType.image: "image/jpeg",
+        ContentType.image_jpeg: "image/jpeg",
+        ContentType.image_png: "image/png",
+        ContentType.image_svg: "image/svg+xml",
+        ContentType.image_gif: "image/gif",
+        ContentType.image_webp: "image/webp",
         ContentType.python: "text/x-python",
         ContentType.pdf: "application/pdf",
         ContentType.audio: "audio/mpeg",
@@ -1876,4 +1876,16 @@ def get_mime_type(content_type: ContentType) -> str:
         ContentType.duckdb: "application/octet-stream",
         ContentType.sqlite: "application/vnd.sqlite3"
     }
-    return mime_types.get(content_type, "application/octet-stream")
+    # for backward compatibility
+    if content_type in mime_types:
+        if content_type == ContentType.image_jpeg and isinstance(payload_body, str):
+            if payload_body.endswith(".svg"):
+                return "image/svg+xml"
+            if payload_body.endswith(".png"):
+                return "image/png"
+            if payload_body.endswith(".gif"):
+                return "image/gif"
+            if payload_body.endswith(".webp"):
+                return "image/webp"
+        return mime_types[content_type]
+    return "application/octet-stream"

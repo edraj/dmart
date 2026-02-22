@@ -222,7 +222,7 @@
 
 <Card class="h-full max-w-full pt-1">
     <article class="prose max-w-full">
-        <div class="h-100 pt-1 editor-container" bind:this="{maindiv}" id="htmleditor-{uid}"></div>
+        <div class="pt-1 editor-container" bind:this="{maindiv}" id="htmleditor-{uid}"></div>
     </article>
 </Card>
 

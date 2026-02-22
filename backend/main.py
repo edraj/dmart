@@ -5,6 +5,7 @@ from starlette.datastructures import UploadFile
 from contextlib import asynccontextmanager
 import asyncio
 import json
+import os
 from os import getpid
 import sys
 import time
@@ -14,6 +15,8 @@ from typing import Any, cast
 from urllib.parse import urlparse, quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
+from starlette.middleware.gzip import GZipMiddleware
+
 from languages.loader import load_langs
 from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
@@ -24,11 +27,12 @@ from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import ORJSONResponse, FileResponse, RedirectResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.staticfiles import StaticFiles
 import models.api as api
 from utils.settings import settings
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -39,6 +43,21 @@ from api.public.router import router as public
 from api.user.router import router as user
 from api.info.router import router as info, git_info
 from utils.internal_error_code import InternalErrorCode
+from pathlib import Path
+
+
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as ex:
+            if ex.status_code == 404 and path != "index.html" and not os.path.splitext(path)[1]:
+                try:
+                    return await super().get_response("index.html", scope)
+                except StarletteHTTPException:
+                    pass
+            raise ex
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -231,7 +250,7 @@ def set_logging(response, extra, request, exception_data):
             logger.warning("Served request", extra=_extra)
         elif response.status_code >= 500 or exception_data is not None:
             logger.error("Served request", extra=_extra)
-        elif request.method != "OPTIONS":  # Do not log OPTIONS request, to reduce excessive logging
+        elif request.method != "OPTIONS" and not request.url.path.startswith(settings.cxb_url):  # Do not log OPTIONS request, to reduce excessive logging
             logger.info("Served request", extra=_extra)
 
 
@@ -266,7 +285,7 @@ async def middle(request: Request, call_next):
         raw_response = [section async for section in response.body_iterator]
         response.body_iterator = iterate_in_threadpool(iter(raw_response))
         raw_data = b"".join(raw_response)
-        if raw_data:
+        if raw_data and "application/json" in response.headers.get("content-type", ""):
             try:
                 response_body = json.loads(raw_data)
             except Exception:
@@ -402,6 +421,7 @@ app.add_middleware(
     validator=None,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=10000)
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -463,6 +483,52 @@ app.include_router(
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 
+cxb_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cxb")
+if os.path.isdir(os.path.join(cxb_path, "client")):
+    cxb_path = os.path.join(cxb_path, "client")
+
+if not os.path.exists(os.path.join(cxb_path, "index.html")):
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cxb_dist_path = os.path.join(project_root, "cxb", "dist", "client")
+    if os.path.isdir(cxb_dist_path):
+        cxb_path = cxb_dist_path
+
+if os.path.isdir(cxb_path):
+    @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
+    async def get_cxb_config():
+        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
+            return FileResponse(settings.cxb_config_path)
+            
+        if os.path.exists("config.json"):
+            return FileResponse("config.json")
+
+        user_config = settings.spaces_folder / "config.json"
+        if user_config.exists():
+            return FileResponse(user_config)
+
+        home_config = Path.home() / ".dmart" / "config.json"
+        if home_config.exists():
+            return FileResponse(home_config)
+
+        bundled_config = os.path.join(cxb_path, "config.json")
+        if os.path.exists(bundled_config):
+            return FileResponse(bundled_config)
+
+        return {
+            "title": "DMART Unified Data Platform",
+            "footer": "dmart.cc unified data platform",
+            "short_name": "dmart",
+            "display_name": "dmart",
+            "description": "dmart unified data platform",
+            "default_language": "en",
+            "languages": { "ar": "العربية", "en": "English" },
+            "backend": f"{settings.app_url}" if settings.app_url else f"http://{settings.listening_host}:{settings.listening_port}",
+            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws",
+            "cxb_url": settings.cxb_url
+        }
+
+    app.mount(settings.cxb_url, SPAStaticFiles(directory=cxb_path, html=True), name="cxb")
+
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
     return Response(status_code=status.HTTP_200_OK)
@@ -473,11 +539,13 @@ async def myoptions():
 @app.put("/{x:path}", include_in_schema=False)
 @app.patch("/{x:path}", include_in_schema=False)
 @app.delete("/{x:path}", include_in_schema=False)
-async def catchall() -> None:
+async def catchall(x):
+    if x.startswith(settings.cxb_url.strip("/")):
+        return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
-        status_code=status.HTTP_404_NOT_FOUND,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         error=api.Error(
-            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"
+            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message=f"Requested method or path is invalid : {x}"
         ),
     )
 
@@ -503,4 +571,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         print("[!1server]", e)
-

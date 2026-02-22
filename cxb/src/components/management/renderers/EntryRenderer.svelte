@@ -55,15 +55,15 @@
     const EDITOR_INIT_DELAY = 512;
     const DEFAULT_RECORDS_LIMIT = 50;
 
-    enum TabMode {
-        list = 0,
-        entry = 1,
-        form = 2,
-        attachments = 3,
-        history = 4,
-        diagram = 5,
-        roles_explorer = 6,
-        permissions_explorer = 7,
+    const TabMode = {
+        list: 0,
+        entry: 1,
+        form: 2,
+        attachments: 3,
+        history: 4,
+        diagram: 5,
+        roles_explorer: 6,
+        permissions_explorer: 7,
     }
 
     let {
@@ -117,7 +117,7 @@
         return checkAccess("delete", space_name, subpath, resource_type);
     })();
 
-    let activeTab: TabMode = $state(TabMode.list);
+    let activeTab = $state(TabMode.list);
     let isActionLoading = $state(false);
     let validateMetaForm;
     let validateRTForm;
@@ -147,7 +147,8 @@
             $state.snapshot(jeContent),
             space_name,
             subpath,
-            resource_type
+            resource_type,
+            $state.snapshot(originalJeContent)
         );
         
         if (result.success) {
@@ -539,7 +540,7 @@
                 {#if jeContent.json}
                     <MetaForm bind:formData={jeContent.json} bind:validateFn={validateMetaForm} isCreate={false}/>
                     {#if resource_type === ResourceType.user}
-                        <MetaUserForm bind:formData={jeContent.json} bind:validateFn={validateRTForm}/>
+                        <MetaUserForm bind:formData={jeContent.json} bind:validateFn={validateRTForm} isCreate={false}/>
                     {:else if resource_type === ResourceType.role}
                         <MetaRoleForm bind:formData={jeContent.json} bind:validateFn={validateRTForm} />
                     {:else if resource_type === ResourceType.permission}

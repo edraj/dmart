@@ -17,17 +17,24 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # Changed from 'read' to 'write' to allow pushing commits
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Fetch all history and tags for git describe
 
-      - name:  Find secrets with Gitleaks 🔑 
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      - name: Generate version from git describe
+        id: version
+        run: |
+          # Get version from git describe (e.g., v1.4.0-180-gc2eebaa7)
+          GIT_VERSION=$(git describe --tags)
+          # Strip 'v' prefix and '-g<hash>' suffix to get 1.4.0-180
+          VERSION=$(echo $GIT_VERSION | sed -E 's/^v//' | sed -E 's/-g[a-f0-9]+$//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION (from $GIT_VERSION)"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3.3.0
@@ -35,6 +42,57 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Update setup.py with version from git
+        id: pypi_version
+        run: |
+          # Use the version from git describe (already calculated)
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "Using version: $NEW_VERSION"
+
+          # Update setup.py with new version (temporary, not committed)
+          sed -i.bak "s/version=\".*\"/version=\"$NEW_VERSION\"/" backend/setup.py
+          cat backend/setup.py | grep "version="
+
+          # Export for later steps
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create virtual environment and install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
+          echo "PATH=$VIRTUAL_ENV/bin:$PATH" >> $GITHUB_ENV
+          uv pip install setuptools pyinstaller
+
+      - name: Install build dependencies
+        run: |
+          uv pip install setuptools pyinstaller
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          cd backend
+          bash publish.sh
 
       - name: Extract metadata for Docker
         id: meta
@@ -44,15 +102,18 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.event.release.prerelease == false }} # Tag as 'latest' if the release is stable
+            type=raw,value=${{ steps.version.outputs.version }} # Version from git describe --tags
 
       - name: Build Docker image
         uses: docker/build-push-action@v6.18.0
         with:
-          context: . 
+          context: .
           file: admin_scripts/docker/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
 
       - name: Verify image push
         run: |

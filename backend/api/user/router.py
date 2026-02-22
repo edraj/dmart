@@ -327,11 +327,11 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
                         type="auth",
-                        code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
-                        message="User does not exist"
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
                     )
                 )
-            if user.type == UserType.mobile and user.locked_to_device and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
+            if user.type == UserType.mobile and user.locked_to_device and user.firebase_token and (not request.firebase_token or request.firebase_token != user.firebase_token):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,  message="This account is locked to a unique device !"),
@@ -424,10 +424,12 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
         else:
             if identifier is None:
                 raise api.Exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="request", code=InternalErrorCode.INVALID_IDENTIFIER, message="Invalid identifier [2]"
-                    ),
+                        type="auth",
+                        code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                        message="Invalid username or password"
+                    )
                 )
 
             if "shortname" in identifier:
@@ -452,7 +454,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                         api.Error(
                             type="auth",
                             code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                            message="Invalid username or password [1]",
+                            message="Invalid username or password",
                         ),
                     )
             user = await db.load(
@@ -474,7 +476,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 or is_password_valid
             )
         ):
-            if request.invitation is None and user.type == UserType.mobile and (not request.firebase_token or not user.firebase_token or request.firebase_token != user.firebase_token):
+            if request.invitation is None and user.type == UserType.mobile and user.firebase_token and (not request.firebase_token or request.firebase_token != user.firebase_token):
                 if user.locked_to_device:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -520,18 +522,28 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 message="Invalid username or password"
             ),
         )
-    except api.Exception as e:
-        if e.error.type == "db":
-            raise api.Exception(
-                status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="auth",
-                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
-                    message="Invalid username or password"
-                ),
+    except api.Exception as _:
+        if getattr(_.error, "code", None) == InternalErrorCode.OTP_NEEDED:
+            raise
+        raise api.Exception(
+            status.HTTP_401_UNAUTHORIZED,
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password"
             )
-        else:
-            raise e
+        )
+        # if e.error.type == "db":
+        #     raise api.Exception(
+        #         status.HTTP_401_UNAUTHORIZED,
+        #         api.Error(
+        #             type="auth",
+        #             code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+        #             message="Invalid username or password"
+        #         ),
+        #     )
+        # else:
+        #     raise e
 
 
 @router.get("/profile", response_model=api.Response, response_model_exclude_none=True)
@@ -639,6 +651,18 @@ async def update_profile(
         record=profile, owner_shortname=profile.shortname
     )
 
+    for field in settings.user_profile_payload_protected_fields:
+        if field in profile.attributes.get('payload', {}).get('body', {}):
+            raise api.Exception(
+                status.HTTP_401_UNAUTHORIZED,
+                api.Error(
+                    type="restriction",
+                    code=InternalErrorCode.PROTECTED_FIELD,
+                    message="Attempt to update a protected field",
+                ),
+            )
+
+
     if profile_user.password and not re.match(rgx.PASSWORD, profile_user.password):
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
@@ -668,9 +692,10 @@ async def update_profile(
         user_shortname=shortname,
     )
 
+
     old_version_flattened = flatten_dict(user.model_dump())
 
-    if profile_user.password:
+    if profile_user.password and user.password and not user.force_password_change:
         if "old_password" not in profile.attributes:
             raise Exception(
                 status.HTTP_403_FORBIDDEN,
@@ -755,7 +780,7 @@ async def update_profile(
             user.is_msisdn_verified = True
 
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
-            await update_user_payload(profile, profile_user, user, shortname)
+            await update_user_payload(profile, user)
 
     if user.is_active and profile.attributes.get("is_active", None) is not None:
         if not profile.attributes.get("is_active"):
@@ -1012,10 +1037,9 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
                     if token:
                         shortened_link = await repository.url_shortner(token)
                         await send_email(
-                            from_address=settings.email_sender,
-                            to_address=user.email,
-                            message=reset_password_message.replace("{link}", shortened_link),
-                            subject="Reset password",
+                            user.email,
+                            reset_password_message.replace("{link}", shortened_link),
+                            "Reset password",
                         )
                     else:
                         logger.warning("token could not be generated")
@@ -1157,9 +1181,8 @@ async def user_reset(
         if token:
             email_link = await repository.url_shortner(token)
             await send_email(
-                from_address=settings.email_sender,
-                to_address=user.email,
-                message=generate_email_from_template(
+                user.email,
+                generate_email_from_template(
                     "activation",
                     {
                         "link": email_link,
@@ -1168,7 +1191,7 @@ async def user_reset(
                         "msisdn": user.msisdn,
                     },
                 ),
-                subject=generate_subject("activation"),
+                generate_subject("activation"),
             )
 
     return api.Response(
