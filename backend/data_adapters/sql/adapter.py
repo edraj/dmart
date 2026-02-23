@@ -37,6 +37,7 @@ from data_adapters.sql.create_tables import (
     Invitations,
     URLShorts,
     OTP,
+    UserPermissionsCache,
 )
 from utils.helpers import (
     arr_remove_common,
@@ -1765,6 +1766,8 @@ class SQLAdapter(BaseDataAdapter):
                 try:
                     await session.commit()
                     await session.refresh(data)
+                    if isinstance(meta, (core.User, core.Role, core.Permission)):
+                        await self.create_user_premission_index()
                 except Exception as e:
                     await session.rollback()
                     raise e
@@ -1924,6 +1927,9 @@ class SQLAdapter(BaseDataAdapter):
 
             async with self.get_session() as session:
                 session.add(result)
+                await session.commit()
+                if isinstance(meta, (core.User, core.Role, core.Permission)):
+                    await self.create_user_premission_index()
 
             # try:
             #     if isinstance(result, (Users, Roles, Permissions)):
@@ -2029,6 +2035,7 @@ class SQLAdapter(BaseDataAdapter):
                         col(table.shortname) == shortname
                     ).values(last_checksum_history=new_checksum)
                 )
+                await session.commit()
 
             return history_diff
         except Exception as e:
@@ -2278,6 +2285,10 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Attachments.space_name) == space_name) \
                         .where(col(Attachments.subpath).startswith(entry_attachment_subpath))
                     await session.execute(statement)
+
+                await session.commit()
+                if isinstance(meta, (core.User, core.Role, core.Permission)):
+                    await self.create_user_premission_index()
 
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 # try:
@@ -2970,7 +2981,25 @@ class SQLAdapter(BaseDataAdapter):
         return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
-        return await self.generate_user_permissions(user_shortname)
+        async with self.get_session() as session:
+            statement = select(UserPermissionsCache).where(
+                col(UserPermissionsCache.user_shortname) == user_shortname
+            )
+            cached = (await session.execute(statement)).scalars().first()
+            if cached:
+                return cached.permissions
+
+        user_permissions = await self.generate_user_permissions(user_shortname)
+
+        async with self.get_session() as session:
+            cache_entry = UserPermissionsCache(
+                user_shortname=user_shortname,
+                permissions=user_permissions
+            )
+            await session.merge(cache_entry)
+            await session.commit()
+
+        return user_permissions
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
         async with self.get_session() as session:
@@ -3013,7 +3042,9 @@ class SQLAdapter(BaseDataAdapter):
                     print(f"Error: {e}")
 
     async def create_user_premission_index(self) -> None:
-        pass
+        async with self.get_session() as session:
+            await session.execute(delete(UserPermissionsCache))
+            await session.commit()
 
     async def store_modules_to_redis(self, roles, groups, permissions) -> None:
         pass
