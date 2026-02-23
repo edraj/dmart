@@ -240,15 +240,21 @@ async def redis_query_aggregate(
 
 
 async def serve_query_space(db, query, logged_in_user):
+    from utils.access_control import access_control
+    from models.enums import ResourceType
+
     records = []
     total = 0
-
     spaces = await db.get_spaces()
     for space_json in spaces.values():
         space = core.Space.model_validate_json(space_json)
-        from utils.access_control import access_control
-        if await access_control.check_space_access(
-                logged_in_user, space.shortname
+        if await access_control.check_access(
+                user_shortname=logged_in_user,
+                space_name=space.shortname,
+                subpath="/",
+                resource_type=ResourceType.space,
+                action_type=core.ActionType.query,
+                entry_shortname=space.shortname,
         ):
             total += 1
             records.append(
