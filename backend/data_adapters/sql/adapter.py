@@ -2925,6 +2925,14 @@ class SQLAdapter(BaseDataAdapter):
     async def generate_user_permissions(self, user_shortname: str) -> dict:
         user_permissions: dict = {}
 
+        user_meta = await self.load_or_none(
+            settings.management_space,
+            settings.users_subpath,
+            user_shortname,
+            core.User,
+        )
+        owner_shortname = user_meta.owner_shortname if user_meta else None
+
         user_roles = await self.get_user_roles(user_shortname)
 
         for _, role in user_roles.items():
@@ -2938,7 +2946,9 @@ class SQLAdapter(BaseDataAdapter):
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
                     for permission_subpath in permission_subpaths:
-                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                        permission_subpath = trans_magic_words(
+                            permission_subpath, user_shortname, owner_shortname
+                        )
                         for permission_resource_types in permission.resource_types:
                             actions = set(permission.actions)
                             conditions = set(permission.conditions)
