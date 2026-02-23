@@ -206,6 +206,11 @@ class Permissions(Metas, table=True):
     query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
+class UserPermissionsCache(SQLModel, table=True):
+    user_shortname: str = Field(primary_key=True)
+    permissions: dict = Field(default_factory=dict, sa_type=JSONB)
+
+
 class Entries(Metas, table=True):
     # Tickets
     state: str | None = None
