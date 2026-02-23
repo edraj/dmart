@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('permissions', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.PrimaryKeyConstraint('user_shortname')
     )
-    op.drop_table('authz_mv_meta')
+    op.drop_table('authz_mv_meta', if_exists=True)
     # ### end Alembic commands ###
 
 
