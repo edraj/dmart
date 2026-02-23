@@ -2987,7 +2987,7 @@ class SQLAdapter(BaseDataAdapter):
             )
             cached = (await session.execute(statement)).scalars().first()
             if cached:
-                return cached.permissions
+                return cached.permissions # type: ignore
 
         user_permissions = await self.generate_user_permissions(user_shortname)
 
