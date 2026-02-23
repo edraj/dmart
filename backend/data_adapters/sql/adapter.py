@@ -1767,7 +1767,7 @@ class SQLAdapter(BaseDataAdapter):
                     await session.commit()
                     await session.refresh(data)
                     if isinstance(meta, (core.User, core.Role, core.Permission)):
-                        await self.create_user_premission_index()
+                        await self.clear_cached_user_permission()
                 except Exception as e:
                     await session.rollback()
                     raise e
@@ -1929,7 +1929,7 @@ class SQLAdapter(BaseDataAdapter):
                 session.add(result)
                 await session.commit()
                 if isinstance(meta, (core.User, core.Role, core.Permission)):
-                    await self.create_user_premission_index()
+                    await self.clear_cached_user_permission()
 
             # try:
             #     if isinstance(result, (Users, Roles, Permissions)):
@@ -2288,7 +2288,7 @@ class SQLAdapter(BaseDataAdapter):
 
                 await session.commit()
                 if isinstance(meta, (core.User, core.Role, core.Permission)):
-                    await self.create_user_premission_index()
+                    await self.clear_cached_user_permission()
 
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 # try:
@@ -3042,6 +3042,9 @@ class SQLAdapter(BaseDataAdapter):
                     print(f"Error: {e}")
 
     async def create_user_premission_index(self) -> None:
+        return None
+
+    async def clear_cached_user_permission(self) -> None:
         async with self.get_session() as session:
             await session.execute(delete(UserPermissionsCache))
             await session.commit()
