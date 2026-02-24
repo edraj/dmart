@@ -1690,7 +1690,8 @@ class FileAdapter(BaseDataAdapter):
 
                 for permission in role_permissions:
                     for space_name, permission_subpaths in permission.subpaths.items():
-                        for permission_subpath in permission_subpaths:
+                        subpaths_to_use = permission_subpaths if permission_subpaths else ["/"]
+                        for permission_subpath in subpaths_to_use:
                             permission_subpath = trans_magic_words(permission_subpath, user_shortname)
                             for permission_resource_types in permission.resource_types:
                                 actions = set(permission.actions)

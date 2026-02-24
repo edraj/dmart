@@ -1386,9 +1386,19 @@ class SQLAdapter(BaseDataAdapter):
 
             if is_fetching_spaces:
                 from utils.access_control import access_control
-                results = [result for result in results if await access_control.check_space_access(
-                    user_shortname if user_shortname else "anonymous", result.shortname
-                )]
+                _user = user_shortname if user_shortname else "anonymous"
+                results = [
+                    r
+                    for r in results
+                    if await access_control.check_access(
+                        user_shortname=_user,
+                        space_name=r.shortname,
+                        subpath="/",
+                        resource_type=ResourceType.space,
+                        action_type=core.ActionType.query,
+                        entry_shortname=r.shortname,
+                    )
+                ]
             if len(results) == 0:
                 return 0, []
 
@@ -2956,10 +2966,9 @@ class SQLAdapter(BaseDataAdapter):
 
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
-                    for permission_subpath in permission_subpaths:
-                        permission_subpath = trans_magic_words(
-                            permission_subpath, user_shortname, owner_shortname
-                        )
+                    subpaths_to_use = permission_subpaths if permission_subpaths else ["/"]
+                    for permission_subpath in subpaths_to_use:
+                        permission_subpath = trans_magic_words(permission_subpath, user_shortname, owner_shortname)
                         for permission_resource_types in permission.resource_types:
                             actions = set(permission.actions)
                             conditions = set(permission.conditions)
