@@ -50,6 +50,7 @@ from models.enums import (
     RequestType,
     ResourceType,
     TaskType,
+    QueryType,
 )
 from utils.access_control import access_control
 from utils.helpers import (
@@ -364,7 +365,7 @@ async def query_entries(
     )
     return api.Response(
         status=api.Status.success,
-        records=records,
+        records=[] if query.type == QueryType.counters else records,
         attributes={"total": total, "returned": len(records)},
     )
 
