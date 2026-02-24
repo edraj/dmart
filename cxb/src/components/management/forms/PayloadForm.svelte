@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {Label, Select} from "flowbite-svelte";
+    import {Label, Select, Card} from "flowbite-svelte";
     import {ContentType, Dmart, QueryType, ResourceType,} from "@edraj/tsdmart";
     import FolderForm from "@/components/management/forms/FolderForm.svelte";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
@@ -264,6 +264,7 @@
     });
 </script>
 
+<Card class="w-full max-w-4xl mx-auto p-4 my-2">
 {#if !resourceTypeWithNoPayload.includes(selectedResourceType)}
     {#if isCreate && !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(selectedResourceType)}
         {#if selectedResourceType === ResourceType.content}
@@ -466,3 +467,4 @@
         </div>
     {/if}
 {/if}
+</Card>
