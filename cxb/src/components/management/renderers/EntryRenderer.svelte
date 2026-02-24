@@ -100,6 +100,7 @@
     let coinTriggerRefresh = $state(false);
 
     let jeContent: any = $state({ json: structuredClone(entry) });
+    if (!jeContent.json.relationships) jeContent.json.relationships = [];
     let originalJeContent: any = $state({});
     setTimeout(() => {
         originalJeContent = jsonEditorContentParser($state.snapshot(jeContent));
@@ -783,6 +784,7 @@
                 {subpath}
                 parent_shortname={entry.shortname}
                 attachments={$state.snapshot(entry).attachments}
+                bind:relationships={jeContent.json.relationships}
                 {refreshEntry}
             />
         </div>
@@ -882,7 +884,11 @@
     </div>
 
     <div class="flex justify-between w-full">
-        <Button class="cursor-pointer" color="alternative" onclick={cancelSchemaUpdate}>Cancel</Button>
+        <Button
+            class="cursor-pointer"
+            color="alternative"
+            onclick={cancelSchemaUpdate}>Cancel</Button
+        >
         <Button
             class="bg-primary cursor-pointer"
             onclick={confirmSchemaUpdate}
