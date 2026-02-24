@@ -537,7 +537,7 @@ class PluginWrapper(Resource):
     type: PluginType | None = None
     ordinal: int = 9999
     object: PluginBase | None = None
-    dependencies: list = []
+    dependencies: list = [] # type: ignore
 
 
 class NotificationData(Resource):
