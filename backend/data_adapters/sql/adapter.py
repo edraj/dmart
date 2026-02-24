@@ -1353,7 +1353,8 @@ class SQLAdapter(BaseDataAdapter):
                 else:
                     total = -1
                 if query.type == QueryType.counters:
-                    return total, []
+                    results = list((await session.execute(statement)).all())
+                    return total, results
 
                 if query.type == QueryType.attachments_aggregation:
                     # For aggregation, we need tuples
