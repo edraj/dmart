@@ -100,7 +100,7 @@
     let coinTriggerRefresh = $state(false);
 
     let jeContent: any = $state({ json: structuredClone(entry) });
-    if (!jeContent.json.relationships) jeContent.json.relationships = [];
+    let entryRelationships: any[] = $state(entry.relationships || []);
     let originalJeContent: any = $state({});
     setTimeout(() => {
         originalJeContent = jsonEditorContentParser($state.snapshot(jeContent));
@@ -295,6 +295,7 @@
             });
         }
         jeContent = { json: $state.snapshot(entry) };
+        entryRelationships = entry.relationships || [];
         setTimeout(() => {
             originalJeContent = jsonEditorContentParser(
                 $state.snapshot(jeContent),
@@ -784,7 +785,7 @@
                 {subpath}
                 parent_shortname={entry.shortname}
                 attachments={$state.snapshot(entry).attachments}
-                bind:relationships={jeContent.json.relationships}
+                bind:relationships={entryRelationships}
                 {refreshEntry}
             />
         </div>
