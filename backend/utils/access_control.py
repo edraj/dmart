@@ -1,4 +1,3 @@
-import re
 import sys
 from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
@@ -67,20 +66,17 @@ class AccessControl:
             record_attributes: dict = {},
             entry_shortname: str | None = None
     ):
-        # print("Checking access for", user_shortname, space_name, subpath, resource_type, action_type)
-        if resource_type == ResourceType.space and entry_shortname:
-            has_access = await self.check_space_access(
-                user_shortname,
-                entry_shortname
-            )
-            if settings.debug_perm and not has_access:
-                print(f"Debug Access: Access to space {entry_shortname} denied for user {user_shortname}")
-            return has_access
-        
+        effective_space = (
+            entry_shortname
+            if (resource_type == ResourceType.space and entry_shortname)
+            else space_name
+        )
+
         if entry_shortname:
+            acl_space, acl_subpath = (effective_space, "/") if resource_type == ResourceType.space else (space_name, subpath)
             acl_access = await self.check_access_control_list(
-                space_name,
-                subpath,
+                acl_space,
+                acl_subpath,
                 resource_type,
                 entry_shortname,
                 action_type,
@@ -88,7 +84,6 @@ class AccessControl:
             )
             if acl_access:
                 return True
-        # print("Checking check_space_access access")
         user_permissions = await db.get_user_permissions(user_shortname)
 
         user_groups = (await db.load_user_meta(user_shortname)).groups or []
@@ -101,7 +96,6 @@ class AccessControl:
         if resource_owner_shortname == user_shortname or resource_owner_group in user_groups:
             resource_achieved_conditions.add(ConditionType.own)
 
-        # Allow checking for root permissions
         subpath_parts = ["/"]
         subpath_parts += list(filter(None, subpath.strip("/").split("/")))
         if resource_type == ResourceType.folder and entry_shortname:
@@ -112,7 +106,7 @@ class AccessControl:
             search_subpath += subpath_part
             # Check if the user has global access
             global_access = self.has_global_access(
-                space_name,
+                effective_space,
                 user_permissions,
                 search_subpath,
                 action_type,
@@ -123,7 +117,7 @@ class AccessControl:
             if global_access:
                 return True
 
-            permission_key = f"{space_name}:{search_subpath}:{resource_type}"
+            permission_key = f"{effective_space}:{search_subpath}:{resource_type}"
             if (
                 permission_key in user_permissions
                 and action_type in user_permissions[permission_key]["allowed_actions"]
@@ -164,7 +158,7 @@ class AccessControl:
                 search_subpath += "/"
 
         if settings.debug_perm:
-            print(f"Debug Access: No valid permission found for user {user_shortname} accessing {space_name}/{subpath} ({resource_type})")
+            print(f"Debug Access: No valid permission found for user {user_shortname} accessing {effective_space}/{subpath} ({resource_type})")
         return False
 
     async def check_access_control_list(
@@ -318,11 +312,5 @@ class AccessControl:
                 return False
 
         return True
-
-    async def check_space_access(self, user_shortname: str, space_name: str) -> bool:
-        user_permissions = await db.get_user_permissions(user_shortname)
-        prog = re.compile(f"{space_name}:*|{settings.all_spaces_mw}:*")
-        return bool(list(filter(prog.match, user_permissions.keys())))
-
 
 access_control = AccessControl()
