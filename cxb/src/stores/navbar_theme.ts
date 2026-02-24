@@ -1,4 +1,5 @@
 import { writable } from "svelte/store";
+import { website } from "@/config";
 
 export interface NavbarTheme {
     type: "solid" | "gradient" | "custom-solid" | "custom-gradient";
@@ -17,6 +18,13 @@ function loadFromStorage(): NavbarTheme | null {
     return null;
 }
 
+function getConfigDefault(): NavbarTheme | null {
+    if (website.theme?.type && website.theme?.value) {
+        return { type: website.theme.type, value: website.theme.value };
+    }
+    return null;
+}
+
 function saveToStorage(theme: NavbarTheme | null) {
     if (theme) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(theme));
@@ -25,7 +33,7 @@ function saveToStorage(theme: NavbarTheme | null) {
     }
 }
 
-const initial = loadFromStorage();
+const initial = loadFromStorage() ?? getConfigDefault();
 export const navbarTheme = writable<NavbarTheme | null>(initial);
 
 navbarTheme.subscribe((val) => saveToStorage(val));
@@ -35,7 +43,7 @@ export function setNavbarTheme(type: NavbarTheme["type"], value: string) {
 }
 
 export function clearNavbarTheme() {
-    navbarTheme.set(null);
+    navbarTheme.set(getConfigDefault());
 }
 
 /** Returns true if the background is dark enough to need white text */
@@ -51,3 +59,4 @@ export function isDarkBackground(theme: NavbarTheme | null): boolean {
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance < 0.55;
 }
+

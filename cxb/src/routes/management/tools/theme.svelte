@@ -11,6 +11,7 @@
         ArrowLeftOutline,
         PaletteOutline,
         CloseOutline,
+        ClipboardOutline,
     } from "flowbite-svelte-icons";
 
     $goto;
@@ -70,6 +71,17 @@
     function buildGradient(): string {
         return `linear-gradient(${gradientDirection}, ${gradientStart}, ${gradientEnd})`;
     }
+
+    let copiedPreset = $state<string | null>(null);
+    function copyThemeConfig(type: string, value: string, presetName: string) {
+        const json = JSON.stringify({ type, value }, null, 4);
+        const snippet = `"theme": ${json}`;
+        navigator.clipboard.writeText(snippet);
+        copiedPreset = presetName;
+        setTimeout(() => {
+            copiedPreset = null;
+        }, 1500);
+    }
 </script>
 
 <div class="container mx-auto p-8 max-w-4xl">
@@ -101,7 +113,9 @@
         </h2>
         <div class="grid grid-cols-5 gap-4">
             {#each solidPresets as preset}
-                <button
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
                     class="group relative aspect-[3/2] rounded-xl shadow-sm border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer
                         {isActive($navbarTheme, 'solid', preset.value)
                         ? 'border-primary-500 ring-2 ring-primary-300 scale-105'
@@ -129,12 +143,37 @@
                             </svg>
                         </div>
                     {/if}
+                    <button
+                        class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Copy config.json snippet"
+                        onclick={(e) => {
+                            e.stopPropagation();
+                            copyThemeConfig("solid", preset.value, preset.name);
+                        }}
+                    >
+                        {#if copiedPreset === preset.name}
+                            <svg
+                                class="w-3 h-3 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                ><path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="3"
+                                    d="M5 13l4 4L19 7"
+                                /></svg
+                            >
+                        {:else}
+                            <ClipboardOutline class="w-3 h-3 text-gray-600" />
+                        {/if}
+                    </button>
                     <span
                         class="absolute bottom-0 left-0 right-0 text-center text-[11px] font-medium text-white py-1.5 bg-black/30 rounded-b-xl backdrop-blur-sm"
                     >
                         {preset.name}
                     </span>
-                </button>
+                </div>
             {/each}
         </div>
     </section>
@@ -148,7 +187,9 @@
         </h2>
         <div class="grid grid-cols-5 gap-4">
             {#each gradientPresets as preset}
-                <button
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
                     class="group relative aspect-[3/2] rounded-xl shadow-sm border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer
                         {isActive($navbarTheme, 'gradient', preset.value)
                         ? 'border-primary-500 ring-2 ring-primary-300 scale-105'
@@ -176,12 +217,41 @@
                             </svg>
                         </div>
                     {/if}
+                    <button
+                        class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Copy config.json snippet"
+                        onclick={(e) => {
+                            e.stopPropagation();
+                            copyThemeConfig(
+                                "gradient",
+                                preset.value,
+                                preset.name,
+                            );
+                        }}
+                    >
+                        {#if copiedPreset === preset.name}
+                            <svg
+                                class="w-3 h-3 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                ><path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="3"
+                                    d="M5 13l4 4L19 7"
+                                /></svg
+                            >
+                        {:else}
+                            <ClipboardOutline class="w-3 h-3 text-gray-600" />
+                        {/if}
+                    </button>
                     <span
                         class="absolute bottom-0 left-0 right-0 text-center text-[11px] font-medium text-white py-1.5 bg-black/30 rounded-b-xl backdrop-blur-sm"
                     >
                         {preset.name}
                     </span>
-                </button>
+                </div>
             {/each}
         </div>
     </section>
