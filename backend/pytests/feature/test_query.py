@@ -77,7 +77,7 @@ async def test_query_count(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["total"] > 0
-    assert json_response["attributes"]["returned"] == 0
+    assert json_response["attributes"]["returned"] == 10
 
 
 @pytest.mark.run(order=3)
