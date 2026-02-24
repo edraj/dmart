@@ -538,6 +538,8 @@ class PluginWrapper(Resource):
     ordinal: int = 9999
     object: PluginBase | None = None
     dependencies: list = [] # type: ignore
+    concurrent: bool = True
+
 
 
 class NotificationData(Resource):
