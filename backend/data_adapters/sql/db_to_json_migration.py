@@ -280,6 +280,15 @@ async def export_data_with_query(query, user_shortname):
     total, records = await serve_query(query, user_shortname)
 
     with Session(get_engine()) as session:
+        if query.space_name == "management":
+            subpath = (query.subpath or "/").strip("/")
+            if subpath in ("", "users"):
+                process_users(session, space_folder)
+            if subpath in ("", "roles"):
+                process_roles(session, space_folder)
+            if subpath in ("", "permissions"):
+                process_permissions(session, space_folder)
+
         space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
         if space:
             dir_path = f"{space_folder}/{space.space_name}/.dm/"
