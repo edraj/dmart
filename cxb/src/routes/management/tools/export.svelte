@@ -1,15 +1,37 @@
 <script lang="ts">
-    import {_} from "svelte-i18n";
-    import {onMount} from "svelte";
+    import { _ } from "svelte-i18n";
+    import { onMount } from "svelte";
     import downloadFile from "@/utils/downloadFile";
-    import {Level, showToast} from "@/utils/toast";
-    import {Dmart, type QueryRequest, QueryType, ResourceType} from "@edraj/tsdmart";
-    import {getChildren} from "@/lib/dmart_services";
-    import {Button, Card, Checkbox, Input, Label, Select} from 'flowbite-svelte';
-    import {FilterOutline, FilterSolid} from 'flowbite-svelte-icons';
+    import { Level, showToast } from "@/utils/toast";
+    import {
+        Dmart,
+        type QueryRequest,
+        QueryType,
+        ResourceType,
+    } from "@edraj/tsdmart";
+    import { getChildren } from "@/lib/dmart_services";
+    import {
+        Button,
+        Card,
+        Checkbox,
+        Input,
+        Label,
+        Select,
+    } from "flowbite-svelte";
+    import {
+        FilterOutline,
+        FilterSolid,
+        FileExportOutline,
+        ArrowLeftOutline,
+    } from "flowbite-svelte-icons";
     import Prism from "@/components/Prism.svelte";
-    import {addDateFilters, createBaseQuery} from "@/utils/routes/queryHelpers";
-    import {headers} from "@edraj/tsdmart/dmart.model";
+    import { goto } from "@roxi/routify";
+    $goto;
+    import {
+        addDateFilters,
+        createBaseQuery,
+    } from "@/utils/routes/queryHelpers";
+    import { headers } from "@edraj/tsdmart/dmart.model";
 
     // Constants
     const DEFAULT_QUERY_LIMIT = 10;
@@ -28,7 +50,6 @@
     // let retrieve_attachments: boolean = $state(false);
     // let retrieve_json_payload: boolean = $state(false);
 
-
     let response = $state(null);
     let isDisplayFilter = $state(false);
 
@@ -46,8 +67,14 @@
     async function buildSubpaths(base: string, _subpaths: any) {
         for (const _subpath of _subpaths.records) {
             if (_subpath.resource_type === "folder") {
-                const childSubpaths = await getChildren(space_name, _subpath.shortname);
-                await buildSubpaths(`${base}/${_subpath.shortname}`, childSubpaths);
+                const childSubpaths = await getChildren(
+                    space_name,
+                    _subpath.shortname,
+                );
+                await buildSubpaths(
+                    `${base}/${_subpath.shortname}`,
+                    childSubpaths,
+                );
                 tempSubpaths.push(`${base}/${_subpath.shortname}`);
             }
         }
@@ -64,12 +91,12 @@
             ...createBaseQuery({
                 space_name,
                 subpath,
-                search: '',
+                search: "",
                 offset: 0,
                 limit: 1_000_000,
                 retrieve_json_payload: true,
                 retrieve_attachments: true,
-            })
+            }),
         };
 
         response = await Dmart.query(query_request);
@@ -82,26 +109,30 @@
             ...createBaseQuery({
                 space_name,
                 subpath,
-                search: '',
+                search: "",
                 offset: 0,
                 limit: 1_000_000,
                 retrieve_json_payload: true,
                 retrieve_attachments: true,
-            })
+            }),
         };
 
         try {
             const response = await Dmart.axiosDmartInstance.post(
                 `managed/export`,
                 body,
-                { headers, responseType: 'arraybuffer' }
+                { headers, responseType: "arraybuffer" },
             );
-            
+
             // Check if response is successful based on status code
             if (response.status !== 200) {
                 showToast(Level.warn);
             } else {
-                downloadFile(response.data, `${space_name}/${subpath}.zip`, "application/zip");
+                downloadFile(
+                    response.data,
+                    `${space_name}/${subpath}.zip`,
+                    "application/zip",
+                );
             }
         } catch (error: any) {
             showToast(Level.warn);
@@ -124,40 +155,70 @@
     });
 </script>
 
+<div class="container mx-auto p-8">
+    <button
+        class="flex items-center gap-2 text-gray-600 hover:text-primary-600 mb-6 transition-colors"
+        onclick={() => $goto("/management/tools")}
+    >
+        <ArrowLeftOutline size="sm" />
+        <span>Back to Tools</span>
+    </button>
 
-<div class="min-w-11/12 m-6">
-    <Card class="min-w-full p-4">
-        <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                <div class="md:col-span-4">
-                    <Label for="space_name" class="mb-2">{$_("space_name")}</Label>
-                    <Select id="space_name" bind:value={space_name}>
-                        {#each spaces as space}
-                            <option value={space.shortname}>{space.shortname}</option>
-                        {/each}
-                    </Select>
-                </div>
-                <div class="md:col-span-4">
-                    <Label for="subpath" class="mb-2">{$_("subpath")}</Label>
-                    <Select id="subpath" bind:value={subpath}>
-                        <option value={"/"}>/</option>
-                        {#each subpaths as path}
-                            <option value={path}>{path}</option>
-                        {/each}
-                    </Select>
-                </div>
-
-            </div>
-            <div class="md:col-span-4 mx-auto flex items-end justify-end">
-                <Button onclick={handleResponse} color="blue">{$_("submit")}</Button>
-                <Button class="mx-5" color="blue" outline onclick={handleDownload}>{$_("download_zip")}</Button>
-            </div>
+    <div class="flex items-center gap-3 mb-8">
+        <div class="p-3 bg-primary-100 rounded-full">
+            <FileExportOutline class="w-8 h-8 text-primary-600" />
         </div>
-    </Card>
-</div>
+        <div>
+            <h1 class="text-2xl font-bold">Export</h1>
+            <p class="text-gray-500">Export entries as zip file.</p>
+        </div>
+    </div>
 
-{#if response === null}
-    <p class="text-gray-500 text-center">No response yet.</p>
-{:else}
-    <Prism bind:code={response} />
-{/if}
+    <div class="min-w-11/12">
+        <Card class="min-w-full p-4">
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                    <div class="md:col-span-4">
+                        <Label for="space_name" class="mb-2"
+                            >{$_("space_name")}</Label
+                        >
+                        <Select id="space_name" bind:value={space_name}>
+                            {#each spaces as space}
+                                <option value={space.shortname}
+                                    >{space.shortname}</option
+                                >
+                            {/each}
+                        </Select>
+                    </div>
+                    <div class="md:col-span-4">
+                        <Label for="subpath" class="mb-2">{$_("subpath")}</Label
+                        >
+                        <Select id="subpath" bind:value={subpath}>
+                            <option value={"/"}>/</option>
+                            {#each subpaths as path}
+                                <option value={path}>{path}</option>
+                            {/each}
+                        </Select>
+                    </div>
+                </div>
+                <div class="md:col-span-4 mx-auto flex items-end justify-end">
+                    <Button onclick={handleResponse} color="blue"
+                        >{$_("submit")}</Button
+                    >
+                    <Button
+                        class="mx-5"
+                        color="blue"
+                        outline
+                        onclick={handleDownload}>{$_("download_zip")}</Button
+                    >
+                </div>
+            </div>
+        </Card>
+    </div>
+
+    {#if response === null}
+        <p class="text-gray-500 text-center">No response yet.</p>
+    {:else}
+        <Prism bind:code={response} />
+    {/if}
+</div>

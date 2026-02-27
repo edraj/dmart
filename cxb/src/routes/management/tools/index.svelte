@@ -7,6 +7,7 @@
         FileImportOutline,
         FileExportOutline,
         PaletteOutline,
+        ChartPieOutline,
     } from "flowbite-svelte-icons";
     import { goto } from "@roxi/routify";
     $goto;
@@ -36,10 +37,8 @@
             onclick={() => $goto("/management/tools/events")}
         >
             <div class="flex flex-col items-center text-center">
-                <div class="p-3 bg-secondary-100 rounded-full mb-4">
-                    <CalendarMonthOutline
-                        class="w-12 h-12 text-secondary-600"
-                    />
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <CalendarMonthOutline class="w-12 h-12 text-primary-600" />
                 </div>
                 <h3 class="text-xl font-bold mb-2">Events</h3>
                 <p class="text-gray-600">Check all Dmart instance events.</p>
@@ -51,8 +50,8 @@
             onclick={() => $goto("/management/tools/query")}
         >
             <div class="flex flex-col items-center text-center">
-                <div class="p-3 bg-tertiary-100 rounded-full mb-4">
-                    <SearchOutline class="w-12 h-12 text-tertiary-600" />
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <SearchOutline class="w-12 h-12 text-primary-600" />
                 </div>
                 <h3 class="text-xl font-bold mb-2">Query</h3>
                 <p class="text-gray-600">
@@ -66,8 +65,8 @@
             onclick={() => $goto("/management/tools/import")}
         >
             <div class="flex flex-col items-center text-center">
-                <div class="p-3 bg-tertiary-100 rounded-full mb-4">
-                    <FileImportOutline class="w-12 h-12 text-tertiary-600" />
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <FileImportOutline class="w-12 h-12 text-primary-600" />
                 </div>
                 <h3 class="text-xl font-bold mb-2">Import</h3>
                 <p class="text-gray-600">Import entries based on zip file.</p>
@@ -79,8 +78,8 @@
             onclick={() => $goto("/management/tools/export")}
         >
             <div class="flex flex-col items-center text-center">
-                <div class="p-3 bg-tertiary-100 rounded-full mb-4">
-                    <FileExportOutline class="w-12 h-12 text-tertiary-600" />
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <FileExportOutline class="w-12 h-12 text-primary-600" />
                 </div>
                 <h3 class="text-xl font-bold mb-2">Export</h3>
                 <p class="text-gray-600">Export entries as zip file.</p>
@@ -92,12 +91,27 @@
             onclick={() => $goto("/management/tools/theme")}
         >
             <div class="flex flex-col items-center text-center">
-                <div class="p-3 bg-purple-100 rounded-full mb-4">
-                    <PaletteOutline class="w-12 h-12 text-purple-600" />
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <PaletteOutline class="w-12 h-12 text-primary-600" />
                 </div>
                 <h3 class="text-xl font-bold mb-2">Theme</h3>
                 <p class="text-gray-600">
                     Customize the navigation bar colors.
+                </p>
+            </div>
+        </Card>
+
+        <Card
+            class="p-4 hover:shadow-lg transition-shadow cursor-pointer"
+            onclick={() => $goto("/management/tools/statistics")}
+        >
+            <div class="flex flex-col items-center text-center">
+                <div class="p-3 bg-primary-100 rounded-full mb-4">
+                    <ChartPieOutline class="w-12 h-12 text-primary-600" />
+                </div>
+                <h3 class="text-xl font-bold mb-2">Statistics</h3>
+                <p class="text-gray-600">
+                    View application usage and space statistics.
                 </p>
             </div>
         </Card>

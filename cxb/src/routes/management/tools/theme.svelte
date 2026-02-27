@@ -99,7 +99,7 @@
             <PaletteOutline class="w-8 h-8 text-primary-600" />
         </div>
         <div>
-            <h1 class="text-2xl font-bold">Navbar Theme</h1>
+            <h1 class="text-2xl font-bold">Theme</h1>
             <p class="text-gray-500">Customize the navigation bar appearance</p>
         </div>
     </div>

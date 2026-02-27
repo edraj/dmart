@@ -9,6 +9,7 @@
         FolderSolid,
         FileCodeSolid,
         ArrowLeftOutline,
+        ChartPieOutline,
     } from "flowbite-svelte-icons";
     import { Dmart, QueryType } from "@edraj/tsdmart";
     import { getSpaces } from "@/lib/dmart_services";
@@ -37,19 +38,26 @@
 
     let spaceStats: SpaceStat[] = $state([]);
 
-    async function fetchCount(space: string, resource_type: string, by_subpath = false): Promise<number> {
+    async function fetchCount(
+        space: string,
+        resource_type: string,
+        by_subpath = false,
+    ): Promise<number> {
         try {
             const resp = await Dmart.query({
                 type: QueryType.counters,
                 retrieve_total: true,
                 space_name: space,
                 exact_subpath: false,
-                subpath: by_subpath ? resource_type : '/',
-                search: by_subpath ? '' : `@resource_type:${resource_type}`,
+                subpath: by_subpath ? resource_type : "/",
+                search: by_subpath ? "" : `@resource_type:${resource_type}`,
             } as any);
             return resp.attributes.total || 0;
         } catch (e) {
-            console.error(`Failed to fetch count for ${space}/${resource_type}`, e);
+            console.error(
+                `Failed to fetch count for ${space}/${resource_type}`,
+                e,
+            );
             return 0;
         }
     }
@@ -119,14 +127,24 @@
 </script>
 
 <div class="container mx-auto p-8 relative">
-    <div class="flex items-center mb-6">
-        <button
-            class="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onclick={() => $goto("/management/tools")}
-        >
-            <ArrowLeftOutline class="w-6 h-6" />
-        </button>
-        <h1 class="text-3xl font-bold">Statistics</h1>
+    <button
+        class="flex items-center gap-2 text-gray-600 hover:text-primary-600 mb-6 transition-colors"
+        onclick={() => $goto("/management/tools")}
+    >
+        <ArrowLeftOutline size="sm" />
+        <span>Back to Tools</span>
+    </button>
+
+    <div class="flex items-center gap-3 mb-8">
+        <div class="p-3 bg-primary-100 rounded-full">
+            <ChartPieOutline class="w-8 h-8 text-primary-600" />
+        </div>
+        <div>
+            <h1 class="text-2xl font-bold">Statistics</h1>
+            <p class="text-gray-500">
+                View application usage and space statistics.
+            </p>
+        </div>
     </div>
 
     {#if error}
