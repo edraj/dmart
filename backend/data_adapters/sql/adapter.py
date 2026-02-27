@@ -1426,26 +1426,33 @@ class SQLAdapter(BaseDataAdapter):
             return joins_list
 
         def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
-            if path in ("shortname", "resource_type", "subpath", "uuid"):
-                val = getattr(rec, path, None)
-            elif path == "space_name":
-                val = rec.attributes.get("space_name") if rec.attributes else None
-            else:
-                container = rec.attributes or {}
-                val = get_nested_value(container, path)
+            try:
+                if path in ("shortname", "resource_type", "subpath", "uuid"):
+                    val = getattr(rec, path, None)
+                elif path == "space_name":
+                    val = rec.attributes.get("space_name") if rec.attributes else None
+                else:
+                    container = rec.attributes or {}
+                    val = get_nested_value(container, path)
 
-            if val is None:
-                return []
-            if isinstance(val, list):
-                out = []
-                for item in val:
-                    if isinstance(item, (str, int, float, bool)) or item is None:
-                        out.append(item)
-                return out
+                if val is None:
+                    return []
+                if isinstance(val, list):
+                    out = []
+                    for item in val:
+                        if isinstance(item, (str, int, float, bool)) or item is None:
+                            out.append(item)
+                    return out
 
-            if array_hint:
+                if array_hint:
+                    return [val]
                 return [val]
-            return [val]
+            except Exception as e:
+                logger.warning(
+                    f"Skipping bad record value extraction for path '{path}' "
+                    f"on record '{getattr(rec, 'shortname', '?')}': {e}"
+                )
+                return []
 
         for rec in base_records:
             if rec.attributes is None:
