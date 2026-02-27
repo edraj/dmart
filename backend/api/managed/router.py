@@ -150,7 +150,8 @@ async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
         temp_dir_obj.cleanup()
         try:
             zip_temp_dir_obj.cleanup()
-        except Exception as e:
+        except Exception as ee:
+            print(f"Export error: {eee}")
             pass
             
         traceback.print_exc()
