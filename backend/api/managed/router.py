@@ -106,6 +106,7 @@ async def import_data(
 
 @router.post("/export", response_class=FileResponse)
 async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
+    global zip_temp_dir_obj
     temp_dir_obj = tempfile.TemporaryDirectory()
     temp_dir = temp_dir_obj.name
     
@@ -149,7 +150,7 @@ async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
         temp_dir_obj.cleanup()
         try:
             zip_temp_dir_obj.cleanup()
-        except:
+        except Exception as e:
             pass
             
         traceback.print_exc()
