@@ -1,18 +1,31 @@
 <script>
-    import {spaces} from "@/stores/management/spaces";
-    import {Button, Card, Dropdown, DropdownItem, Modal, Spinner} from "flowbite-svelte";
-    import {DotsHorizontalOutline, EyeSolid, PenSolid, PlusOutline, TrashBinSolid} from "flowbite-svelte-icons";
-    import {JSONEditor, Mode} from "svelte-jsoneditor";
-    import {jsonEditorContentParser} from "@/utils/jsonEditor";
-    import {getSpaces} from "@/lib/dmart_services";
-    import {Dmart, RequestType, ResourceType} from "@edraj/tsdmart";
-    import {Level, showToast} from "@/utils/toast";
+    import { spaces } from "@/stores/management/spaces";
+    import {
+        Button,
+        Card,
+        Dropdown,
+        DropdownItem,
+        Modal,
+        Spinner,
+    } from "flowbite-svelte";
+    import {
+        DotsHorizontalOutline,
+        EyeSolid,
+        PenSolid,
+        PlusOutline,
+        TrashBinSolid,
+    } from "flowbite-svelte-icons";
+    import { JSONEditor, Mode } from "svelte-jsoneditor";
+    import { jsonEditorContentParser } from "@/utils/jsonEditor";
+    import { getSpaces } from "@/lib/dmart_services";
+    import { Dmart, RequestType, ResourceType } from "@edraj/tsdmart";
+    import { Level, showToast } from "@/utils/toast";
     import Prism from "@/components/Prism.svelte";
-    import {goto} from "@roxi/routify";
+    import { goto } from "@roxi/routify";
     import MetaForm from "@/components/management/forms/MetaForm.svelte";
-    import {removeEmpty} from "@/utils/compare.js";
+    import { removeEmpty } from "@/utils/compare.js";
 
-    $goto
+    $goto;
 
     let viewMetaModal = $state(false);
     let editModal = $state(false);
@@ -28,13 +41,13 @@
         displayname: {
             en: "",
             ar: "",
-            ku: ""
+            ku: "",
         },
         description: {
             en: "",
             ar: "",
-            ku: ""
-        }
+            ku: "",
+        },
     });
     let validateSpaceForm = $state(() => true);
 
@@ -51,13 +64,13 @@
             displayname: {
                 en: "",
                 ar: "",
-                ku: ""
+                ku: "",
             },
             description: {
                 en: "",
                 ar: "",
-                ku: ""
-            }
+                ku: "",
+            },
         };
         addSpaceModal = true;
     }
@@ -75,7 +88,7 @@
                     is_active: spaceFormData.is_active,
                     slug: spaceFormData.slug,
                     displayname: spaceFormData.displayname,
-                    description: spaceFormData.description
+                    description: spaceFormData.description,
                 };
                 await Dmart.request({
                     space_name: spaceFormData.shortname.trim(),
@@ -84,12 +97,15 @@
                         {
                             resource_type: ResourceType.space,
                             shortname: spaceFormData.shortname.trim(),
-                            subpath: '/',
-                            attributes: removeEmpty(attributes)
-                        }
-                    ]
+                            subpath: "/",
+                            attributes: removeEmpty(attributes),
+                        },
+                    ],
                 });
-                showToast(Level.info, `Space "${spaceFormData.shortname.trim()}" created successfully!`);
+                showToast(
+                    Level.info,
+                    `Space "${spaceFormData.shortname.trim()}" created successfully!`,
+                );
                 await getSpaces();
                 addSpaceModal = false;
             } catch (error) {
@@ -116,9 +132,13 @@
 
     async function saveChanges() {
         if (selectedSpace) {
-            const record = jsonEditorContentParser(
-                $state.snapshot(jeContent)
-            );
+            let record;
+            try {
+                record = jsonEditorContentParser($state.snapshot(jeContent));
+            } catch (e) {
+                modelError = "Invalid JSON format";
+                return;
+            }
             delete record.uuid;
             try {
                 isActionLoading = true;
@@ -130,13 +150,16 @@
                         {
                             resource_type: ResourceType.space,
                             shortname: selectedSpace.shortname,
-                            subpath: '/',
-                            attributes: record.attributes
-                        }
-                    ]
-                })
+                            subpath: "/",
+                            attributes: record.attributes,
+                        },
+                    ],
+                });
                 editModal = false;
-                showToast(Level.info, `Space "${selectedSpace.shortname}" updated successfully!`);
+                showToast(
+                    Level.info,
+                    `Space "${selectedSpace.shortname}" updated successfully!`,
+                );
                 await getSpaces();
             } catch (error) {
                 modelError = error;
@@ -154,21 +177,25 @@
 
     async function deleteSpace() {
         if (selectedSpace) {
-
             try {
                 isActionLoading = true;
                 modelError = null;
                 await Dmart.request({
                     space_name: selectedSpace.shortname,
                     request_type: RequestType.delete,
-                    records: [{
-                        resource_type: ResourceType.space,
-                        shortname: selectedSpace.shortname,
-                        subpath: '/',
-                        attributes: {}
-                    }]
-                })
-                showToast(Level.info, `Space "${selectedSpace.shortname}" has been deleted successfully!`);
+                    records: [
+                        {
+                            resource_type: ResourceType.space,
+                            shortname: selectedSpace.shortname,
+                            subpath: "/",
+                            attributes: {},
+                        },
+                    ],
+                });
+                showToast(
+                    Level.info,
+                    `Space "${selectedSpace.shortname}" has been deleted successfully!`,
+                );
                 deleteModal = false;
                 selectedSpace = null;
                 await getSpaces();
@@ -182,7 +209,7 @@
 
     async function handleSelectedSpace(spaceShortname) {
         $goto(`/management/content/[space_name]`, {
-            space_name: spaceShortname
+            space_name: spaceShortname,
         });
     }
 </script>
@@ -190,30 +217,48 @@
 <div class="container mx-auto px-12 py-6">
     <div class="flex justify-between items-center mb-1 px-1">
         <h1 class="text-2xl font-bold mb-6">All Spaces</h1>
-        <Button size="md" class="bg-primary" style="cursor: pointer" onclick={showAddSpaceModal}>
+        <Button
+            size="md"
+            class="bg-primary"
+            style="cursor: pointer"
+            onclick={showAddSpaceModal}
+        >
             <PlusOutline class="me-2 h-5 w-5" />Add new space
         </Button>
     </div>
     <hr class="mb-6 border-gray-300" />
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 w-full place-items-center">
-        {#each ($spaces ?? []).filter(space => space?.attributes?.hide_space !== true) as space}
+    <div
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 w-full place-items-center"
+    >
+        {#each ($spaces ?? []).filter((space) => space?.attributes?.hide_space !== true) as space}
             <Card class="relative w-full">
                 <div class="absolute top-2 left-2">
                     <Button class="!p-1" color="light">
                         <DotsHorizontalOutline />
                         <Dropdown simple>
-                            <DropdownItem class="w-full" onclick={() => viewMeta(space)}>
+                            <DropdownItem
+                                class="w-full"
+                                onclick={() => viewMeta(space)}
+                            >
                                 <div class="flex items-center gap-2">
                                     <EyeSolid size="sm" /> View Meta
                                 </div>
                             </DropdownItem>
-                            <DropdownItem class="w-full" onclick={() => editSpace(space)}>
+                            <DropdownItem
+                                class="w-full"
+                                onclick={() => editSpace(space)}
+                            >
                                 <div class="flex items-center gap-2">
                                     <PenSolid size="sm" /> Edit
                                 </div>
                             </DropdownItem>
-                            <DropdownItem class="w-full" onclick={() => confirmDelete(space)}>
-                                <div class="flex items-center gap-2 text-red-600">
+                            <DropdownItem
+                                class="w-full"
+                                onclick={() => confirmDelete(space)}
+                            >
+                                <div
+                                    class="flex items-center gap-2 text-red-600"
+                                >
                                     <TrashBinSolid size="sm" /> Delete
                                 </div>
                             </DropdownItem>
@@ -223,21 +268,29 @@
 
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <div class="flex flex-col items-center text-center p-4"
-                     style="cursor: pointer"
-                     onclick={() => handleSelectedSpace(space.shortname)}>
-                    <span class="inline-block px-3 py-1 mb-3 border border-gray-300 rounded-md text-sm font-medium">
+                <div
+                    class="flex flex-col items-center text-center p-4"
+                    style="cursor: pointer"
+                    onclick={() => handleSelectedSpace(space.shortname)}
+                >
+                    <span
+                        class="inline-block px-3 py-1 mb-3 border border-gray-300 rounded-md text-sm font-medium"
+                    >
                         {space.shortname}
                     </span>
 
-                    <h3 class="font-semibold text-lg">{space.attributes?.displayname?.en || space.shortname}</h3>
+                    <h3 class="font-semibold text-lg">
+                        {space.attributes?.displayname?.en || space.shortname}
+                    </h3>
 
                     <p class="text-gray-600 mt-2 mb-4 line-clamp-3">
                         {space?.description?.en || ""}
                     </p>
 
                     <div class="text-xs text-gray-500 mt-auto">
-                        Updated: {new Date(space?.attributes.updated_at).toLocaleDateString()}
+                        Updated: {new Date(
+                            space?.attributes.updated_at,
+                        ).toLocaleDateString()}
                     </div>
                 </div>
             </Card>
@@ -247,7 +300,11 @@
 
 <Modal bind:open={addSpaceModal} size="xl" title="Add New Space">
     <div class="space-y-4">
-        <MetaForm bind:formData={spaceFormData} bind:validateFn={validateSpaceForm} isCreate={true}/>
+        <MetaForm
+            bind:formData={spaceFormData}
+            bind:validateFn={validateSpaceForm}
+            isCreate={true}
+        />
 
         {#if modelError}
             <div class="mt-4">
@@ -260,7 +317,9 @@
     </div>
 
     <div class="flex justify-between w-full mt-4">
-        <Button color="alternative" onclick={() => addSpaceModal = false}>Cancel</Button>
+        <Button color="alternative" onclick={() => (addSpaceModal = false)}
+            >Cancel</Button
+        >
         <Button class="bg-primary" onclick={createSpace}>
             {#if isActionLoading}
                 <Spinner class="me-3" size="4" color="blue" />
@@ -283,7 +342,11 @@
 <Modal bind:open={editModal} size="xl" title="Edit Space">
     <div>
         {#if selectedSpace}
-            <JSONEditor bind:content={jeContent} readOnly={false} mode={Mode.text} />
+            <JSONEditor
+                bind:content={jeContent}
+                readOnly={false}
+                mode={Mode.text}
+            />
         {/if}
 
         {#if modelError}
@@ -296,7 +359,9 @@
         {/if}
     </div>
     <div class="flex justify-between w-full">
-        <Button color="alternative" onclick={() => editModal = false}>Cancel</Button>
+        <Button color="alternative" onclick={() => (editModal = false)}
+            >Cancel</Button
+        >
         <Button class="bg-primary" onclick={saveChanges}>
             {#if isActionLoading}
                 <Spinner class="me-3" size="4" color="blue" />
@@ -311,7 +376,9 @@
 <Modal bind:open={deleteModal} size="md" title="Confirm Deletion">
     {#if selectedSpace}
         <p class="text-center mb-6">
-            Are you sure you want to delete the space <span class="font-bold">{selectedSpace.shortname}</span>?<br>
+            Are you sure you want to delete the space <span class="font-bold"
+                >{selectedSpace.shortname}</span
+            >?<br />
             This action cannot be undone.
         </p>
     {/if}
@@ -326,7 +393,9 @@
     {/if}
 
     <div class="flex justify-between w-full">
-        <Button color="alternative" onclick={() => deleteModal = false}>Cancel</Button>
+        <Button color="alternative" onclick={() => (deleteModal = false)}
+            >Cancel</Button
+        >
         <Button color="red" onclick={deleteSpace}>
             {#if isActionLoading}
                 <Spinner class="me-3" size="4" color="blue" />

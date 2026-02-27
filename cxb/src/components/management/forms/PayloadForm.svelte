@@ -1,20 +1,33 @@
 <script lang="ts">
-    import {Label, Select, Card} from "flowbite-svelte";
-    import {ContentType, Dmart, QueryType, ResourceType,} from "@edraj/tsdmart";
+    import { Label, Select, Card } from "flowbite-svelte";
+    import {
+        ContentType,
+        Dmart,
+        QueryType,
+        ResourceType,
+    } from "@edraj/tsdmart";
     import FolderForm from "@/components/management/forms/FolderForm.svelte";
-    import {JSONEditor, Mode} from "svelte-jsoneditor";
-    import {currentEntry, InputMode, resourcesWithFormAndJson, resourceTypeWithNoPayload,} from "@/stores/global";
+    import { JSONEditor, Mode } from "svelte-jsoneditor";
+    import {
+        currentEntry,
+        InputMode,
+        resourcesWithFormAndJson,
+        resourceTypeWithNoPayload,
+    } from "@/stores/global";
     import SchemaForm from "@/components/management/forms/SchemaForm.svelte";
     import WorkflowForm from "@/components/management/forms/WorkflowForm.svelte";
     import DynamicSchemaBasedForms from "@/components/management/forms/DynamicSchemaBasedForms.svelte";
     import TranslationForm from "@/components/management/forms/TranslationForm.svelte";
     import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
     import MarkdownEditor from "@/components/management/editors/MarkdownEditor.svelte";
-    import {fetchWorkflows} from "@/lib/dmart_services";
-    import {params} from "@roxi/routify";
-    import {untrack} from "svelte";
-    import {generateObjectFromSchema} from "@/utils/renderer/rendererUtils";
-    import {jsonEditorContentParser} from "@/utils/jsonEditor";
+    import { fetchWorkflows } from "@/lib/dmart_services";
+    import { params } from "@roxi/routify";
+    import { untrack } from "svelte";
+    import {
+        generateObjectFromSchema,
+        generateSchemaFromObject,
+    } from "@/utils/renderer/rendererUtils";
+    import { jsonEditorContentParser } from "@/utils/jsonEditor";
 
     let {
         isCreate = true,
@@ -245,19 +258,27 @@
         if (isCreate && contentType === ContentType.json) {
             if (selectedInputMode === InputMode.json) {
                 untrack(() => {
-                    content = {
-                        text: JSON.stringify(
-                            jsonEditorContentParser($state.snapshot(content)),
-                            null,
-                            2,
-                        ),
-                    };
+                    try {
+                        content = {
+                            text: JSON.stringify(
+                                jsonEditorContentParser(
+                                    $state.snapshot(content),
+                                ),
+                                null,
+                                2,
+                            ),
+                        };
+                    } catch (e) {}
                 });
             } else if (selectedInputMode === InputMode.form) {
                 untrack(() => {
-                    content = {
-                        json: jsonEditorContentParser($state.snapshot(content)),
-                    };
+                    try {
+                        content = {
+                            json: jsonEditorContentParser(
+                                $state.snapshot(content),
+                            ),
+                        };
+                    } catch (e) {}
                 });
             }
         }
@@ -265,206 +286,223 @@
 </script>
 
 <Card class="w-full max-w-4xl mx-auto p-4 my-2">
-{#if !resourceTypeWithNoPayload.includes(selectedResourceType)}
-    {#if isCreate && !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(selectedResourceType)}
-        {#if selectedResourceType === ResourceType.content}
-            <Label class="mt-3">
-                Content Type
-                <Select
-                    class="mt-2"
-                    items={contentTypeOptions}
-                    value={contentType}
-                    onchange={(e: any) => {
-                        if (e.target.value !== "json") {
-                            content = "";
-                        } else {
-                            content = { json: {} };
-                        }
-                        contentType = e.target.value;
-                    }}
+    {#if !resourceTypeWithNoPayload.includes(selectedResourceType)}
+        {#if isCreate && !["workflows", "schema"].includes(subpath) && ![ResourceType.folder, ResourceType.role, ResourceType.permission].includes(selectedResourceType)}
+            {#if selectedResourceType === ResourceType.content}
+                <Label class="mt-3">
+                    Content Type
+                    <Select
+                        class="mt-2"
+                        items={contentTypeOptions}
+                        value={contentType}
+                        onchange={(e: any) => {
+                            if (e.target.value !== "json") {
+                                content = "";
+                            } else {
+                                content = { json: {} };
+                            }
+                            contentType = e.target.value;
+                        }}
+                    />
+                </Label>
+            {/if}
+
+            {#if contentType === "json" || selectedResourceType !== ResourceType.content}
+                <Label class="mt-3">
+                    Schema
+                    {#await Dmart.query( { space_name: $params.space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 100 }, )}
+                        <div role="status" class="max-w-sm animate-pulse">
+                            <div
+                                class="h-3 bg-gray-200 rounded-full dark:bg-gray-700 mx-2 my-2.5"
+                            ></div>
+                        </div>
+                    {:then schemas}
+                        <Select
+                            class="mt-2"
+                            items={parseQuerySchemaResponse(schemas)}
+                            bind:value={selectedSchema}
+                        />
+                    {/await}
+                </Label>
+            {/if}
+        {/if}
+        {#if selectedResourceType === ResourceType.folder && isFolderFormReady}
+            {#if selectedInputMode === InputMode.form}
+                {#if isCreate}
+                    {#if content.json}
+                        <FolderForm bind:content={content.json} />
+                    {/if}
+                {:else}
+                    <FolderForm bind:content />
+                {/if}
+            {:else if isCreate && selectedInputMode === InputMode.json}
+                <JSONEditor
+                    onRenderMenu={handleRenderMenu}
+                    mode={Mode.text}
+                    bind:content
                 />
-            </Label>
+            {/if}
         {/if}
 
-        {#if contentType === "json" || selectedResourceType !== ResourceType.content}
+        {#if isCreate && selectedResourceType === ResourceType.ticket}
             <Label class="mt-3">
-                Schema
-                {#await Dmart.query( { space_name: $params.space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 100 }, )}
+                Workflow shortname
+                {#await fetchWorkflows($params.space_name)}
                     <div role="status" class="max-w-sm animate-pulse">
                         <div
                             class="h-3 bg-gray-200 rounded-full dark:bg-gray-700 mx-2 my-2.5"
                         ></div>
                     </div>
-                {:then schemas}
+                {:then workflows}
                     <Select
                         class="mt-2"
-                        items={parseQuerySchemaResponse(schemas)}
-                        bind:value={selectedSchema}
+                        items={workflows.map((w) => ({
+                            name: w.shortname,
+                            value: w.shortname,
+                        }))}
+                        bind:value={selectedWorkflow}
+                        placeholder="Select Workflow"
                     />
                 {/await}
             </Label>
         {/if}
-    {/if}
-    {#if selectedResourceType === ResourceType.folder && isFolderFormReady}
-        {#if selectedInputMode === InputMode.form}
-            {#if isCreate}
-                {#if content.json}
-                    <FolderForm bind:content={content.json} />
-                {/if}
-            {:else}
-                <FolderForm bind:content />
-            {/if}
-        {:else if isCreate && selectedInputMode === InputMode.json}
-            <JSONEditor
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
-                bind:content
-            />
-        {/if}
-    {/if}
 
-    {#if isCreate && selectedResourceType === ResourceType.ticket}
-        <Label class="mt-3">
-            Workflow shortname
-            {#await fetchWorkflows($params.space_name)}
-                <div role="status" class="max-w-sm animate-pulse">
-                    <div
-                        class="h-3 bg-gray-200 rounded-full dark:bg-gray-700 mx-2 my-2.5"
-                    ></div>
-                </div>
-            {:then workflows}
-                <Select
-                    class="mt-2"
-                    items={workflows.map((w) => ({
-                        name: w.shortname,
-                        value: w.shortname,
-                    }))}
-                    bind:value={selectedWorkflow}
-                    placeholder="Select Workflow"
-                />
-            {/await}
-        </Label>
-    {/if}
-
-    {#if selectedResourceType === ResourceType.schema}
-        {#if selectedInputMode === InputMode.form}
-            {#if isCreate}
-                {#if content.json}
-                    <SchemaForm bind:content={content.json} />
-                {/if}
-            {:else}
-                <SchemaForm bind:content />
-            {/if}
-        {:else if isCreate && selectedInputMode === InputMode.json}
-            <JSONEditor
-                onRenderMenu={handleRenderMenu}
-                mode={Mode.text}
-                bind:content
-            />
-        {/if}
-    {/if}
-
-    {#if subpath === "workflows"}
-        {#if selectedInputMode === InputMode.form}
-            {#if isCreate}
-                {#if content.json}
-                    <WorkflowForm bind:content={content.json} />
-                {/if}
-            {:else}
-                <WorkflowForm bind:content />
-            {/if}
-        {/if}
-    {/if}
-
-    <!--{#if selectedResourceType === ResourceType.content && selectedSchema === "configuration"}-->
-    <!--    <ConfigForm bind:entries={content.json.items}/>-->
-    {#if selectedResourceType === ResourceType.content && selectedSchema === "translation"}
-        {#if selectedSchemaContent}
-            {#if isCreate}
-                <TranslationForm
-                    bind:entries={content.json}
-                    columns={Object.keys(
-                        selectedSchemaContent.properties.items.items.properties,
-                    )}
-                />
-            {:else}
-                <TranslationForm
-                    bind:entries={content}
-                    columns={Object.keys(
-                        selectedSchemaContent.properties.items.items.properties,
-                    )}
-                />
-            {/if}
-        {/if}
-    {:else if selectedResourceType === ResourceType.content && contentType === "html"}
-        <HtmlEditor bind:content />
-    {:else if selectedResourceType === ResourceType.content && contentType === "markdown"}
-        <MarkdownEditor bind:content />
-    {:else if selectedResourceType === ResourceType.content && contentType === "text"}
-        <textarea class="w-full h-full my-2" bind:value={content} />
-    {:else}
-        {#if !isCreate && mismatchedProperties.length > 0}
-            <div
-                class="bg-yellow-50 border-l-4 border-yellow-400 p-4 my-2 w-full mx-auto dark:bg-yellow-900/20 dark:border-yellow-500"
-            >
-                <div class="flex">
-                    <div class="ml-3">
-                        <p
-                            class="text-sm text-yellow-700 font-medium dark:text-yellow-400"
-                        >
-                            ⚠ The current payload does not match the schema.
-                        </p>
-                        {#if selectedInputMode === InputMode.form}
-                            <p
-                                class="text-sm text-yellow-600 mt-1 dark:text-yellow-300"
-                            >
-                                The following properties will be discarded when
-                                saving from form mode:
-                            </p>
-                            <ul
-                                class="list-disc list-inside text-sm text-yellow-800 mt-1 dark:text-yellow-200"
-                            >
-                                {#each mismatchedProperties as prop}
-                                    <li>
-                                        <code
-                                            class="bg-yellow-100 px-1 rounded dark:bg-yellow-800"
-                                            >{prop}</code
-                                        >
-                                    </li>
-                                {/each}
-                            </ul>
-                        {/if}
-                    </div>
-                </div>
-            </div>
-        {/if}
-        <div class="my-2">
-            {#if resourcesWithFormAndJson.includes(selectedResourceType)}
-                {#if selectedInputMode === InputMode.form}
-                    {#if selectedSchemaContent}
-                        {#if isCreate}
-                            {#if content.json}
-                                <DynamicSchemaBasedForms
-                                    schema={selectedSchemaContent}
-                                    bind:content={content.json}
-                                />
-                            {/if}
-                        {:else}
-                            <DynamicSchemaBasedForms
-                                schema={selectedSchemaContent}
-                                bind:content
-                            />
-                        {/if}
+        {#if selectedResourceType === ResourceType.schema}
+            {#if selectedInputMode === InputMode.form}
+                {#if isCreate}
+                    {#if content.json}
+                        <SchemaForm bind:content={content.json} />
                     {/if}
-                {:else if isCreate && selectedInputMode === InputMode.json}
-                    <JSONEditor
-                        onRenderMenu={handleRenderMenu}
-                        mode={Mode.text}
-                        bind:content
+                {:else}
+                    <SchemaForm bind:content />
+                {/if}
+            {:else if isCreate && selectedInputMode === InputMode.json}
+                <JSONEditor
+                    onRenderMenu={handleRenderMenu}
+                    mode={Mode.text}
+                    bind:content
+                />
+            {/if}
+        {/if}
+
+        {#if subpath === "workflows"}
+            {#if selectedInputMode === InputMode.form}
+                {#if isCreate}
+                    {#if content.json}
+                        <WorkflowForm bind:content={content.json} />
+                    {/if}
+                {:else}
+                    <WorkflowForm bind:content />
+                {/if}
+            {/if}
+        {/if}
+
+        <!--{#if selectedResourceType === ResourceType.content && selectedSchema === "configuration"}-->
+        <!--    <ConfigForm bind:entries={content.json.items}/>-->
+        {#if selectedResourceType === ResourceType.content && selectedSchema === "translation"}
+            {#if selectedSchemaContent}
+                {#if isCreate}
+                    <TranslationForm
+                        bind:entries={content.json}
+                        columns={Object.keys(
+                            selectedSchemaContent.properties.items.items
+                                .properties,
+                        )}
+                    />
+                {:else}
+                    <TranslationForm
+                        bind:entries={content}
+                        columns={Object.keys(
+                            selectedSchemaContent.properties.items.items
+                                .properties,
+                        )}
                     />
                 {/if}
             {/if}
-        </div>
+        {:else if selectedResourceType === ResourceType.content && contentType === "html"}
+            <HtmlEditor bind:content />
+        {:else if selectedResourceType === ResourceType.content && contentType === "markdown"}
+            <MarkdownEditor bind:content />
+        {:else if selectedResourceType === ResourceType.content && contentType === "text"}
+            <textarea class="w-full h-full my-2" bind:value={content} />
+        {:else}
+            {#if !isCreate && mismatchedProperties.length > 0}
+                <div
+                    class="bg-yellow-50 border-l-4 border-yellow-400 p-4 my-2 w-full mx-auto dark:bg-yellow-900/20 dark:border-yellow-500"
+                >
+                    <div class="flex">
+                        <div class="ml-3">
+                            <p
+                                class="text-sm text-yellow-700 font-medium dark:text-yellow-400"
+                            >
+                                ⚠ The current payload does not match the
+                                schema.
+                            </p>
+                            {#if selectedInputMode === InputMode.form}
+                                <p
+                                    class="text-sm text-yellow-600 mt-1 dark:text-yellow-300"
+                                >
+                                    The following properties will be discarded
+                                    when saving from form mode:
+                                </p>
+                                <ul
+                                    class="list-disc list-inside text-sm text-yellow-800 mt-1 dark:text-yellow-200"
+                                >
+                                    {#each mismatchedProperties as prop}
+                                        <li>
+                                            <code
+                                                class="bg-yellow-100 px-1 rounded dark:bg-yellow-800"
+                                                >{prop}</code
+                                            >
+                                        </li>
+                                    {/each}
+                                </ul>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/if}
+            <div class="my-2">
+                {#if resourcesWithFormAndJson.includes(selectedResourceType)}
+                    {#if selectedInputMode === InputMode.form}
+                        {#if selectedSchemaContent}
+                            {#if isCreate}
+                                {#if content.json}
+                                    <DynamicSchemaBasedForms
+                                        schema={selectedSchemaContent}
+                                        bind:content={content.json}
+                                    />
+                                {/if}
+                            {:else}
+                                <DynamicSchemaBasedForms
+                                    schema={selectedSchemaContent}
+                                    bind:content
+                                />
+                            {/if}
+                        {:else if isCreate}
+                            {#if content.json && typeof content.json === "object" && Object.keys(content.json).length > 0}
+                                <DynamicSchemaBasedForms
+                                    schema={generateSchemaFromObject(
+                                        content.json,
+                                    )}
+                                    bind:content={content.json}
+                                />
+                            {/if}
+                        {:else if content && typeof content === "object" && Object.keys(content).length > 0}
+                            <DynamicSchemaBasedForms
+                                schema={generateSchemaFromObject(content)}
+                                bind:content
+                            />
+                        {/if}
+                    {:else if isCreate && selectedInputMode === InputMode.json}
+                        <JSONEditor
+                            onRenderMenu={handleRenderMenu}
+                            mode={Mode.text}
+                            bind:content
+                        />
+                    {/if}
+                {/if}
+            </div>
+        {/if}
     {/if}
-{/if}
 </Card>

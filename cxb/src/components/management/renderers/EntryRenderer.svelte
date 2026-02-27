@@ -311,17 +311,21 @@
     $effect(() => {
         if (activeTab === TabMode.entry) {
             untrack(() => {
-                const _jeContent = jsonEditorContentParser(
-                    $state.snapshot(jeContent),
-                );
-                jeContent = { text: JSON.stringify(_jeContent, null, 2) };
+                try {
+                    const _jeContent = jsonEditorContentParser(
+                        $state.snapshot(jeContent),
+                    );
+                    jeContent = { text: JSON.stringify(_jeContent, null, 2) };
+                } catch (e) {}
             });
         } else if (activeTab === TabMode.form) {
             untrack(() => {
-                const _jeContent = jsonEditorContentParser(
-                    $state.snapshot(jeContent),
-                );
-                jeContent = { json: _jeContent };
+                try {
+                    const _jeContent = jsonEditorContentParser(
+                        $state.snapshot(jeContent),
+                    );
+                    jeContent = { json: _jeContent };
+                } catch (e) {}
             });
         }
     });
@@ -345,10 +349,14 @@
 
     $effect(() => {
         if (jeContent) {
-            isJEDirty = !isDeepEqual(
-                jsonEditorContentParser($state.snapshot(jeContent)),
-                $state.snapshot(originalJeContent),
-            );
+            try {
+                isJEDirty = !isDeepEqual(
+                    jsonEditorContentParser($state.snapshot(jeContent)),
+                    $state.snapshot(originalJeContent),
+                );
+            } catch (e) {
+                isJEDirty = true;
+            }
         }
     });
 

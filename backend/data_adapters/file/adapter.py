@@ -418,27 +418,34 @@ class FileAdapter(BaseDataAdapter):
             return left, _l_arr, right, _r_arr
 
         def get_values_from_record(rec: core.Record, path: str, array_hint: bool) -> list:
-            if path in ("shortname", "resource_type", "subpath", "uuid"):
-                val = getattr(rec, path, None)
-            elif path == "space_name":
-                val = rec.attributes.get("space_name") if rec.attributes else None
-            else:
-                container = rec.attributes or {}
-                # lazy import to reuse same helper as SQL
-                from data_adapters.helpers import get_nested_value as _get
-                val = _get(container, path)
+            try:
+                if path in ("shortname", "resource_type", "subpath", "uuid"):
+                    val = getattr(rec, path, None)
+                elif path == "space_name":
+                    val = rec.attributes.get("space_name") if rec.attributes else None
+                else:
+                    container = rec.attributes or {}
+                    from data_adapters.helpers import get_nested_value as _get
+                    val = _get(container, path)
 
-            if val is None:
-                return []
-            if isinstance(val, list):
-                out = []
-                for item in val:
-                    if isinstance(item, (str, int, float, bool)) or item is None:
-                        out.append(item)
-                return out
-            if array_hint:
+                if val is None:
+                    return []
+                if isinstance(val, list):
+                    out = []
+                    for item in val:
+                        if isinstance(item, (str, int, float, bool)) or item is None:
+                            out.append(item)
+                    return out
+                if array_hint:
+                    return [val]
                 return [val]
-            return [val]
+            except Exception as e:
+                import logging
+                logging.getLogger("data_adapters").warning(
+                    f"Skipping bad record value extraction for path '{path}' "
+                    f"on record '{getattr(rec, 'shortname', '?')}': {e}"
+                )
+                return []
 
         for rec in base_records:
             if rec.attributes is None:
