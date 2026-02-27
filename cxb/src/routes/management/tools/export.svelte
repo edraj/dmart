@@ -52,6 +52,14 @@
 
     let response = $state(null);
     let isDisplayFilter = $state(false);
+    let isExporting: boolean = $state(false);
+    let exportEvents: Array<{
+        timestamp: string;
+        status: "success" | "error";
+        filename: string;
+        size: string;
+        duration: string;
+    }> = $state([]);
 
     let selectedSpacename = $state(null);
     let tempSubpaths = $state([]);
@@ -102,6 +110,17 @@
         response = await Dmart.query(query_request);
     }
 
+    function formatFileSize(bytes: number): string {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+        return (bytes / 1024 / 1024).toFixed(2) + " MB";
+    }
+
+    function formatDuration(ms: number): string {
+        if (ms < 1000) return ms + "ms";
+        return (ms / 1000).toFixed(1) + "s";
+    }
+
     async function handleDownload() {
         const body: any = {
             type: QueryType.search,
@@ -117,6 +136,10 @@
             }),
         };
 
+        isExporting = true;
+        const fileName = `${space_name}/${subpath}.zip`;
+        const startTime = Date.now();
+
         try {
             const response = await Dmart.axiosDmartInstance.post(
                 `managed/export`,
@@ -127,15 +150,44 @@
             // Check if response is successful based on status code
             if (response.status !== 200) {
                 showToast(Level.warn);
+                exportEvents = [
+                    {
+                        timestamp: new Date().toLocaleTimeString(),
+                        status: "error",
+                        filename: fileName,
+                        size: "-",
+                        duration: formatDuration(Date.now() - startTime),
+                    },
+                    ...exportEvents,
+                ];
             } else {
-                downloadFile(
-                    response.data,
-                    `${space_name}/${subpath}.zip`,
-                    "application/zip",
-                );
+                const fileSize = formatFileSize(response.data.byteLength);
+                downloadFile(response.data, fileName, "application/zip");
+                exportEvents = [
+                    {
+                        timestamp: new Date().toLocaleTimeString(),
+                        status: "success",
+                        filename: fileName,
+                        size: fileSize,
+                        duration: formatDuration(Date.now() - startTime),
+                    },
+                    ...exportEvents,
+                ];
             }
         } catch (error: any) {
             showToast(Level.warn);
+            exportEvents = [
+                {
+                    timestamp: new Date().toLocaleTimeString(),
+                    status: "error",
+                    filename: fileName,
+                    size: "-",
+                    duration: formatDuration(Date.now() - startTime),
+                },
+                ...exportEvents,
+            ];
+        } finally {
+            isExporting = false;
         }
     }
 
@@ -175,6 +227,7 @@
     </div>
 
     <div class="min-w-11/12">
+
         <Card class="min-w-full p-4">
             <div class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
@@ -182,7 +235,11 @@
                         <Label for="space_name" class="mb-2"
                             >{$_("space_name")}</Label
                         >
-                        <Select id="space_name" bind:value={space_name}>
+                        <Select
+                            id="space_name"
+                            bind:value={space_name}
+                            disabled={isExporting}
+                        >
                             {#each spaces as space}
                                 <option value={space.shortname}
                                     >{space.shortname}</option
@@ -193,7 +250,11 @@
                     <div class="md:col-span-4">
                         <Label for="subpath" class="mb-2">{$_("subpath")}</Label
                         >
-                        <Select id="subpath" bind:value={subpath}>
+                        <Select
+                            id="subpath"
+                            bind:value={subpath}
+                            disabled={isExporting}
+                        >
                             <option value={"/"}>/</option>
                             {#each subpaths as path}
                                 <option value={path}>{path}</option>
@@ -202,18 +263,66 @@
                     </div>
                 </div>
                 <div class="md:col-span-4 mx-auto flex items-end justify-end">
-                    <Button onclick={handleResponse} color="blue"
-                        >{$_("submit")}</Button
+                    <Button
+                        onclick={handleResponse}
+                        color="blue"
+                        disabled={isExporting}>{$_("submit")}</Button
                     >
                     <Button
                         class="mx-5"
                         color="blue"
                         outline
-                        onclick={handleDownload}>{$_("download_zip")}</Button
+                        disabled={isExporting}
+                        onclick={handleDownload}
+                        >{isExporting
+                            ? $_("uploading") + "..."
+                            : $_("download_zip")}</Button
                     >
                 </div>
             </div>
         </Card>
+
+        {#if exportEvents.length}
+            <Card class="min-w-full p-4 mb-4">
+                <h2 class="text-lg font-semibold mb-3">Export Log</h2>
+                <div class="max-h-60 overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead
+                                class="text-xs uppercase bg-gray-50 sticky top-0"
+                        >
+                        <tr>
+                            <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2">File</th>
+                            <th class="px-3 py-2">Size</th>
+                            <th class="px-3 py-2">Duration</th>
+                            <th class="px-3 py-2">Time</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {#each exportEvents as event}
+                            <tr
+                                    class="border-b {event.status === 'success'
+                                        ? 'bg-green-50 text-green-800'
+                                        : 'bg-red-50 text-red-800'}"
+                            >
+                                <td class="px-3 py-2 font-semibold"
+                                >{event.status === "success"
+                                    ? "✓ Success"
+                                    : "✗ Failed"}</td
+                                >
+                                <td class="px-3 py-2">{event.filename}</td>
+                                <td class="px-3 py-2">{event.size}</td>
+                                <td class="px-3 py-2">{event.duration}</td>
+                                <td class="px-3 py-2 font-mono text-xs"
+                                >{event.timestamp}</td
+                                >
+                            </tr>
+                        {/each}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        {/if}
     </div>
 
     {#if response === null}

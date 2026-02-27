@@ -13,6 +13,13 @@
 
     let zipFile: File | null = $state(null);
     let isUploading: boolean = $state(false);
+    let importEvents: Array<{
+        timestamp: string;
+        status: "success" | "error";
+        filename: string;
+        size: string;
+        duration: string;
+    }> = $state([]);
 
     function handleFileChange(event: Event) {
         const target = event.target as HTMLInputElement;
@@ -34,6 +41,18 @@
         }
     }
 
+    function formatFileSize(bytes: number): string {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+        return (bytes / 1024 / 1024).toFixed(2) + " MB";
+    }
+
+    function formatDuration(ms: number): string {
+        if (ms < 1000) return ms + "ms";
+        const seconds = (ms / 1000).toFixed(1);
+        return seconds + "s";
+    }
+
     async function handleUpload() {
         if (!zipFile) {
             showToast(Level.warn, $_("please_select_zip_file"));
@@ -41,6 +60,9 @@
         }
 
         isUploading = true;
+        const fileName = zipFile.name;
+        const fileSize = formatFileSize(zipFile.size);
+        const startTime = Date.now();
 
         try {
             const formData = new FormData();
@@ -59,6 +81,16 @@
 
             if (response.status === 200) {
                 showToast(Level.info, $_("import_successful"));
+                importEvents = [
+                    {
+                        timestamp: new Date().toLocaleTimeString(),
+                        status: "success",
+                        filename: fileName,
+                        size: fileSize,
+                        duration: formatDuration(Date.now() - startTime),
+                    },
+                    ...importEvents,
+                ];
                 zipFile = null;
                 const fileInput = document.getElementById(
                     "zip_file",
@@ -66,10 +98,34 @@
                 if (fileInput) fileInput.value = "";
             } else {
                 showToast(Level.warn, $_("import_failed"));
+                importEvents = [
+                    {
+                        timestamp: new Date().toLocaleTimeString(),
+                        status: "error",
+                        filename: fileName,
+                        size: fileSize,
+                        duration: formatDuration(Date.now() - startTime),
+                    },
+                    ...importEvents,
+                ];
             }
         } catch (error: any) {
             console.error("Import error:", error);
-            showToast(Level.warn, $_("import_failed"));
+            const errorMsg =
+                error?.response?.data?.error?.message ||
+                error.message ||
+                $_("import_failed");
+            showToast(Level.warn, errorMsg);
+            importEvents = [
+                {
+                    timestamp: new Date().toLocaleTimeString(),
+                    status: "error",
+                    filename: fileName,
+                    size: fileSize,
+                    duration: formatDuration(Date.now() - startTime),
+                },
+                ...importEvents,
+            ];
         } finally {
             isUploading = false;
         }
@@ -114,14 +170,13 @@
                             accept=".zip,application/zip"
                             onchange={handleFileChange}
                             class="mb-2"
+                            disabled={isUploading}
                         />
                         {#if zipFile}
                             <p class="text-sm text-gray-600 mt-1">
-                                {$_("selected_file")}: {zipFile.name} ({(
-                                    zipFile.size /
-                                    1024 /
-                                    1024
-                                ).toFixed(2)} MB)
+                                {$_("selected_file")}: {zipFile.name} ({formatFileSize(
+                                    zipFile.size,
+                                )})
                             </p>
                         {/if}
                     </div>
@@ -143,5 +198,47 @@
                 </div>
             </div>
         </Card>
+
+        {#if importEvents.length}
+            <Card class="min-w-full p-4 mb-4">
+                <h2 class="text-lg font-semibold mb-3">Import Log</h2>
+                <div class="max-h-60 overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead
+                                class="text-xs uppercase bg-gray-50 sticky top-0"
+                        >
+                        <tr>
+                            <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2">File</th>
+                            <th class="px-3 py-2">Size</th>
+                            <th class="px-3 py-2">Duration</th>
+                            <th class="px-3 py-2">Time</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {#each importEvents as event}
+                            <tr
+                                    class="border-b {event.status === 'success'
+                                        ? 'bg-green-50 text-green-800'
+                                        : 'bg-red-50 text-red-800'}"
+                            >
+                                <td class="px-3 py-2 font-semibold"
+                                >{event.status === "success"
+                                    ? "✓ Success"
+                                    : "✗ Failed"}</td
+                                >
+                                <td class="px-3 py-2">{event.filename}</td>
+                                <td class="px-3 py-2">{event.size}</td>
+                                <td class="px-3 py-2">{event.duration}</td>
+                                <td class="px-3 py-2 font-mono text-xs"
+                                >{event.timestamp}</td
+                                >
+                            </tr>
+                        {/each}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        {/if}
     </div>
 </div>
