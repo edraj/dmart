@@ -240,18 +240,26 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
         )
     )
 
-    query.retrieve_attachments=True
+    query.retrieve_attachments = True
+    subpath_stripped = (query.subpath or "/").strip("/")
+    if not subpath_stripped:
+        parent_subpath = "/"
+        folder_shortname = ""
+    else:
+        parts = subpath_stripped.split("/")
+        parent_subpath = "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/"
+        folder_shortname = parts[-1]
     folder = await db.load(
         query.space_name,
-        '/',
-        query.subpath,
+        parent_subpath,
+        folder_shortname,
         core.Folder,
         user_shortname,
     )
 
     folder_payload = await db.load_resource_payload(
         query.space_name,
-        "/",
+        parent_subpath,
         f"{folder.shortname}.json",
         core.Folder,
     )
