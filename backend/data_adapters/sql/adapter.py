@@ -1519,6 +1519,7 @@ class SQLAdapter(BaseDataAdapter):
                     key = str(v)
                     right_index.setdefault(key, []).append(rr)
 
+            matched_list = []
             for br in base_records:
                 l_vals = get_values_from_record(br, l_path_0, l_arr_0)
                 candidates: list[core.Record] = []
@@ -1556,7 +1557,87 @@ class SQLAdapter(BaseDataAdapter):
                 if user_limit:
                     matched = matched[:user_limit]
 
-                br.attributes['join'][alias] = matched
+                matched_list.append(matched)
+
+            if getattr(sub_query, 'jq_filter', None):
+                try:
+                    import json
+                    import subprocess
+                    import asyncio
+                    from utils.helpers import jq_dict_parser
+                    from utils.settings import settings
+                    from utils.internal_error_code import InternalErrorCode
+                    
+                    def _run_jq_subprocess() -> list:
+                        _input_local = []
+                        for m_list in matched_list:
+                            _m_local = [record.model_dump() for record in m_list]
+                            _m_local = jq_dict_parser(_m_local)
+                            _input_local.append(_m_local)
+                        
+                        input_json = json.dumps(_input_local)
+                        vectorized_filter = f"map( [ {sub_query.jq_filter} ] )"
+                        cmd = ["jq", "-c", vectorized_filter]
+
+                        try:
+                            completed = subprocess.run(
+                                cmd,
+                                input=input_json.encode("utf-8"),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                timeout=settings.jq_timeout,
+                                check=False,
+                            )
+                        except subprocess.TimeoutExpired:
+                            raise api.Exception(
+                                status.HTTP_400_BAD_REQUEST,
+                                api.Error(
+                                    type="request",
+                                    code=InternalErrorCode.JQ_TIMEOUT,
+                                    message="jq filter took too long to execute",
+                                ),
+                            )
+
+                        if completed.returncode != 0:
+                            raise api.Exception(
+                                status.HTTP_400_BAD_REQUEST,
+                                api.Error(
+                                    type="request",
+                                    code=InternalErrorCode.JQ_ERROR,
+                                    message="jq filter failed to be executed",
+                                ),
+                            )
+
+                        stdout = completed.stdout.decode("utf-8")
+                        results: list = []
+                        if stdout.startswith("[") and stdout.endswith("]\n"):
+                            results = json.loads(stdout)
+                        else:
+                            for line in stdout.splitlines():
+                                line = line.strip()
+                                if not line:
+                                    continue
+                                results.append(json.loads(line))
+                        
+                        return results
+
+                    loop = asyncio.get_running_loop()
+                    matched_list = await asyncio.wait_for(
+                        loop.run_in_executor(None, _run_jq_subprocess),
+                        timeout=settings.jq_timeout,
+                    )
+                except FileNotFoundError:
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="request",
+                            code=InternalErrorCode.NOT_ALLOWED,
+                            message="jq is not installed!",
+                        ),
+                    )
+
+            for i, br in enumerate(base_records):
+                br.attributes['join'][alias] = matched_list[i] if i < len(matched_list) else []
 
         return base_records
 
