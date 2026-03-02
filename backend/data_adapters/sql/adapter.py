@@ -1560,12 +1560,8 @@ class SQLAdapter(BaseDataAdapter):
 
             if getattr(sub_query, 'jq_filter', None):
                 try:
-                    import json
                     import subprocess
-                    import asyncio
                     from utils.helpers import jq_dict_parser
-                    from utils.settings import settings
-                    from utils.internal_error_code import InternalErrorCode
                     
                     def _run_jq_subprocess() -> list:
                         _input_local = []
