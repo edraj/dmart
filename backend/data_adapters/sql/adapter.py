@@ -1503,7 +1503,7 @@ class SQLAdapter(BaseDataAdapter):
                     sub_query.search = f"{sub_query.search} {search_term}"
                 else:
                     sub_query.search = search_term
-
+                sub_query.limit = 1000
                 _total, right_records = await self.query(sub_query, user_shortname)
 
             first_join = parsed_joins[0]
