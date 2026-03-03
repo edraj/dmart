@@ -539,6 +539,7 @@ class PluginWrapper(Resource):
     object: PluginBase | None = None
     dependencies: list = [] # type: ignore
     concurrent: bool = True
+    attributes: dict[str, Any] | None = None
 
 
 
