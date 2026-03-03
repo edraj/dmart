@@ -853,19 +853,52 @@ async def import_resources_from_csv(
     if schema_shortname:
         schema_content = await db.get_schema(space_name, schema_shortname, owner_shortname)
 
+    import ast
+    def parse_bool(val):
+        if isinstance(val, str):
+            val_lower = val.strip().lower()
+            if val_lower in ("true", "1", "t", "yes", "y"):
+                return True
+            if val_lower in ("false", "0", "f", "no", "n"):
+                return False
+        return bool(val)
+
+    def parse_json(val):
+        if isinstance(val, str):
+            val_strip = val.strip()
+            val_upper = val_strip.upper()
+            if val_upper == "TRUE":
+                return True
+            if val_upper == "FALSE":
+                return False
+            if val_upper == "NULL":
+                return None
+            try:
+                return json.loads(val_strip)
+            except json.JSONDecodeError:
+                try:
+                    return ast.literal_eval(val_strip)
+                except Exception:
+                    pass
+                raise
+        return val
+
     data_types_mapper: dict[str, Callable] = {
         "integer": int,
         "number": float,
         "string": str,
-        "boolean": bool,
-        "object": json.loads,
-        "array": json.loads,
+        "boolean": parse_bool,
+        "object": parse_json,
+        "array": parse_json,
     }
 
     resource_cls = getattr(
         sys.modules["models.core"], camel_case(resource_type)
     )
-    meta_class_attributes = resource_cls.model_fields
+    meta_class_attributes = dict(resource_cls.model_fields)
+    if space_name == "management" and subpath.strip("/") == "users":
+        user_cls = getattr(sys.modules["models.core"], "User")
+        meta_class_attributes.update(user_cls.model_fields)
     failed_shortnames: list = []
     success_count = 0
     for row in csv_reader:
