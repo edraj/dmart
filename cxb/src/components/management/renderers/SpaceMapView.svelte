@@ -1,16 +1,4 @@
 <script lang="ts">
-    /**
-     * SpaceMapView – renders a merged permission map as a tree:
-     *
-     *   📦 space_name
-     *     📁 subpath
-     *       Types:    content · folder · …
-     *       Actions:  create · read · …
-     *       Conditions: [json]
-     *       Allowed Fields Values: {json}
-     *       Filter Fields Values: "…"
-     */
-
     type SubpathInfo = {
         resource_types: string[];
         actions: string[];
