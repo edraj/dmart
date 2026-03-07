@@ -90,8 +90,6 @@
                         attributes: moveAttrb,
                     });
                 } else {
-                    // For copy, we use create request type to create a new item
-                    // We copy attributes but NOT the UUID (a new one will be assigned)
                     const attrs = { ...b.attributes };
                     if ('uuid' in attrs) delete attrs.uuid;
 

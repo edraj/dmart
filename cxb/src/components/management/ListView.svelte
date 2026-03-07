@@ -392,7 +392,7 @@
                     {
                         shortname: _shortname,
                         resource_type: _resource_type,
-                        subpath: objectDatatable.arrayRawData[name].subpath,
+                        ...objectDatatable.arrayRawData[name],
                     },
                 ];
             } else {
