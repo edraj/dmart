@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("db_entries_count_history.periodic")
 
 
-def _load_config() -> dict:
+def _load_config():
     with open(CONFIG_PATH, "r") as f:
         return json.load(f)
 
@@ -102,8 +102,8 @@ async def run() -> None:
 
     @asynccontextmanager
     async def get_session():
-        async with async_session() as session:
-            yield session
+        async with async_session() as sessionn:
+            yield sessionn
 
     # ensure the table exists once at startup
     async with get_session() as session:

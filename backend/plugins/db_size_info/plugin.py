@@ -24,7 +24,7 @@ def _build_engine():
 
 
 _engine = _build_engine()
-_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) if _engine else None
+_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) if _engine else None # type: ignore
 
 
 @asynccontextmanager
