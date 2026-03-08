@@ -102,8 +102,7 @@ async def run() -> None:
 
     @asynccontextmanager
     async def get_session():
-        async with async_session() as sessionn:
-            yield sessionn
+        yield async_session()
 
     # ensure the table exists once at startup
     async with get_session() as session:
