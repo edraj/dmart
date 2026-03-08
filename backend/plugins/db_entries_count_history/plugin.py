@@ -16,7 +16,7 @@ router = APIRouter()
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 
-def _load_config() -> dict:
+def _load_config():
     try:
         with open(CONFIG_PATH, "r") as f:
             return json.load(f)
