@@ -39,7 +39,7 @@ def _build_engine():
 
 _config = _load_config()
 _engine = _build_engine()
-_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
+_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) # type: ignore
 
 
 @asynccontextmanager
@@ -96,7 +96,7 @@ async def get_db_entries_count_history() -> dict[str, Any]:
                         space_name, count = row[0], row[1]
                         if space_name:
                             spaces_counts[space_name] = spaces_counts.get(space_name, 0) + count
-                except Exception:
+                except Exception as _:
                     pass  # Ignore tables that cannot be counted
 
             for space_name, current_count in spaces_counts.items():

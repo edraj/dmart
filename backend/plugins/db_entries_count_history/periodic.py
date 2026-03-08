@@ -97,9 +97,8 @@ async def snapshot(session: AsyncSession) -> None:
 
 
 async def run() -> None:
-    config = _load_config()
     engine = _build_engine()
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False) # type: ignore
 
     @asynccontextmanager
     async def get_session():
