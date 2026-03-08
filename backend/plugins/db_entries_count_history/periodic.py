@@ -106,11 +106,11 @@ async def run() -> None:
 
     # ensure the table exists once at startup
     async with get_session() as session:
-        await ensure_table(session)
+        await ensure_table(session) # type: ignore
 
     try:
         async with get_session() as session:
-            await snapshot(session)
+            await snapshot(session) # type: ignore
     except Exception as e:
         log.error(f"Snapshot failed: {e}")
 
