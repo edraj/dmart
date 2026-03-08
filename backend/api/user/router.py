@@ -39,6 +39,7 @@ from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
     SendOTPRequest,
+    SocialMobileLoginRequest,
     UserLoginRequest,
 )
 import utils.regex as rgx
@@ -49,6 +50,8 @@ from fastapi_sso.sso.base import OpenID, SSOBase
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 from datetime import datetime
+import jwt as pyjwt
+from jwt import PyJWKClient
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
@@ -1331,21 +1334,13 @@ async def handle_failed_login_attempt(user: core.User):
 
 if settings.social_login_allowed:
 
-    @router.get("/google/login")
-    async def google_login(google_sso: GoogleSSO = Depends(get_google_sso)):
-        async with google_sso:
-            authorization_url = await google_sso.get_login_url()
-            return {
-                "authorization_url": authorization_url,
-                "instructions": "Open this URL in your browser to login"
-            }
-
     @router.get("/google/callback")
     async def google_profile(
         request: Request,
         response: Response,
         google_sso: GoogleSSO = Depends(get_google_sso),
     ):
+        """Callback endpoint for Google SSO login. Used in web OAuth flow to replace auth code with ID token."""
         async with google_sso:
             user_model = await social_login(request, google_sso, "google")
 
@@ -1356,21 +1351,13 @@ if settings.social_login_allowed:
             )
             return api.Response(status=api.Status.success, records=[record])
 
-    @router.get("/facebook/login")
-    async def facebook_login(facebook_sso: FacebookSSO = Depends(get_facebook_sso)):
-        async with facebook_sso:
-            authorization_url = await facebook_sso.get_login_url()
-            return {
-                "authorization_url": authorization_url,
-                "instructions": "Open this URL in your browser to login",
-            }
-
     @router.get("/facebook/callback")
     async def facebook_login(
         request: Request,
         response: Response,
         facebook_sso: FacebookSSO = Depends(get_facebook_sso),
     ):
+        """Callback endpoint for Facebook SSO login. Used in web OAuth flow to replace auth code with ID token."""
         async with facebook_sso:
             user_model = await social_login(request, facebook_sso, "facebook")
 
@@ -1387,6 +1374,7 @@ if settings.social_login_allowed:
         response: Response,
         apple_sso: SSOBase = Depends(get_apple_sso),
     ):
+        """Callback endpoint for Apple SSO login. Used in web OAuth flow to replace auth code with ID token."""
         async with apple_sso:
             user_model = await social_login(request, apple_sso, "apple")
 
@@ -1397,6 +1385,38 @@ if settings.social_login_allowed:
             )
             return api.Response(status=api.Status.success, records=[record])
 
+
+    async def find_or_create_social_user(
+        provider: str,
+        provider_id: str,
+        email: str | None,
+        first_name: str | None,
+        last_name: str | None,
+        picture: str | None
+    ) -> core.User:
+        shortname = f"{provider}_{provider_id}"
+        user: core.User | None = await db.load_or_none(
+            space_name=MANAGEMENT_SPACE,
+            subpath=USERS_SUBPATH,
+            shortname=shortname,
+            class_type=core.User,
+        )
+        if not user:
+            user = core.User(
+                shortname=shortname,
+                owner_shortname="dmart",
+                displayname=core.Translation(
+                    en=f"{first_name or ''} {last_name or ''}".strip()
+                ),
+                email=email,
+                is_active=True,
+                is_email_verified=True,
+                social_avatar_url=picture,
+            )
+            setattr(user, f"{provider}_id", provider_id)
+            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
+        return user
+
     async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:
         provider_user: OpenID | None = await sso.verify_and_process(request)
         if not provider_user or not provider_user.id:
@@ -1405,46 +1425,150 @@ if settings.social_login_allowed:
                 error=api.Error(type="auth", code=InternalErrorCode.INVALID_DATA, message="Misconfigured provider"),
             )
 
-        user: core.User | None = await db.load_or_none(
-            space_name=MANAGEMENT_SPACE,
-            subpath=USERS_SUBPATH,
-            shortname=f"{provider}_{provider_user.id}",
-            class_type=core.User
+        return await find_or_create_social_user(
+            provider=provider,
+            provider_id=provider_user.id,
+            email=provider_user.email,
+            first_name=provider_user.first_name,
+            last_name=provider_user.last_name,
+            picture=provider_user.picture
         )
 
-        if not user:
-            msisdn = await get_provider_phone_number(sso, provider)
-            user = core.User(
-                shortname=f"{provider}_{provider_user.id}",
-                owner_shortname="dmart",
-                displayname=core.Translation(
-                    en=f"{provider_user.first_name} {provider_user.last_name}"
-                ),
-                email=provider_user.email,
-                is_active=True,
-                is_email_verified=True,
-                social_avatar_url=provider_user.picture,
+    @router.post("/google/mobile-login")
+    async def google_mobile_login(
+        request: Request,
+        response: Response,
+        body: SocialMobileLoginRequest,
+    ):
+        """Endpoint for Google SSO login from mobile apps SDK implementation. using access token."""
+        async with AsyncRequest() as session:
+            res = await session.get(
+                url="https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": body.token},
             )
-            if msisdn and re.match(rgx.MSISDN, msisdn):
-                user.msisdn = msisdn
-                user.is_msisdn_verified = True
-            setattr(user, f"{provider}_id", provider_user.id)
-
-            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-
-        return user
-
-    async def get_provider_phone_number(sso: SSOBase, provider: str,) -> None | str:
-        if provider == "google":
-            async with AsyncRequest() as session:
-                res = await session.get(
-                    url="https://people.googleapis.com/v1/people/me", 
-                    headers={"Authorization": f"Bearer {sso.access_token}"}, 
-                    params={"personFields": "phoneNumbers"}
+            if res.status != 200:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Invalid Google ID token",
+                    ),
                 )
-                if res.status != 200:
-                    return None
-                data = await res.json()
-                phone_number = data["phoneNumbers"][0].get("value") if len(data.get("phoneNumbers", [])) > 0 else None
-                return str(phone_number).replace(" ", "")
-        return None
+
+            token_info = await res.json()
+        if token_info.get("aud") != settings.google_client_id:
+            raise api.Exception(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error=api.Error(
+                    type="auth",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message="Token audience mismatch",
+                ),
+            )
+
+        user = await find_or_create_social_user(
+            provider="google",
+            provider_id=token_info["sub"],
+            email=token_info.get("email"),
+            first_name=token_info.get("given_name"),
+            last_name=token_info.get("family_name"),
+            picture=token_info.get("picture"),
+        )
+
+        record = await process_user_login(
+            user=user,
+            response=response,
+            firebase_token=body.firebase_token,
+            request_headers=request.headers,
+        )
+        return api.Response(status=api.Status.success, records=[record])
+
+    @router.post("/facebook/mobile-login")
+    async def facebook_mobile_login(
+        request: Request,
+        response: Response,
+        body: SocialMobileLoginRequest,
+    ):
+        """Endpoint for Facebook SSO login from mobile apps SDK implementation. using access token."""
+        async with AsyncRequest() as session:
+            res = await session.get(
+                url="https://graph.facebook.com/me",
+                params={
+                    "fields": "id,email,first_name,last_name,picture.type(large)",
+                    "access_token": body.token,
+                },
+            )
+            if res.status != 200:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Invalid Facebook access token",
+                    ),
+                )
+
+            fb_user = await res.json()
+
+        user = await find_or_create_social_user(
+            provider="facebook",
+            provider_id=fb_user["id"],
+            email=fb_user.get("email"),
+            first_name=fb_user.get("first_name"),
+            last_name=fb_user.get("last_name"),
+            picture=fb_user.get("picture", {}).get("data", {}).get("url"),
+        )
+
+        record = await process_user_login(
+            user=user,
+            response=response,
+            firebase_token=body.firebase_token,
+            request_headers=request.headers,
+        )
+        return api.Response(status=api.Status.success, records=[record])
+
+    @router.post("/apple/mobile-login")
+    async def apple_mobile_login(
+        request: Request,
+        response: Response,
+        body: SocialMobileLoginRequest,
+    ):
+        """Endpoint for Apple SSO login from mobile apps SDK implementation. using access token."""
+        try:
+            jwks_client = PyJWKClient("https://appleid.apple.com/auth/keys")
+            signing_key = jwks_client.get_signing_key_from_jwt(body.token)
+
+            decoded = pyjwt.decode(
+                body.token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=settings.apple_client_id,
+                issuer="https://appleid.apple.com",
+            )
+        except pyjwt.exceptions.PyJWTError as e:
+            raise api.Exception(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error=api.Error(
+                    type="auth",
+                    code=InternalErrorCode.INVALID_DATA,
+                    message=f"Invalid Apple ID token: {str(e)}",
+                ),
+            )
+
+        user = await find_or_create_social_user(
+            provider="apple",
+            provider_id=decoded["sub"],
+            email=decoded.get("email"),
+            first_name=None,
+            last_name=None,
+            picture=None,
+        )
+
+        record = await process_user_login(
+            user=user,
+            response=response,
+            firebase_token=body.firebase_token,
+            request_headers=request.headers,
+        )
+        return api.Response(status=api.Status.success, records=[record])

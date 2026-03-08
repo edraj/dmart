@@ -127,6 +127,20 @@ class ConfirmOTPRequest(SendOTPRequest, BaseModel):
         }
     }
 
+class SocialMobileLoginRequest(BaseModel):
+    token: str
+    firebase_token: str | None = Field(None)
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            ]
+        }
+    }
+
 class UserLoginRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     email: str | None = Field(None, pattern=rgx.EMAIL)
