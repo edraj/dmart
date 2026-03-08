@@ -4,6 +4,7 @@ pydantic[email]
 concurrent-log-handler
 hypercorn
 pyjwt
+PyJWT[crypto]
 redis
 aiofiles
 aiohttp
