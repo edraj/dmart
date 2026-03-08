@@ -27,13 +27,7 @@ def get_google_sso() -> GoogleSSO:
     return GoogleSSO(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
-        redirect_uri=f"{settings.app_url}/user/google/callback",
-        scope=[
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/user.phonenumbers.read",
-        ],
+        redirect_uri=f"{settings.app_url}/user/google/callback"
     )
 
 # Apple SSO
