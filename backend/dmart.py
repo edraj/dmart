@@ -46,6 +46,7 @@ commands = """
     migrate
     test
     apply_plugin_config
+    ws
 """
 
 sentinel = object()
@@ -602,6 +603,23 @@ def main():
     match sys.argv[0]:
         case "hyper":
             hypercorn_main()
+        case "ws":
+            reload_settings = False
+            if "--dmart-config" in sys.argv:
+                idx = sys.argv.index("--dmart-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["BACKEND_ENV"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                reload_settings = True
+            
+            if reload_settings:
+                settings.reload()
+            else:
+                settings.load_cxb_config()
+
+            import websocket
+            asyncio.run(websocket.main())
         case "cli":
             config_file = None
             if "--config" in sys.argv:
