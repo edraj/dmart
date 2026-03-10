@@ -98,7 +98,7 @@ class Plugin(PluginBase):
             "action_by": data.user_shortname,
             "action_type": data.action_type,
             "resource_type": data.resource_type,
-            "is_read": "no"
+            "is_read": False
         }
         await db.save_payload_from_json(
             "personal",
