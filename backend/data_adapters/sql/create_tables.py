@@ -369,6 +369,7 @@ class Sessions(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
+    firebase_token: str | None = None
 
 
 class Invitations(SQLModel, table=True):

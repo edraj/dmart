@@ -1531,7 +1531,9 @@ class FileAdapter(BaseDataAdapter):
                 invitation_value
             )
 
-    async def set_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(
+        self, user_shortname: str, token: str, firebase_token: str | None = None
+    ) -> bool:
         async with RedisServices() as redis:
             if settings.max_sessions_per_user == 1:
                 if await redis.get_key(

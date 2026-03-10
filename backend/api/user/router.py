@@ -1233,7 +1233,9 @@ async def process_user_login(
     request_headers = None
 ) -> core.Record:
     access_token = await sign_jwt(
-        {"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires
+        {"shortname": user.shortname, "type": user.type},
+        settings.jwt_access_expires,
+        firebase_token=firebase_token,
     )
 
     response.set_cookie(

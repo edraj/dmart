@@ -107,6 +107,12 @@ class Plugin(PluginBase):
                 getattr(sys_modules["models.core"], camel_case("user")),
                 data.user_shortname,
             )).model_dump()
+        for receiver in set(notification_subscribers):
+            session_tokens = await db.get_user_session_firebase_tokens(receiver)
+            users_objects[receiver]["firebase_tokens"] = (
+                session_tokens
+                or ([users_objects[receiver]["firebase_token"]] if users_objects[receiver].get("firebase_token") else [])
+            )
         # 3- send the notification
         notification_manager = NotificationManager()
 
