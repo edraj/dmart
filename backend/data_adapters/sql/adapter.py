@@ -2347,7 +2347,7 @@ class SQLAdapter(BaseDataAdapter):
                     await session.execute(statement)
                 if meta.__class__ == core.Folder:
                     _subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
-                    folder_prefix = f"{_subpath}/"
+                    folder_prefix = f"{_subpath}/".replace('//', '/')
                     statement2 = delete(Attachments) \
                         .where(col(Attachments.space_name) == space_name) \
                         .where(col(Attachments.subpath).startswith(_subpath))
