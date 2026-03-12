@@ -35,6 +35,10 @@
     import { user } from "@/stores/user";
     import { goto, params } from "@roxi/routify";
 
+    import {
+        bulkMoveEntryToTrash,
+    } from "@/utils/entryManagement";
+
     $goto;
     let { space_name, subpath }: { space_name: string; subpath: string } =
         $props();
@@ -136,6 +140,32 @@
             }
         }
     }
+
+    async function handleBulkTrash() {
+        if ($bulkBucket.length) {
+            try {
+                isActionLoading = true;
+                const result = await bulkMoveEntryToTrash(
+                    $state.snapshot($bulkBucket),
+                    space_name,
+                    $user.shortname,
+                );
+
+                if (result.success) {
+                    await $currentListView.fetchPageRecords();
+                    $bulkBucket = [];
+                }
+            } catch (e) {
+                showToast(
+                    Level.warn,
+                    "Failed to move entries to trash. Please try again later.",
+                );
+            } finally {
+                isActionLoading = false;
+            }
+        }
+    }
+
 
     let searchInput = $state($searchListView);
     async function handleSearch(e) {
@@ -250,7 +280,7 @@
     </div>
     <div>
         {#if $bulkBucket.length === 0}
-            {#if canCreate}
+            {#if canCreate && !isEntryTrash}
                 <Button
                     class="bg-primary cursor-pointer"
                     size="xs"
@@ -299,6 +329,15 @@
                 >
                     <ClockArrowOutline size="md" /> Restore
                 </Button>
+                <Button
+                    class="text-red-500 cursor-pointer hover:text-red-500"
+                    size="xs"
+                    outline
+                    onclick={deleteCurrentEntry}
+                    disabled={isActionLoading}
+                >
+                    <TrashBinOutline size="md" /> Bulk delete
+                </Button>
             {:else}
                 <Button
                     class="text-primary cursor-pointer hover:text-primary"
@@ -315,6 +354,15 @@
                     onclick={openBulkCopy}
                 >
                     <FileCopyOutline size="md" /> Bulk Copy
+                </Button>
+                <Button
+                    class="text-red-500 cursor-pointer hover:text-red-500"
+                    size="xs"
+                    outline
+                    onclick={handleBulkTrash}
+                    disabled={isActionLoading}
+                >
+                    <TrashBinOutline size="md" /> Bulk Trash
                 </Button>
                 <Button
                     class="text-red-600 cursor-pointer hover:text-red-600"

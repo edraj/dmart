@@ -196,3 +196,48 @@ export async function getPayloadSchema(schemaShortname: string, space_name: stri
     }
     return await Dmart.retrieveEntry({ resource_type: ResourceType.schema, space_name, subpath: "schema", shortname: schemaShortname, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true });
 }
+
+/**
+ * Moves multiple entries to trash
+ */
+export async function bulkMoveEntryToTrash(
+    entries: any[],
+    space_name: string,
+    userShortname: string
+): Promise<{ success: boolean; errorMessage?: string }> {
+    try {
+        const records = entries.map((entry) => {
+            const moveResourceType = entry.resource_type;
+            const moveNewSubpath = moveResourceType === ResourceType.folder
+                ? (entry.subpath.split("/").slice(0, -1).join("-") || '/')
+                : entry.subpath;
+
+            const moveAttrb = {
+                src_space_name: space_name,
+                src_subpath: moveNewSubpath,
+                src_shortname: entry.shortname,
+                dest_space_name: 'personal',
+                dest_subpath: `/people/${userShortname}/trash/${space_name}/${moveNewSubpath}`.replaceAll('//', '/'),
+                dest_shortname: entry.shortname,
+            };
+
+            return {
+                resource_type: moveResourceType,
+                shortname: entry.shortname,
+                subpath: moveNewSubpath,
+                attributes: moveAttrb,
+            };
+        });
+
+        await Dmart.request({
+            space_name: space_name,
+            request_type: RequestType.move,
+            records: records,
+        });
+        showToast(Level.info, `Entries moved to trash successfully`);
+        return { success: true };
+    } catch (error: any) {
+        showToast(Level.warn, `Failed to move entries to trash!`);
+        return { success: false, errorMessage: error.message };
+    }
+}
