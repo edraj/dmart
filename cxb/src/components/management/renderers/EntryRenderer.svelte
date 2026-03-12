@@ -4,6 +4,7 @@
         Dmart,
         QueryType,
         ResourceType,
+        RequestType,
         type ResponseEntry,
     } from "@edraj/tsdmart";
     import { checkAccess } from "@/utils/checkAccess";
@@ -20,6 +21,11 @@
         ShareNodesSolid,
         TrashBinOutline,
         TrashBinSolid,
+        GridSolid,
+        ImageSolid,
+        CodeOutline,
+        ClipboardListSolid,
+        ClockArrowOutline,
     } from "flowbite-svelte-icons";
     import { JSONEditor, Mode } from "svelte-jsoneditor";
     import { jsonEditorContentParser } from "@/utils/jsonEditor";
@@ -59,6 +65,7 @@
         saveEntry,
     } from "@/utils/entryManagement";
     import { bulkBucket } from "@/stores/management/bulk_bucket";
+    import { showToast, Level } from "@/utils/toast";
 
     $goto;
 
@@ -252,6 +259,61 @@
         }
 
         isActionLoading = false;
+    }
+
+    async function restoreTrashEntry() {
+        isActionLoading = true;
+        try {
+            const scr_subpaths: string[] = subpath.split("/");
+            const remaining: string[] = scr_subpaths.slice(3);
+
+            let distSpacename = "";
+            let distSubpath = "";
+
+            if (remaining.length > 0) {
+                distSpacename = remaining[0];
+                distSubpath = remaining.slice(1).join("/");
+            } else {
+                distSpacename = space_name; // Fallback
+            }
+
+            const attributes = entry.attributes as Record<string, any> | undefined;
+
+            const moveAttrb = {
+                src_space_name: "personal",
+                src_subpath: subpath.replaceAll("-", "/"),
+                src_shortname: entry.shortname,
+
+                dest_space_name: distSpacename,
+                dest_subpath: distSubpath.replaceAll("-", "/"),
+                dest_shortname: entry.shortname,
+            };
+
+
+            const result = await Dmart.request({
+                space_name: "personal",
+                request_type: RequestType.move,
+                records: [
+                    {
+                        resource_type: resource_type,
+                        shortname: entry.shortname,
+                        subpath: subpath.replaceAll("-", "/"),
+                        attributes: moveAttrb,
+                    },
+                ],
+            });
+
+            if (result.status === "success") {
+                showToast(Level.info, "Entry restored successfully.");
+                $goto("/management/tools/trash");
+            } else {
+                showToast(Level.warn, "Failed to restore entry.");
+            }
+        } catch (e) {
+            showToast(Level.warn, "Failed to restore entry.");
+        } finally {
+            isActionLoading = false;
+        }
     }
 
     async function refreshEntry() {
@@ -615,6 +677,28 @@
                         </button>
                     </li>
                 {/if}
+            {/if}
+            {#if isEntryTrash}
+                <li role="presentation">
+                    <button
+                        class="inline-flex items-center p-4 border-b-2 rounded-t-lg border-transparent hover:text-green-600 hover:border-green-600"
+                        type="button"
+                        disabled={isActionLoading}
+                        style={isActionLoading
+                            ? "cursor: not-allowed"
+                            : "cursor: pointer"}
+                        onclick={restoreTrashEntry}
+                        title="Restore this entry"
+                    >
+                        <div class="flex items-center gap-2">
+                            <ClockArrowOutline
+                                size="md"
+                                class="text-green-500"
+                            />
+                            <p class="text-green-500">Restore</p>
+                        </div>
+                    </button>
+                </li>
             {/if}
             <li role="presentation">
                 <button
