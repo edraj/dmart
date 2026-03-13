@@ -43,6 +43,7 @@
     import MetaUserForm from "@/components/management/forms/MetaUserForm.svelte";
     import MetaRoleForm from "@/components/management/forms/MetaRoleForm.svelte";
     import MetaPermissionForm from "@/components/management/forms/MetaPermissionForm.svelte";
+    import SpaceForm from "@/components/management/forms/SpaceForm.svelte";
     import { untrack } from "svelte";
     import { goto } from "@roxi/routify";
     import HistoryListView from "@/components/management/HistoryListView.svelte";
@@ -768,6 +769,11 @@
                             bind:formData={jeContent.json}
                             bind:validateFn={validateRTForm}
                             isCreate={false}
+                        />
+                    {:else if resource_type === ResourceType.space}
+                        <SpaceForm
+                            bind:formData={jeContent.json}
+                            spaceName={space_name}
                         />
                     {:else if resource_type === ResourceType.role}
                         <MetaRoleForm
