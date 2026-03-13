@@ -1,0 +1,13 @@
+{
+  "shortname": "seller_create_resources",
+  "is_active": true,
+  "filters": {
+    "subpaths": ["/users"],
+    "resource_types": ["user"],
+    "schema_shortnames": ["__ALL__"],
+    "actions": ["create"]
+  },
+  "type": "hook",
+  "ordinal": 1,
+  "listen_time": "after"
+}
