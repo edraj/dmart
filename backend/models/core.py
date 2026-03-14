@@ -348,7 +348,7 @@ class User(Actor):
     type: UserType = UserType.web
     roles: list[str] = []
     groups: list[str] = []
-    firebase_token: str | None = None
+    device_id: str | None = None
     language: Language = Language.ar
     google_id: str | None = None
     facebook_id: str | None = None

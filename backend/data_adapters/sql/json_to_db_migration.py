@@ -234,7 +234,7 @@ async def process_directory(root, dirs, space_name, subpath):
                                 owner_group_shortname=entry.get('owner_group_shortname', None),
                             )
                             entry['resource_type'] = 'user'
-                            entry['firebase_token'] = entry.get('firebase_token', '')
+                            entry['device_id'] = entry.get('device_id') or entry.get('firebase_token', '')
                             entry['type'] = entry.get('type', 'web')
                             entry['language'] = entry.get('language', '')
                             entry['google_id'] = entry.get('google_id', '')

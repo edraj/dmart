@@ -2448,7 +2448,9 @@ class SQLAdapter(BaseDataAdapter):
             print("[!fetch_space]", e, space_name)
             return None
 
-    async def set_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(
+        self, user_shortname: str, token: str, firebase_token: str | None = None
+    ) -> bool:
         try:
             total, last_session = await self.get_user_session(user_shortname, token)
 
@@ -2464,6 +2466,7 @@ class SQLAdapter(BaseDataAdapter):
                         shortname=user_shortname,
                         token=hash_password(token),
                         timestamp=timestamp,
+                        firebase_token=firebase_token,
                     )
                 )
 
@@ -2511,6 +2514,20 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as e:
                 print("[!remove_sql_user_session]", e)
                 return False
+
+    async def get_user_session_firebase_tokens(self, user_shortname: str) -> list[str]:
+        async with self.get_session() as session:
+            statement = select(Sessions).where(col(Sessions.shortname) == user_shortname)
+            rows = (await session.execute(statement)).all()
+            tokens: list[str] = []
+            for row in rows:
+                r = row[0]
+                if r.firebase_token and (
+                    not settings.session_inactivity_ttl
+                    or settings.session_inactivity_ttl + r.timestamp.timestamp() >= time.time()
+                ):
+                    tokens.append(r.firebase_token)
+            return tokens
 
     async def set_invitation(self, invitation_token: str, invitation_value):
         async with self.get_session() as session:

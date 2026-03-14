@@ -116,9 +116,11 @@ def generate_jwt(data: dict, expires: int = 86400) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-async def sign_jwt(data: dict, expires: int = 86400) -> str:
+async def sign_jwt(
+    data: dict, expires: int = 86400, firebase_token: str | None = None
+) -> str:
     token = generate_jwt(data, expires)
     if data["type"] != "bot" and settings.session_inactivity_ttl:
-        await db.set_user_session(data["shortname"], token)
+        await db.set_user_session(data["shortname"], token, firebase_token=firebase_token)
     return token
 
