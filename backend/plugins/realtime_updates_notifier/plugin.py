@@ -7,6 +7,7 @@ class Plugin(PluginBase):
 
     async def hook(self, data: Event):
         all_MKW = "__ALL__"
+        print("#######################################################", data)
 
         state = data.attributes.get("state", all_MKW)
 
