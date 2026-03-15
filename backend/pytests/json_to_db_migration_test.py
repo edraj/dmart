@@ -137,7 +137,7 @@ def test_json_to_db_migration(setup_environment):
     with open('/tmp/test_space/.dm/meta.user.json', 'w') as f:
         json.dump({
             "resource_type": "user",
-            "firebase_token": "firebase_token",
+            "device_id": "device_id",
             "language": "en"
         }, f)
 
