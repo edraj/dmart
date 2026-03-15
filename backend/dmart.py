@@ -10,6 +10,9 @@ import subprocess
 import sys
 import os
 import secrets
+import zipfile
+import tempfile
+import configparser
 sys.path.append(os.path.dirname(__file__))
 
 from utils.settings import settings, get_env_file
@@ -33,6 +36,7 @@ commands = """
     health-check
     create-index
     export
+    import
     settings
     set_password
     archive
@@ -755,58 +759,88 @@ def main():
 
             asyncio.run(create_index(args.space, args.schemas, args.subpaths, args.flushall))
         case "export":
-            from utils.exporter import main as exporter, exit_with_error, OUTPUT_FOLDER_NAME, validate_config, extract
-            parser = argparse.ArgumentParser()
-            parser.add_argument(
-                "--config", required=True, help="Json config relative path from the script"
-            )
-            parser.add_argument(
-                "--spaces", required=True, help="Spaces relative path from the script"
-            )
-            parser.add_argument(
-                "--output",
-                help="Output relative path from the script (the default path is the current script path",
-            )
-            parser.add_argument(
-                "--since",
-                help="Export entries created/updated since the provided timestamp",
-            )
-            args = parser.parse_args()
-            since = None
-            output_path = ""
-            if args.output:
-                output_path = args.output
+            parser = argparse.ArgumentParser(prog="dmart.py export")
+            parser.add_argument("--space_name", help="Space name to export, if not provided export all spaces")
+            parser.add_argument("--output", required=True, help="Output zip file path")
+            
+            args = parser.parse_args(sys.argv[1:])
+            
+            output_file = args.output
+            if output_file == ".":
+                if args.space_name:
+                    output_file = f"{args.space_name}.zip"
+                else:
+                    output_file = "all_spaces.zip"
+            elif not output_file.lower().endswith(".zip"):
+                output_file += ".zip"
 
-            if args.since:
-                since = int(round(float(args.since) * 1000))
+            async def run_export():
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    original_spaces_folder = settings.spaces_folder
+                    settings.spaces_folder = Path(temp_dir)
+                    
+                    try:
+                        if args.space_name:
+                            from data_adapters.sql.db_to_json_migration import export_data_with_query
+                            from models.api import Query, QueryType
+                            query = Query(type=QueryType.search, space_name=args.space_name, subpath="/", limit=-1)
+                            await export_data_with_query(query, "dmart")
+                        else:
+                            from data_adapters.sql.db_to_json_migration import main as db_to_json_main
+                            db_to_json_main()
+                            
+                        # Zip the contents
+                        output_zip = os.path.abspath(output_file)
+                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                            for root, _, files in os.walk(temp_dir):
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    arcname = os.path.relpath(file_path, temp_dir)
+                                    zip_file.write(file_path, arcname)
+                        print(f"Data exported successfully to {output_zip}")
+                    finally:
+                        settings.spaces_folder = original_spaces_folder
 
-            if not os.path.isdir(args.spaces):
-                exit_with_error(f"The spaces folder {args.spaces} is not found.")
+            asyncio.run(run_export())
+        case "import":
+            parser = argparse.ArgumentParser(prog="dmart.py import")
+            parser.add_argument("target", nargs="?", default=".", help="Target zip file or folder to import")
+            
+            args = parser.parse_args(sys.argv[1:])
+            
+            async def run_import():
+                target_path = Path(args.target).absolute()
+                if not target_path.exists():
+                    print(f"Error: Target path {target_path} does not exist")
+                    sys.exit(1)
+                
+                if zipfile.is_zipfile(target_path):
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        with zipfile.ZipFile(target_path, 'r') as zip_ref:
+                            zip_ref.extractall(temp_dir)
+                        
+                        original_spaces_folder = settings.spaces_folder
+                        settings.spaces_folder = Path(temp_dir)
+                        try:
+                            from data_adapters.sql.json_to_db_migration import main as json_to_db_main
+                            await json_to_db_main(settings.spaces_folder)
+                            print("Data imported successfully from zip")
+                        finally:
+                            settings.spaces_folder = original_spaces_folder
+                elif target_path.is_dir():
+                    original_spaces_folder = settings.spaces_folder
+                    settings.spaces_folder = target_path
+                    try:
+                        from data_adapters.sql.json_to_db_migration import main as json_to_db_main
+                        await json_to_db_main(settings.spaces_folder)
+                        print("Data imported successfully from folder")
+                    finally:
+                        settings.spaces_folder = original_spaces_folder
+                else:
+                    print(f"Error: {target_path} is neither a zip file nor a directory")
+                    sys.exit(1)
 
-            out_path = os.path.join(output_path, OUTPUT_FOLDER_NAME)
-            if os.path.isdir(out_path):
-                shutil.rmtree(out_path)
-
-            tasks = []
-            with open(args.config, "r") as f:
-                config_objs = json.load(f)
-
-            for config_obj in config_objs:
-                if not validate_config(config_obj):
-                    continue
-                tasks.append(extract(config_obj.get("space", ""),
-                                     config_obj.get("subpath", ""),
-                                     config_obj.get("resource_type", ""),
-                                     config_obj.get("schema_shortname", ""),
-                                     config_obj.get("included_meta_fields", {}),
-                                     config_obj.get("excluded_payload_fields", {}),
-                                     args.spaces, output_path, since))
-
-            asyncio.run(exporter(tasks))
-
-            print(
-                f"Output path: {os.path.abspath(os.path.join(output_path, OUTPUT_FOLDER_NAME))}"
-            )
+            asyncio.run(run_import())
         case "settings":
             print_formatted(settings.model_dump_json())
         case "set_password":
@@ -908,9 +942,6 @@ def main():
                 print(f"Error initializing sample spaces: {e}")
                 sys.exit(1)
         case "migrate":
-            import configparser
-            import tempfile
-            
             dmart_root = Path(__file__).resolve().parent
             alembic_ini_path = dmart_root / "alembic.ini"
             

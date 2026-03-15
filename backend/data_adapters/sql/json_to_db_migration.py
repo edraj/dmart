@@ -313,13 +313,13 @@ async def process_directory(root, dirs, space_name, subpath):
     await bulk_insert_in_batches(Histories, histories)
 
 
-async def main():
+async def main(target_path: Path | None = None):
     generate_tables()
 
-    target_path = settings.spaces_folder
-
-    if len(sys.argv) == 2 and sys.argv[1] != 'json_to_db':
-        target_path = target_path.joinpath(sys.argv[1])
+    if target_path is None:
+        target_path = settings.spaces_folder
+        if len(sys.argv) == 2 and sys.argv[1] not in ['json_to_db', 'import']:
+            target_path = target_path.joinpath(sys.argv[1])
 
     if not target_path.exists():
         print(f"Space '{str(target_path).replace('/', '')}' does not exist")
