@@ -5,14 +5,8 @@ from utils.helpers import lang_code
 from utils.settings import settings
 
 
-
-
 class WebNotifier(Notifier):
-    
-    async def send(
-        self, 
-        data: NotificationData
-    ) -> bool:
+    async def send(self, data: NotificationData) -> bool:
         if not settings.websocket_url:
             return False
         user_lang = lang_code(data.receiver.get("language", "ar"))
@@ -22,8 +16,7 @@ class WebNotifier(Notifier):
                 json={
                     "title": data.title.__getattribute__(user_lang),
                     "description": data.body.__getattribute__(user_lang),
-                }
+                },
             )
-        
-        return True
 
+        return True

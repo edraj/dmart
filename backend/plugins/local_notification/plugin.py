@@ -14,17 +14,15 @@ class Plugin(PluginBase):
         if not isinstance(data.shortname, str):
             logger.error("data.shortname is None and str is required at local_notification")
             return
-        
+
         if data.resource_type is None:
             return
-        
+
         resource_type = data.resource_type
         try:
             class_type = getattr(sys.modules["models.core"], camel_case(resource_type))
         except AttributeError:
-            logger.warning(
-                f"local_notification: unsupported resource_type={resource_type!s} (no model class found)"
-            )
+            logger.warning(f"local_notification: unsupported resource_type={resource_type!s} (no model class found)")
             return
         parent_subpath, parent_shortname, parent_owner = None, None, None
 
@@ -33,7 +31,7 @@ class Plugin(PluginBase):
             subpath=data.subpath,
             shortname=data.shortname,
             class_type=class_type,
-            user_shortname=data.user_shortname
+            user_shortname=data.user_shortname,
         )
         relationship = None
         if class_type in [Reaction, Comment]:
@@ -43,7 +41,7 @@ class Plugin(PluginBase):
                 subpath=parent_subpath,
                 shortname=parent_shortname,
                 class_type=Content,
-                user_shortname=data.user_shortname
+                user_shortname=data.user_shortname,
             )
             if parent.owner_shortname == data.user_shortname:
                 return
@@ -52,14 +50,9 @@ class Plugin(PluginBase):
 
             relationship = Relationship(
                 related_to=Locator(
-                    type=resource_type,
-                    space_name=data.space_name,
-                    subpath=parent_subpath,
-                    shortname=parent_shortname
+                    type=resource_type, space_name=data.space_name, subpath=parent_subpath, shortname=parent_shortname
                 ),
-                attributes={
-                    "parent_owner": parent_owner
-                }
+                attributes={"parent_owner": parent_owner},
             )
 
         else:
@@ -74,13 +67,9 @@ class Plugin(PluginBase):
             shortname=str(uuid)[:8],
             owner_shortname=data.user_shortname,
             is_active=True,
-            payload=Payload(
-                content_type=ContentType.json,
-                schema_shortname="notification",
-                body=f"{str(uuid)[:8]}.json"
-            ),
+            payload=Payload(content_type=ContentType.json, schema_shortname="notification", body=f"{str(uuid)[:8]}.json"),
         )
-        
+
         if relationship is not None:
             meta_obj.relationships = [relationship]
 
@@ -94,11 +83,10 @@ class Plugin(PluginBase):
             "entry_space": data.space_name,
             "entry_subpath": data.subpath,
             "entry_shortname": data.shortname,
-
             "action_by": data.user_shortname,
             "action_type": data.action_type,
             "resource_type": data.resource_type,
-            "is_read": "no"
+            "is_read": "no",
         }
         await db.save_payload_from_json(
             "personal",
@@ -118,6 +106,6 @@ class Plugin(PluginBase):
                     "channels": [
                         f"{data.space_name}:__ALL__:__ALL__:__ALL__:__ALL__",
                     ],
-                    "message": notification_obj
-                }
+                    "message": notification_obj,
+                },
             )

@@ -31,11 +31,7 @@ async def main() -> None:
                     await db.internal_save_model(
                         space_name=folder[0],
                         subpath=folder[1],
-                        meta=Folder(
-                            shortname=folder[2],
-                            is_active=True,
-                            owner_shortname=entry_shortname
-                        )
+                        meta=Folder(shortname=folder[2], is_active=True, owner_shortname=entry_shortname),
                     )
                     print(f"Created folder {folder} for user {entry_shortname}")
                     folder_processed += 1
@@ -44,9 +40,10 @@ async def main() -> None:
 
             users_processed += 1
 
-
-    print(f"\n===== DONE ====== \nScanned {users_processed} users,\
-    Created {folder_processed} missing folders")
+    print(
+        f"\n===== DONE ====== \nScanned {users_processed} users,\
+    Created {folder_processed} missing folders"
+    )
 
 
 if __name__ == "__main__":

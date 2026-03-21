@@ -7,7 +7,6 @@ from utils.jwt import sign_jwt
 from utils.settings import settings
 
 
-
 @pytest.mark.run(order=6)
 @pytest.mark.anyio
 async def test_info_me(client: AsyncClient) -> None:
@@ -18,15 +17,16 @@ async def test_info_me(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
 
+
 @pytest.mark.run(order=6)
 @pytest.mark.anyio
 async def test_info_manifest(client: AsyncClient) -> None:
 
-        client.cookies.set("auth_token", await get_superman_cookie(client))
-        response = await client.get("/info/manifest")
-        assert response.status_code == status.HTTP_200_OK
-        json_response = response.json()
-        assert json_response["status"] == "success"
+    client.cookies.set("auth_token", await get_superman_cookie(client))
+    response = await client.get("/info/manifest")
+    assert response.status_code == status.HTTP_200_OK
+    json_response = response.json()
+    assert json_response["status"] == "success"
 
 
 @pytest.mark.run(order=6)

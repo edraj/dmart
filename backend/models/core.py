@@ -26,7 +26,9 @@ from utils.settings import settings
 import utils.password_hashing as password_hashing
 from hashlib import sha1 as hashlib_sha1
 
-KeyType = TypeVar('KeyType')
+KeyType = TypeVar("KeyType")
+
+
 def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, Any]) -> Dict[KeyType, Any]:
     updated_mapping = mapping.copy()
     for updating_mapping in updating_mappings:
@@ -52,9 +54,7 @@ class Resource(BaseModel):
 
 class Payload(Resource):
     content_type: ContentType
-    content_sub_type: str | None = (
-        None  # FIXME change to proper content type static hashmap
-    )
+    content_sub_type: str | None = None  # FIXME change to proper content type static hashmap
     schema_shortname: str | None = None
     client_checksum: str | None = None
     checksum: str | None = None
@@ -67,15 +67,13 @@ class Payload(Resource):
             sha1 = hashlib_sha1()
 
             if isinstance(self.body, dict):
-                sha1.update(json.dumps(self.body).encode('utf-8'))
+                sha1.update(json.dumps(self.body).encode("utf-8"))
             else:
-                sha1.update(self.body.encode('utf-8'))
+                sha1.update(self.body.encode("utf-8"))
 
             self.checksum = sha1.hexdigest()
 
-    def update(
-            self, payload: dict, old_body: dict | None = None, replace: bool = False
-    ) -> dict | None:
+    def update(self, payload: dict, old_body: dict | None = None, replace: bool = False) -> dict | None:
 
         if payload.get("body", None) is None:
             return None
@@ -121,15 +119,12 @@ class Record(BaseModel):
         return self.model_dump(exclude_none=True, warnings="error")
 
     def __eq__(self, other):
-        return (
-                isinstance(other, Record)
-                and self.shortname == other.shortname
-                and self.subpath == other.subpath
-        )
+        return isinstance(other, Record) and self.shortname == other.shortname and self.subpath == other.subpath
 
     model_config = ConfigDict(
-        extra= "forbid",
-        json_schema_extra= { "examples": [
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
                 {
                     "resource_type": "content",
                     "shortname": "auto",
@@ -162,8 +157,9 @@ class Record(BaseModel):
                     },
                 }
             ]
-        }
+        },
     )
+
 
 class Translation(Resource):
     en: str | None = None
@@ -209,7 +205,7 @@ class Meta(Resource):
     payload: Payload | None = None
     relationships: list[Relationship] | list[dict[str, Any]] | None = None
     acl: list[ACL] | None = None
-    last_checksum_history: str | None =  Field(default=None)
+    last_checksum_history: str | None = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -220,9 +216,7 @@ class Meta(Resource):
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
 
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
+        meta_class = getattr(sys.modules["models.core"], camel_case(record.resource_type))
 
         if issubclass(meta_class, User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
@@ -234,9 +228,7 @@ class Meta(Resource):
 
     @staticmethod
     def check_record(record: Record, owner_shortname: str):
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
+        meta_class = getattr(sys.modules["models.core"], camel_case(record.resource_type))
 
         meta_obj = meta_class(
             owner_shortname=owner_shortname,
@@ -245,9 +237,7 @@ class Meta(Resource):
         )
         return meta_obj
 
-    def update_from_record(
-            self, record: Record, old_body: dict | None = None, replace: bool = False
-    ) -> dict | None:
+    def update_from_record(self, record: Record, old_body: dict | None = None, replace: bool = False) -> dict | None:
         restricted_fields = [
             "uuid",
             "shortname",
@@ -281,23 +271,19 @@ class Meta(Resource):
             )
 
         if self.payload and "payload" in record.attributes:
-            return self.payload.update(
-                payload=record.attributes["payload"], old_body=old_body, replace=replace
-            )
+            return self.payload.update(payload=record.attributes["payload"], old_body=old_body, replace=replace)
         return None
 
     def to_record(
-            self,
-            subpath: str,
-            shortname: str,
-            include: list[str] = [],
+        self,
+        subpath: str,
+        shortname: str,
+        include: list[str] = [],
     ) -> Record:
         # Sanity check
 
         if self.shortname != shortname:
-            raise Exception(
-                f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})"
-            )
+            raise Exception(f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})")
 
         record_fields = {
             "resource_type": snake_case(type(self).__name__),
@@ -308,7 +294,7 @@ class Meta(Resource):
 
         attributes = {}
         for key, value in self.__dict__.items():
-            if key == '_sa_instance_state':
+            if key == "_sa_instance_state":
                 continue
             if (not include or key in include) and key not in record_fields:
                 attributes[key] = copy.deepcopy(value)
@@ -358,9 +344,7 @@ class User(Actor):
 
     @staticmethod
     def invitation_url_template() -> str:
-        return (
-            "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
-        )
+        return "{url}/auth/invitation?invitation={token}&lang={lang}&user-type={user_type}"
 
 
 class Group(Meta):
@@ -537,10 +521,9 @@ class PluginWrapper(Resource):
     type: PluginType | None = None
     ordinal: int = 9999
     object: PluginBase | None = None
-    dependencies: list = [] # type: ignore
+    dependencies: list = []  # type: ignore
     concurrent: bool = True
     attributes: dict[str, Any] | None = None
-
 
 
 class NotificationData(Resource):
@@ -565,10 +548,7 @@ class Notification(Meta):
 
     @staticmethod
     async def from_request(notification_req: dict, entry: dict = {}):
-        if (
-                notification_req["payload"]["schema_shortname"]
-                == "admin_notification_request"
-        ):
+        if notification_req["payload"]["schema_shortname"] == "admin_notification_request":
             notification_type = NotificationType.admin
         elif notification_req["payload"]["schema_shortname"] == "system_notification_request":
             notification_type = NotificationType.system

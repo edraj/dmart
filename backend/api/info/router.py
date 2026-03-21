@@ -15,7 +15,7 @@ from fastapi.responses import ORJSONResponse
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
-git_info: dict[str,str|None] = {}
+git_info: dict[str, str | None] = {}
 service_start_time: datetime = datetime.now()
 
 info_json_path = Path(__file__).resolve().parent.parent.parent / "info.json"
@@ -23,25 +23,25 @@ if info_json_path.exists():
     with open(info_json_path) as info:
         git_info = json.load(info)
 else:
-    result, _ = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).communicate()
     branch = None if result is None or len(result) == 0 else result.decode().strip()
 
-    result, _ = subprocess.Popen(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(
+        ["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).communicate()
     version = None if result is None or len(result) == 0 else result.decode().strip()
 
     result, _ = subprocess.Popen(["git", "describe", "--tags"], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     tag = None if result is None or len(result) == 0 else result.decode().strip()
 
-    result, _ = subprocess.Popen(["git", "show", "--pretty=format:%ad"], stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE).communicate()
+    result, _ = subprocess.Popen(
+        ["git", "show", "--pretty=format:%ad"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).communicate()
     version_date = None if result is None or len(result) == 0 else result.decode().split("\n")[0]
 
-    git_info = {
-        "commit_hash": version,
-        "date": version_date,
-        "branch": branch,
-        "tag": tag
-    }
+    git_info = {"commit_hash": version, "date": version_date, "branch": branch, "tag": tag}
 
 server = socket.gethostname()
 
@@ -53,14 +53,12 @@ async def get_me(shortname=Depends(JWTBearer())) -> api.Response:
 
 @router.get("/settings", response_model=api.Response, response_model_exclude_none=True)
 async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
-    if shortname != 'dmart':
+    if shortname != "dmart":
         raise api.Exception(
             status_code=status.HTTP_401_UNAUTHORIZED,
             error=api.Error(
-                type="access",
-                code=InternalErrorCode.NOT_ALLOWED,
-                message="You don't have permission to this action [21]"
-            )
+                type="access", code=InternalErrorCode.NOT_ALLOWED, message="You don't have permission to this action [21]"
+            ),
         )
     return api.Response(status=api.Status.success, attributes=settings.model_dump())
 
@@ -77,12 +75,13 @@ async def get_manifest(_=Depends(JWTBearer())) -> api.Response:
             "process_id": getpid(),
             "start_time": service_start_time.isoformat(),
             "current_time": now.isoformat(),
-            "running_for": str(now - service_start_time)
+            "running_for": str(now - service_start_time),
         },
         "git": git_info,
-        "plugins": plugin_manager.active_plugins
+        "plugins": plugin_manager.active_plugins,
     }
     return api.Response(status=api.Status.success, attributes=manifest)
+
 
 """
 @router.get("/in-loop-tasks")

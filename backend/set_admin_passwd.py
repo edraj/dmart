@@ -13,7 +13,7 @@ from utils.password_hashing import hash_password
 from utils.settings import settings
 
 
-users : dict[str, dict]= {"dmart":{}, "alibaba": {}}
+users: dict[str, dict] = {"dmart": {}, "alibaba": {}}
 
 while True:
     password = getpass.getpass("Type the new password for admin/testuser then hit enter: ")
@@ -25,22 +25,23 @@ while True:
 print("Generating and storing the password for dmart and alibaba")
 hashed = hash_password(password)
 
+
 async def main():
     if settings.active_data_db == "file":
         for key in users.keys():
             file_name = settings.spaces_folder / f"management/users/.dm/{key}/meta.user.json"
-            with open(file_name, 'r') as read_file:
+            with open(file_name, "r") as read_file:
                 data = json.load(read_file)
                 data["password"] = hashed
-                with open(file_name, 'w') as write_file:
+                with open(file_name, "w") as write_file:
                     write_file.write(json.dumps(data))
     else:
         async with SQLAdapter().get_session() as session:
             for key in users.keys():
                 statement = select(Users).where(Users.shortname == key)
                 user = (await session.execute(statement)).one()[0]
-                user.password=hashed
-                user.is_active=True
+                user.password = hashed
+                user.is_active = True
                 session.add(user)
                 await session.commit()
 
@@ -53,22 +54,21 @@ if login_creds_sample.exists():
     home_dmart.mkdir(parents=True, exist_ok=True)
 
     login_creds_path = home_dmart / "login_creds.sh"
-    with open(login_creds_sample, 'r') as sample_f:
+    with open(login_creds_sample, "r") as sample_f:
         sample_content = sample_f.read()
-    
-    with open(login_creds_path, 'w') as creds:
-        creds.write(sample_content.replace("xxxx", password))
 
+    with open(login_creds_path, "w") as creds:
+        creds.write(sample_content.replace("xxxx", password))
 
     cli_ini_path = home_dmart / "cli.ini"
     if cli_ini_path.exists():
         try:
-            with open(cli_ini_path, 'r') as f:
+            with open(cli_ini_path, "r") as f:
                 content = f.read()
 
             new_content = re.sub(r'password\s*=\s*".*"', f'password = "{password}"', content)
-            
-            with open(cli_ini_path, 'w') as f:
+
+            with open(cli_ini_path, "w") as f:
                 f.write(new_content)
             print(f"Updated password in {cli_ini_path}")
         except Exception as e:

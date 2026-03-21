@@ -53,15 +53,8 @@ class SendOTPRequest(BaseModel):
             ),
         )
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "msisdn": "7777778110"
-                }
-            ]
-        }
-    }
+    model_config = {"json_schema_extra": {"examples": [{"msisdn": "7777778110"}]}}
+
 
 class PasswordResetRequest(BaseModel):
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
@@ -105,41 +98,21 @@ class PasswordResetRequest(BaseModel):
             ),
         )
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "msisdn": "7777778110"
-                }
-            ]
-        }
-    }
+    model_config = {"json_schema_extra": {"examples": [{"msisdn": "7777778110"}]}}
+
+
 class ConfirmOTPRequest(SendOTPRequest, BaseModel):
     code: str = Field(..., pattern=rgx.OTP_CODE)
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "code": "84293201"
-                }
-            ]
-        }
-    }
+    model_config = {"json_schema_extra": {"examples": [{"code": "84293201"}]}}
+
 
 class SocialMobileLoginRequest(BaseModel):
     token: str
     firebase_token: str | None = Field(None)
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                }
-            ]
-        }
-    }
+    model_config = {"json_schema_extra": {"examples": [{"token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."}]}}
+
 
 class UserLoginRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
@@ -167,13 +140,4 @@ class UserLoginRequest(BaseModel):
 
         return None
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "shortname": "john_doo",
-                    "password": "my_secure_password_@_93301"
-                }
-            ]
-        }
-    }
+    model_config = {"json_schema_extra": {"examples": [{"shortname": "john_doo", "password": "my_secure_password_@_93301"}]}}

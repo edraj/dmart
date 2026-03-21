@@ -13,14 +13,12 @@ from fastapi.logger import logger
 
 
 class Notifier(ABC):
-    
     @abstractmethod
     async def send(self, data: NotificationData) -> bool:
         pass
 
     async def _load_user(self, shortname: str) -> Any:
         if not hasattr(self, "user"):
-
             self.user = await db.load(
                 space_name=settings.management_space,
                 subpath=settings.users_subpath,
@@ -32,7 +30,6 @@ class Notifier(ABC):
 
 
 class NotificationManager:
-
     notifiers: dict[str, Notifier] = {}
 
     def __init__(self) -> None:

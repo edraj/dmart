@@ -8,7 +8,7 @@ from pytests.base_test import (
     set_superman_cookie,
     MANAGEMENT_SPACE,
     USERS_SUBPATH,
-    superman
+    superman,
 )
 from models.api import Query
 from models.enums import QueryType, ResourceType
@@ -31,12 +31,11 @@ async def test_user_does_not_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_request_email_otp(client: AsyncClient):
-    request_body = {
-        "email": new_user_data["email"]
-    }
+    request_body = {"email": new_user_data["email"]}
     response = await client.post("/user/otp-request", json=request_body)
     json_response = response.json()
     if response.status_code == status.HTTP_200_OK:
@@ -44,19 +43,19 @@ async def test_request_email_otp(client: AsyncClient):
     elif response.status_code == status.HTTP_403_FORBIDDEN:
         assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_request_msisdn_otp(client: AsyncClient):
-    request_body = {
-        "msisdn": new_user_data["msisdn"]
-    }
+    request_body = {"msisdn": new_user_data["msisdn"]}
     response = await client.post("/user/otp-request", json=request_body)
     json_response = response.json()
     if response.status_code == status.HTTP_200_OK:
         assert json_response.get("status") == "success"
     elif response.status_code == status.HTTP_403_FORBIDDEN:
         assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
-    
+
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_create_user(client: AsyncClient):
@@ -69,7 +68,7 @@ async def test_create_user(client: AsyncClient):
             "email": new_user_data["email"],
             "email_otp": "123456",
             "msisdn": new_user_data["msisdn"],
-            "msisdn_otp": "123456"
+            "msisdn_otp": "123456",
         },
     }
 
@@ -91,7 +90,8 @@ async def test_create_user(client: AsyncClient):
         res_subpath=USERS_SUBPATH,
         res_attributes={},
     )
-    
+
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_the_new_user(client: AsyncClient):
@@ -127,7 +127,7 @@ async def test_login_with_the_new_user(client: AsyncClient):
 async def test_get_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
-    assert response.json()['records'][0]['shortname'] == new_user_data['shortname']
+    assert response.json()["records"][0]["shortname"] == new_user_data["shortname"]
 
 
 @pytest.mark.run(order=1)
@@ -137,12 +137,11 @@ async def test_user_already_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is False
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_otp_request_login_success(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"]
-    }
+    payload = {"email": new_user_data["email"]}
 
     response = await client.post("/user/otp-request-login", json=payload)
     assert_code_and_status_success(response)
@@ -153,19 +152,17 @@ async def test_otp_request_login_success(client: AsyncClient):
 async def test_otp_validation_success(client: AsyncClient):
     request_body = {
         "email": new_user_data["email"],
-        "otp": "123456",  
+        "otp": "123456",
     }
 
     response = await client.post("/user/login", json=request_body)
     assert_code_and_status_success(response)
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_otp_login_invalid_otp(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"],
-        "otp": "000000"  
-    }
+    payload = {"email": new_user_data["email"], "otp": "000000"}
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
@@ -188,11 +185,12 @@ async def test_login_with_otp_both_email_and_msisdn_error(client: AsyncClient):
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
-    
+
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert json_response["error"]["type"] == "general"
     assert json_response["error"]["code"] == 99
     assert "Too many input has been passed" in json_response["error"]["message"]
+
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -209,14 +207,10 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
 
 
-
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_empty_otp_field(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"],
-        "otp": ""  
-    }
+    payload = {"email": new_user_data["email"], "otp": ""}
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
@@ -257,7 +251,6 @@ async def test_delete_new_user_profile(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
 
 
-
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_superman(client: AsyncClient):
@@ -269,5 +262,4 @@ async def test_login_with_superman(client: AsyncClient):
 async def test_get_superman_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
-    assert response.json()['records'][0]['shortname'] == superman['shortname']
-
+    assert response.json()["records"][0]["shortname"] == superman["shortname"]

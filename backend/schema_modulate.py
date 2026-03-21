@@ -11,7 +11,7 @@ import argparse
 from sqlmodel import select, col
 
 
-'''
+"""
 --space and --subpath are optional
 
 # add new key to the records
@@ -25,7 +25,8 @@ from sqlmodel import select, col
 
 # update key in the records
 ./schema_modulate.py --space management --subpath users -t payload.body.xxx -v yyy
-'''
+"""
+
 
 class ResourceType(StrEnum):
     add = "add"
@@ -77,7 +78,7 @@ async def handle_sql_modulation(args):
         if args.value:
             print("[warn] flag -v --value is not required for removing key")
     else:
-        print(f"[info] Altering the key '{targets[0]}' fo records")\
+        print(f"[info] Altering the key '{targets[0]}' fo records")
 
     if targets[0] not in ["description", "displayname", "payload"]:
         raise Exception("target must be either 'description', 'displayname' or 'payload'")
@@ -147,16 +148,13 @@ async def handle_sql_modulation(args):
                             print(obj)
                             setattr(record, targets[0], obj)
 
-                stmt = update(space).where(col(space.uuid )== record.uuid).values(
-                    **{targets[0]: getattr(record, targets[0])})
-                await session.execute(stmt)  #type: ignore
+                stmt = update(space).where(col(space.uuid) == record.uuid).values(**{targets[0]: getattr(record, targets[0])})
+                await session.execute(stmt)  # type: ignore
             await session.commit()
-
 
 
 def handle_file_modulation(args):
     pass
-
 
 
 if __name__ == "__main__":
@@ -165,28 +163,14 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "--space",
-        required=True
-    )
-    parser.add_argument(
-        "--subpath",
-        default=None
-    )
-    parser.add_argument(
-        "-t", "--target",
-        required=True
-    )
-    parser.add_argument(
-        "-v", "--value",
-        default=None
-    )
+    parser.add_argument("--space", required=True)
+    parser.add_argument("--subpath", default=None)
+    parser.add_argument("-t", "--target", required=True)
+    parser.add_argument("-v", "--value", default=None)
 
     args = parser.parse_args()
 
     if settings.active_data_db == "sql":
-        asyncio.run(
-            handle_sql_modulation(args)
-        )
+        asyncio.run(handle_sql_modulation(args))
     else:
         handle_file_modulation(args)

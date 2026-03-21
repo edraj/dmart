@@ -5,17 +5,10 @@ from pathlib import Path
 import models.api as api
 import models.core as core
 from models.enums import QueryType
-from data_adapters.sql.create_tables import (
-    Entries,
-    Histories,
-    Permissions,
-    Roles,
-    Users,
-    Spaces,
-    Aggregated
-)
+from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Users, Spaces, Aggregated
 from utils.helpers import (
-    str_to_datetime, process_jsonl_file,
+    str_to_datetime,
+    process_jsonl_file,
 )
 from utils.settings import settings
 
@@ -90,15 +83,15 @@ def subpath_checker(subpath: str):
     if subpath.endswith("/"):
         subpath = subpath[:-1]
     if not subpath.startswith("/"):
-        subpath = '/' + subpath
+        subpath = "/" + subpath
     return subpath
 
 
 def transform_keys_to_sql(path):
-    parts = path.split('.')
+    parts = path.split(".")
     sql_path = parts[0]
     if len(parts[1:-1]) != 0:
-        sql_path += ' -> ' + ' -> '.join([f"'{part}'" for part in parts[1:-1]])
+        sql_path += " -> " + " -> ".join([f"'{part}'" for part in parts[1:-1]])
     sql_path += f" ->> '{parts[-1]}'"
     sql_path.replace("->  ->>", "->>")
     return sql_path
@@ -128,15 +121,15 @@ def validate_search_range(v_str):
     for pattern in date_patterns:
         if re.match(pattern, v_str):
             # Split on either space or comma
-            if ',' in v_str[1:-1]:
-                range_values = v_str[1:-1].split(',')
+            if "," in v_str[1:-1]:
+                range_values = v_str[1:-1].split(",")
             else:
                 range_values = v_str[1:-1].split()
             return True, range_values
 
     if re.match(r"^\[-?\d+(?:\.\d+)?[\s,]-?\d+(?:\.\d+)?\]$", v_str):
-        if ',' in v_str[1:-1]:
-            v_list = v_str[1:-1].split(',')
+        if "," in v_str[1:-1]:
+            v_list = v_str[1:-1].split(",")
         else:
             v_list = v_str[1:-1].split()
         return True, v_list
@@ -147,70 +140,70 @@ def validate_search_range(v_str):
 def parse_search_array(input_string: str, key: str, value: str) -> str:
     parts = input_string.split("->")
     dict_key = parts[3].strip().replace("'", "").replace(">", "")
-    if dict_key.startswith(' '):
+    if dict_key.startswith(" "):
         dict_key = dict_key[1:]
-    output_sql = (
-        f"payload::jsonb -> 'body' -> '{key}' "
-        f"@> '[{{\"{dict_key}\": \"{value}\"}}]'"
-    )
+    output_sql = f"payload::jsonb -> 'body' -> '{key}' @> '[{{\"{dict_key}\": \"{value}\"}}]'"
     return output_sql
 
 
 def get_next_date_value(value, format_string):
     from datetime import datetime, timedelta
-    if format_string == 'YYYY':
+
+    if format_string == "YYYY":
         year = int(value)
         return str(year + 1)
-    elif format_string == 'YYYY-MM':
-        year, month = map(int, value.split('-'))
+    elif format_string == "YYYY-MM":
+        year, month = map(int, value.split("-"))
         if month == 12:
             return f"{year + 1}-01"
         else:
             return f"{year}-{month + 1:02d}"
-    elif format_string == 'YYYY-MM-DD':
-
-        dt = datetime.strptime(value, '%Y-%m-%d')
+    elif format_string == "YYYY-MM-DD":
+        dt = datetime.strptime(value, "%Y-%m-%d")
         next_dt = dt + timedelta(days=1)
-        return next_dt.strftime('%Y-%m-%d')
+        return next_dt.strftime("%Y-%m-%d")
     elif format_string == 'YYYY-MM-DD"T"HH24':
         from datetime import datetime, timedelta
-        dt = datetime.strptime(value, '%Y-%m-%dT%H')
+
+        dt = datetime.strptime(value, "%Y-%m-%dT%H")
         next_dt = dt + timedelta(hours=1)
-        return next_dt.strftime('%Y-%m-%dT%H')
+        return next_dt.strftime("%Y-%m-%dT%H")
     elif format_string == 'YYYY-MM-DD"T"HH24:MI':
         from datetime import datetime, timedelta
-        dt = datetime.strptime(value, '%Y-%m-%dT%H:%M')
+
+        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
         next_dt = dt + timedelta(minutes=1)
-        return next_dt.strftime('%Y-%m-%dT%H:%M')
+        return next_dt.strftime("%Y-%m-%dT%H:%M")
     elif format_string == 'YYYY-MM-DD"T"HH24:MI:SS':
         from datetime import datetime, timedelta
-        dt = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
+
+        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
         next_dt = dt + timedelta(seconds=1)
-        return next_dt.strftime('%Y-%m-%dT%H:%M:%S')
+        return next_dt.strftime("%Y-%m-%dT%H:%M:%S")
     elif format_string == 'YYYY-MM-DD"T"HH24:MI:SS.US':
         from datetime import datetime, timedelta
-        dt = datetime.strptime(value.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-        microseconds = int(value.split('.')[1])
+
+        dt = datetime.strptime(value.split(".")[0], "%Y-%m-%dT%H:%M:%S")
+        microseconds = int(value.split(".")[1])
         dt = dt.replace(microsecond=microseconds)
         next_dt = dt + timedelta(microseconds=1)
-        return next_dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
+        return next_dt.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     return value
-
 
 
 def is_date_time_value(value):
     patterns = [
         # Full ISO format with microseconds: 2025-04-28T12:28:00.660475
-        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$', 'YYYY-MM-DD"T"HH24:MI:SS.US'),
+        (r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$", 'YYYY-MM-DD"T"HH24:MI:SS.US'),
         # ISO format without microseconds: 2025-04-28T12:28:00
-        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$', 'YYYY-MM-DD"T"HH24:MI:SS'),
+        (r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$", 'YYYY-MM-DD"T"HH24:MI:SS'),
         # ISO format with minutes precision: 2025-04-28T12:28
-        (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$', 'YYYY-MM-DD"T"HH24:MI'),
+        (r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$", 'YYYY-MM-DD"T"HH24:MI'),
         # ISO format with hours precision: 2025-04-28T12
-        (r'^\d{4}-\d{2}-\d{2}T\d{2}$', 'YYYY-MM-DD"T"HH24'),
+        (r"^\d{4}-\d{2}-\d{2}T\d{2}$", 'YYYY-MM-DD"T"HH24'),
         # Date only: 2025-04-28
-        (r'^\d{4}-\d{2}-\d{2}$', 'YYYY-MM-DD')
+        (r"^\d{4}-\d{2}-\d{2}$", "YYYY-MM-DD"),
     ]
 
     for pattern, format_string in patterns:
@@ -225,12 +218,12 @@ def parse_search_string(string):
     terms = string.split()
 
     for term in terms:
-        negative = term.startswith('-@')
+        negative = term.startswith("-@")
 
-        if not (term.startswith('@') or term.startswith('-@')):
+        if not (term.startswith("@") or term.startswith("-@")):
             continue
 
-        parts = term.split(':', 1)
+        parts = term.split(":", 1)
         if len(parts) != 2:
             continue
 
@@ -240,103 +233,97 @@ def parse_search_string(string):
         is_range, range_values = validate_search_range(value)
 
         if is_range:
-            value_type = 'string'
+            value_type = "string"
             format_strings = {}
 
             all_numeric = True
             for val in range_values:
                 is_datetime, format_string = is_date_time_value(val)
                 if is_datetime:
-                    value_type = 'datetime'
+                    value_type = "datetime"
                     format_strings[val] = format_string
-                if not re.match(r'^-?\d+(?:\.\d+)?$', val):
+                if not re.match(r"^-?\d+(?:\.\d+)?$", val):
                     all_numeric = False
 
-            if value_type != 'datetime' and all_numeric:
-                value_type = 'numeric'
+            if value_type != "datetime" and all_numeric:
+                value_type = "numeric"
 
             field_data = {
-                'values': range_values,
-                'operation': 'RANGE',
-                'negative': negative,
-                'is_range': True,
-                'range_values': range_values,
-                'value_type': value_type
+                "values": range_values,
+                "operation": "RANGE",
+                "negative": negative,
+                "is_range": True,
+                "range_values": range_values,
+                "value_type": value_type,
             }
 
-            if value_type == 'datetime':
-                field_data['format_strings'] = format_strings
+            if value_type == "datetime":
+                field_data["format_strings"] = format_strings
 
             result[field] = field_data
             continue
 
-        values = value.split('|')
-        operation = 'OR' if len(values) > 1 else 'AND'
+        values = value.split("|")
+        operation = "OR" if len(values) > 1 else "AND"
 
-        value_type = 'string'  # Default type 
+        value_type = "string"  # Default type
         format_strings = {}
         all_boolean = True
         all_numeric = True
-        
+
         for i, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
-                value_type = 'datetime'
+                value_type = "datetime"
                 format_strings[val] = format_string
                 all_boolean = False
                 all_numeric = False
             else:
-                if val.lower() not in ['true', 'false']:
+                if val.lower() not in ["true", "false"]:
                     all_boolean = False
-                if not re.match(r'^-?\d+(?:\.\d+)?$', val):
+                if not re.match(r"^-?\d+(?:\.\d+)?$", val):
                     all_numeric = False
 
-        if all_boolean and value_type == 'string':
-            value_type = 'boolean'
-        elif all_numeric and value_type == 'string':
-            value_type = 'numeric'
+        if all_boolean and value_type == "string":
+            value_type = "boolean"
+        elif all_numeric and value_type == "string":
+            value_type = "numeric"
 
         if field not in result:
             field_data = {
-                'values': values,
-                'operation': operation,
-                'negative': negative,
-                'value_type': value_type,
+                "values": values,
+                "operation": operation,
+                "negative": negative,
+                "value_type": value_type,
             }
 
-            if value_type == 'datetime':
-                field_data['format_strings'] = format_strings
+            if value_type == "datetime":
+                field_data["format_strings"] = format_strings
 
             result[field] = field_data
         else:
-            if result[field]['negative'] != negative:
-                field_data = {
-                    'values': values,
-                    'operation': operation,
-                    'negative': negative
-                }
+            if result[field]["negative"] != negative:
+                field_data = {"values": values, "operation": operation, "negative": negative}
 
-                if value_type == 'datetime':
-                    field_data['value_type'] = value_type
-                    field_data['format_strings'] = format_strings
+                if value_type == "datetime":
+                    field_data["value_type"] = value_type
+                    field_data["format_strings"] = format_strings
 
                 result[field] = field_data
             else:
-                result[field]['values'].extend(values)
-                if operation == 'OR':
-                    result[field]['operation'] = 'OR'
+                result[field]["values"].extend(values)
+                if operation == "OR":
+                    result[field]["operation"] = "OR"
 
-                if value_type == 'datetime':
-                    result[field]['value_type'] = value_type
-                    if 'format_strings' not in result[field]:
-                        result[field]['format_strings'] = {}
-                    result[field]['format_strings'].update(format_strings)
+                if value_type == "datetime":
+                    result[field]["value_type"] = value_type
+                    if "format_strings" not in result[field]:
+                        result[field]["format_strings"] = {}
+                    result[field]["format_strings"].update(format_strings)
     return result
 
 
-async def events_query(
-        query: api.Query, user_shortname: str | None = None
-) -> tuple[int, list[core.Record]]:
+async def events_query(query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
     from utils.access_control import access_control
 
     records: list[core.Record] = []
@@ -346,32 +333,22 @@ async def events_query(
     if not path.is_file():
         return total, records
 
-    total, result = await process_jsonl_file(
-        path,
-        limit=query.limit,
-        offset=query.offset,
-        search=query.search,
-        reverse=True
-    )
+    total, result = await process_jsonl_file(path, limit=query.limit, offset=query.offset, search=query.search, reverse=True)
 
     for line in result:
         action_obj = json.loads(line)
-        if (
-            query.from_date
-            and str_to_datetime(action_obj["timestamp"]) < query.from_date
-        ):
+        if query.from_date and str_to_datetime(action_obj["timestamp"]) < query.from_date:
             continue
 
         if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
             break
 
         if not await access_control.check_access(
-                user_shortname=str(user_shortname),
-                space_name=query.space_name,
-                subpath=action_obj.get(
-                    "resource", {}).get("subpath", "/"),
-                resource_type=action_obj["resource"]["type"],
-                action_type=core.ActionType(action_obj["request"]),
+            user_shortname=str(user_shortname),
+            space_name=query.space_name,
+            subpath=action_obj.get("resource", {}).get("subpath", "/"),
+            resource_type=action_obj["resource"]["type"],
+            action_type=core.ActionType(action_obj["request"]),
         ):
             continue
 
@@ -395,11 +372,7 @@ def set_results_from_aggregation(query, item, results, idx):
 
     results[idx] = Aggregated.model_validate(item).to_record(
         query.subpath,
-        (
-            str(getattr(item, "shortname"))
-            if hasattr(item, "shortname") and isinstance(item.shortname, str)
-            else "/"
-        ),
+        (str(getattr(item, "shortname")) if hasattr(item, "shortname") and isinstance(item.shortname, str) else "/"),
         extra=extra,
     )
 

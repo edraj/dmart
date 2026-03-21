@@ -27,11 +27,9 @@ CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 if CUSTOM_PLUGINS_PATH.parent.exists():
     sys.path.append(str(CUSTOM_PLUGINS_PATH.parent.resolve()))
 
-class PluginManager:
 
-    plugins_wrappers: dict[
-        ActionType, list[PluginWrapper]
-    ] = {}  # {action_type: list_of_plugins_wrappers]}
+class PluginManager:
+    plugins_wrappers: dict[ActionType, list[PluginWrapper]] = {}  # {action_type: list_of_plugins_wrappers]}
 
     active_plugins: list[str] = []
 
@@ -49,24 +47,18 @@ class PluginManager:
             await self.load_path_plugins(path, app, capture_body)
         self.sort_plugins()
 
-
     async def load_path_plugins(self, path: Path, app: FastAPI, capture_body):
 
         plugins_iterator = os.scandir(path)
         for plugin_path in plugins_iterator:
             config_file_path = Path(f"{plugin_path.path}/config.json")
             plugin_file_path = Path(f"{plugin_path.path}/plugin.py")
-            if(
-                not config_file_path.is_file() or
-                not plugin_file_path.is_file()
-            ):
+            if not config_file_path.is_file() or not plugin_file_path.is_file():
                 continue
 
             # Load plugin config file
             async with aiofiles.open(config_file_path, "r") as config_file:
-                plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(
-                    await config_file.read()
-                )
+                plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(await config_file.read())
             plugin_wrapper.shortname = plugin_path.name
             if not plugin_wrapper.is_active:
                 continue
@@ -100,9 +92,7 @@ class PluginManager:
                 print(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
                 logger.info(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
             except Exception as e:
-                logger.error(
-                    f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
-                )
+                logger.error(f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}")
 
         plugins_iterator.close()
 
@@ -115,9 +105,7 @@ class PluginManager:
         """Sort plugins based on plugin_wrapper.ordinal"""
 
         for action_type, plugins in self.plugins_wrappers.items():
-            self.plugins_wrappers[action_type] = sorted(
-                plugins, key=lambda x: x.ordinal
-            )
+            self.plugins_wrappers[action_type] = sorted(plugins, key=lambda x: x.ordinal)
 
     def matched_filters(self, plugin_filters: EventFilter, event: Event):
         formats_of_subpath = [event.subpath]
@@ -132,8 +120,7 @@ class PluginManager:
             return False
 
         if event.resource_type == ResourceType.content and (
-            "__ALL__" not in plugin_filters.schema_shortnames
-            and event.schema_shortname not in plugin_filters.schema_shortnames
+            "__ALL__" not in plugin_filters.schema_shortnames and event.schema_shortname not in plugin_filters.schema_shortnames
         ):
             return False
 
@@ -159,6 +146,7 @@ class PluginManager:
             return
 
         from data_adapters.adapter import data_adapter as db
+
         space = await db.fetch_space(event.space_name)
         if space is None:
             return
@@ -187,6 +175,7 @@ class PluginManager:
             return
 
         from data_adapters.adapter import data_adapter as db
+
         space = await db.fetch_space(event.space_name)
         if space is None:
             return
@@ -213,7 +202,6 @@ class PluginManager:
                     raise e
                 except Exception as e:
                     logger.error(f"Plugin:{plugin_model}:{str(e)}")
-
 
 
 plugin_manager = PluginManager()

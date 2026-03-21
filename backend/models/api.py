@@ -62,7 +62,7 @@ class Request(BaseModel):
                     ],
                 }
             ]
-        }
+        },
     }
 
 
@@ -92,9 +92,7 @@ class Query(BaseModel):
     exact_subpath: bool = False
     filter_types: list[ResourceType] | None = None
     filter_schema_names: list[str] = ["meta"]
-    filter_shortnames: list[
-        str
-    ] | None = []  # Field( pattern=regex.SHORTNAME, default_factory=list)
+    filter_shortnames: list[str] | None = []  # Field( pattern=regex.SHORTNAME, default_factory=list)
     filter_tags: list[str] | None = None
     search: str | None = None
     from_date: datetime | None = None
@@ -147,7 +145,7 @@ class Query(BaseModel):
                     "sort_by": "created_at",
                 }
             ]
-        }
+        },
     }
 
     JoinQuery.model_rebuild()
@@ -189,15 +187,9 @@ class DataAssetQuery(BaseModel):
     @field_validator("data_asset_type")
     @classmethod
     def validate_sqlite(cls, v: DataAssetType, info: ValidationInfo):
-        if (
-            v == DataAssetType.sqlite
-            and (
-                not info.data.get("filter_data_assets")
-                or len(info.data.get("filter_data_assets", [])) != 1
-            )
+        if v == DataAssetType.sqlite and (
+            not info.data.get("filter_data_assets") or len(info.data.get("filter_data_assets", [])) != 1
         ):
-            raise ValueError(
-                "filter_data_assets must include only one item in case of data_asset_type is sqlite"
-            )
+            raise ValueError("filter_data_assets must include only one item in case of data_asset_type is sqlite")
 
         return v

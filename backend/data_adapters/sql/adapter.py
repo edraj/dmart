@@ -42,7 +42,8 @@ from data_adapters.sql.create_tables import (
 from utils.helpers import (
     arr_remove_common,
     get_removed_items,
-    camel_case, resolve_schema_references,
+    camel_case,
+    resolve_schema_references,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
@@ -51,11 +52,17 @@ from utils.query_policies_helper import get_user_query_policies, generate_query_
 from utils.settings import settings
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.sql.adapter_helpers import (
-    set_results_from_aggregation, set_table_for_query, events_query,
-    subpath_checker, parse_search_string,
-    sqlite_aggregate_functions, mysql_aggregate_functions,
-    postgres_aggregate_functions, transform_keys_to_sql,
-    get_next_date_value, is_date_time_value,
+    set_results_from_aggregation,
+    set_table_for_query,
+    events_query,
+    subpath_checker,
+    parse_search_string,
+    sqlite_aggregate_functions,
+    mysql_aggregate_functions,
+    postgres_aggregate_functions,
+    transform_keys_to_sql,
+    get_next_date_value,
+    is_date_time_value,
     # build_query_filter_for_allowed_field_values
 )
 from data_adapters.helpers import get_nested_value, trans_magic_words
@@ -66,11 +73,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
 def query_attachment_aggregation(subpath):
-    return select(
-        literal_column("resource_type").label("resource_type"),
-        func.count(text("*")).label("count")
-    ).group_by(text("resource_type")) \
+    return (
+        select(literal_column("resource_type").label("resource_type"), func.count(text("*")).label("count"))
+        .group_by(text("resource_type"))
         .where(col(Attachments.subpath) == subpath)
+    )
 
 
 def query_aggregation(table, query):
@@ -150,9 +157,7 @@ def query_aggregation(table, query):
                             field_expr_str = f"({jp})::text"
                         else:
                             field_expr_str = f"({jp})"
-                agg_selects.append(
-                    getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias)
-                )
+                agg_selects.append(getattr(func, reducer.reducer_name)(text(field_expr_str)).label(reducer.alias))
         if agg_selects:
             cols = list(statement.selected_columns) + agg_selects
             statement = statement.with_only_columns(*cols)
@@ -171,20 +176,20 @@ def string_to_list(input_str):
 
 
 def apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies):
-    if table not in [Attachments, Histories] and hasattr(table, 'query_policies'):
+    if table not in [Attachments, Histories] and hasattr(table, "query_policies"):
         access_conditions = [
             "owner_shortname = :user_shortname",
-            "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')"
+            "EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(acl::jsonb) = 'array' THEN acl::jsonb ELSE '[]'::jsonb END) AS elem WHERE elem->>'user_shortname' = :user_shortname AND (elem->'allowed_actions') ? 'query')",
         ]
 
         if user_query_policies:
             raw_items = [str(p) for p in user_query_policies]
             patterns = []
             for item in raw_items:
-                for part in str(item).split('|'):
+                for part in str(item).split("|"):
                     part = part.strip()
                     if part:
-                        patterns.append(part.replace('*', '%'))
+                        patterns.append(part.replace("*", "%"))
 
             seen = set()
             dedup_patterns = []
@@ -206,10 +211,7 @@ def apply_acl_and_query_policies(statement, table, user_shortname, user_query_po
 
                 clause_str = "(" + " OR ".join(access_conditions) + ")"
                 access_filter = text(clause_str)
-                statement = statement.where(access_filter).params(
-                    user_shortname=user_shortname,
-                    **like_params
-                )
+                statement = statement.where(access_filter).params(user_shortname=user_shortname, **like_params)
             else:
                 clause_str = "(" + " OR ".join(access_conditions) + ")"
                 access_filter = text(clause_str)
@@ -232,11 +234,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if query.type == QueryType.tags and not is_for_count:
             if query.retrieve_json_payload:
                 statement = select(
-                    func.jsonb_array_elements_text(table.tags).label('tag'),
-                    func.count('*').label('count')
-                ).group_by('tag')
+                    func.jsonb_array_elements_text(table.tags).label("tag"), func.count("*").label("count")
+                ).group_by("tag")
             else:
-                statement = select(func.jsonb_array_elements_text(table.tags).label('tag')).distinct()
+                statement = select(func.jsonb_array_elements_text(table.tags).label("tag")).distinct()
 
     except Exception as e:
         print("[!query]", e)
@@ -256,12 +257,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             statement = statement.where(table.subpath == query.subpath)
         else:
             # Use bind parameter for the ILIKE pattern to avoid string interpolation
-            subpath_like = (f"{query.subpath}/%".replace('//', '/'))
+            subpath_like = f"{query.subpath}/%".replace("//", "/")
             statement = statement.where(
-                or_(
-                    table.subpath == query.subpath,
-                    text("subpath ILIKE :subpath_like").bindparams(bindparam("subpath_like"))
-                )
+                or_(table.subpath == query.subpath, text("subpath ILIKE :subpath_like").bindparams(bindparam("subpath_like")))
             ).params(subpath_like=subpath_like)
 
     if query.search:
@@ -272,9 +270,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             if table is Roles:
                 p += " || ' ' || permissions"
             # Parameterize search string
-            statement = statement.where(
-                text("(" + p + ") ILIKE :search")
-            ).params(search=f"%{query.search}%")
+            statement = statement.where(text("(" + p + ") ILIKE :search")).params(search=f"%{query.search}%")
         else:
             search_tokens = parse_search_string(query.search)
             bind_params = {}
@@ -288,39 +284,42 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             def _field_exists_in_table(_field: str) -> bool:
                 if _field in table_columns:
                     return True
-                if _field.startswith('payload.') and 'payload' in table_columns:
+                if _field.startswith("payload.") and "payload" in table_columns:
                     return True
                 return False
 
             for field, field_data in search_tokens.items():
                 if not _field_exists_in_table(field):
                     continue
-                values = field_data['values']
-                operation = field_data['operation']
-                negative = field_data.get('negative', False)
-                value_type = field_data.get('value_type', 'string')
-                format_strings = field_data.get('format_strings', {})
+                values = field_data["values"]
+                operation = field_data["operation"]
+                negative = field_data.get("negative", False)
+                value_type = field_data.get("value_type", "string")
+                format_strings = field_data.get("format_strings", {})
 
                 if not values:
                     continue
 
-                if field.startswith('payload.'):
-                    payload_field = field.replace('payload.', '', 1)
-                    parts = payload_field.split('.')
-                    payload_path = '->'.join([f"'{part}'" for part in parts])
+                if field.startswith("payload."):
+                    payload_field = field.replace("payload.", "", 1)
+                    parts = payload_field.split(".")
+                    payload_path = "->".join([f"'{part}'" for part in parts])
 
-                    payload_path_splited = payload_path.split('->')
+                    payload_path_splited = payload_path.split("->")
                     if len(payload_path_splited) > 1:
-                        _nested_no_last = '->'.join(payload_path_splited[:-1])
+                        _nested_no_last = "->".join(payload_path_splited[:-1])
                         _last = payload_path_splited[-1]
                         _payload_text_extract = f"payload::jsonb->{_nested_no_last}->>{_last}"
                     else:
                         _payload_text_extract = f"payload::jsonb->>{payload_path}"
                     conditions = []
 
-                    if value_type == 'numeric' and field_data.get('is_range', False) and len(
-                            field_data.get('range_values', [])) == 2:
-                        val1, val2 = field_data['range_values']
+                    if (
+                        value_type == "numeric"
+                        and field_data.get("is_range", False)
+                        and len(field_data.get("range_values", [])) == 2
+                    ):
+                        val1, val2 = field_data["range_values"]
                         try:
                             val1 = float(val1)
                             val2 = float(val2)
@@ -338,15 +337,17 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                         if negative:
                             conditions.append(
-                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->{payload_path})::float NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
+                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->{payload_path})::float NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))"
+                            )
                         else:
                             conditions.append(
-                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->{payload_path})::float BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
+                                f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->{payload_path})::float BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))"
+                            )
 
                     for value in values:
-                        if value_type == 'datetime':
-                            if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                range_values = field_data['range_values']
+                        if value_type == "datetime":
+                            if field_data.get("is_range", False) and len(field_data.get("range_values", [])) == 2:
+                                range_values = field_data["range_values"]
                                 val1, val2 = range_values
                                 if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
                                     fmt1 = format_strings.get(val1)
@@ -358,14 +359,27 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         else:
                                             try:
                                                 from datetime import datetime
-                                                dt1 = datetime.strptime(val1, fmt1.replace('YYYY', '%Y').replace('MM',
-                                                                                                                 '%m').replace(
-                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
-                                                    'SS', '%S').replace('US', '%f'))
-                                                dt2 = datetime.strptime(val2, fmt2.replace('YYYY', '%Y').replace('MM',
-                                                                                                                 '%m').replace(
-                                                    'DD', '%d').replace('"T"HH24', 'T%H').replace('MI', '%M').replace(
-                                                    'SS', '%S').replace('US', '%f'))
+
+                                                dt1 = datetime.strptime(
+                                                    val1,
+                                                    fmt1.replace("YYYY", "%Y")
+                                                    .replace("MM", "%m")
+                                                    .replace("DD", "%d")
+                                                    .replace('"T"HH24', "T%H")
+                                                    .replace("MI", "%M")
+                                                    .replace("SS", "%S")
+                                                    .replace("US", "%f"),
+                                                )
+                                                dt2 = datetime.strptime(
+                                                    val2,
+                                                    fmt2.replace("YYYY", "%Y")
+                                                    .replace("MM", "%m")
+                                                    .replace("DD", "%d")
+                                                    .replace('"T"HH24', "T%H")
+                                                    .replace("MI", "%M")
+                                                    .replace("SS", "%S")
+                                                    .replace("US", "%f"),
+                                                )
                                                 if dt1 > dt2:
                                                     val1, val2 = val2, val1
                                             except Exception:
@@ -415,12 +429,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') >= TO_TIMESTAMP(:{p_val}, '{format_string}') AND TO_TIMESTAMP({_payload_text_extract}, '{format_string}') < TO_TIMESTAMP(:{p_next}, '{format_string}'))"
                                         fallback_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ({_payload_text_extract})::text >= :{p_val} AND ({_payload_text_extract})::text < :{p_next})"
                                         conditions.append(f"({string_condition} OR {fallback_condition})")
-                        elif value_type == 'boolean':
+                        elif value_type == "boolean":
                             for value in values:
                                 bool_value = value.lower()
                                 p_bool = f"s_p_{param_counter}"
                                 param_counter += 1
-                                bind_params[p_bool] = bool_value == 'true'
+                                bind_params[p_bool] = bool_value == "true"
 
                                 if negative:
                                     bool_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
@@ -453,10 +467,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 if is_numeric:
                                     p_val_num = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_val_num] = num_val # type: ignore
+                                    bind_params[p_val_num] = num_val  # type: ignore
                                     number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float != CAST(:{p_val_num} AS float))"
-                                    conditions.append(
-                                        f"({array_condition} OR {string_condition} OR {number_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {number_condition})")
                                 else:
                                     conditions.append(f"({array_condition} OR {string_condition})")
                             else:
@@ -471,25 +484,25 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 if is_numeric:
                                     p_val_num = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_val_num] = num_val # type: ignore
+                                    bind_params[p_val_num] = num_val  # type: ignore
                                     number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float = CAST(:{p_val_num} AS float))"
                                     conditions.append(
-                                        f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})")
+                                        f"({array_condition} OR {string_condition} OR {direct_condition} OR {number_condition})"
+                                    )
                                 else:
-                                    conditions.append(
-                                        f"({array_condition} OR {string_condition} OR {direct_condition})")
+                                    conditions.append(f"({array_condition} OR {string_condition} OR {direct_condition})")
 
                     if conditions:
                         if negative:
-                            join_operator = " OR " if operation == 'AND' else " AND "
+                            join_operator = " OR " if operation == "AND" else " AND "
                         else:
-                            join_operator = " AND " if operation == 'AND' else " OR "
+                            join_operator = " AND " if operation == "AND" else " OR "
                         statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                 else:
                     try:
                         if hasattr(table, field):
                             field_obj = getattr(table, field)
-                            if hasattr(field_obj, 'type') and str(field_obj.type).lower() == 'jsonb':
+                            if hasattr(field_obj, "type") and str(field_obj.type).lower() == "jsonb":
                                 conditions = []
                                 for value in values:
                                     p_val = f"s_p_{param_counter}"
@@ -505,21 +518,25 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         object_condition = f"(jsonb_typeof({field}) = 'object' AND NOT ({field}::text ILIKE '%' || :{p_val} || '%'))"
                                         conditions.append(f"({array_condition} OR {object_condition})")
                                     else:
-                                        array_condition = f"(jsonb_typeof({field}) = 'array' AND {field} @> CAST(:{p_json_val} AS jsonb))"
-                                        object_condition = f"(jsonb_typeof({field}) = 'object' AND {field}::text ILIKE '%' || :{p_val} || '%')"
+                                        array_condition = (
+                                            f"(jsonb_typeof({field}) = 'array' AND {field} @> CAST(:{p_json_val} AS jsonb))"
+                                        )
+                                        object_condition = (
+                                            f"(jsonb_typeof({field}) = 'object' AND {field}::text ILIKE '%' || :{p_val} || '%')"
+                                        )
                                         conditions.append(f"({array_condition} OR {object_condition})")
 
                                 if conditions:
                                     if negative:
-                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                        join_operator = " OR " if operation == "AND" else " AND "
                                     else:
-                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                        join_operator = " AND " if operation == "AND" else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                            elif value_type == 'datetime':
+                            elif value_type == "datetime":
                                 conditions = []
 
-                                if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                    range_values = field_data['range_values']
+                                if field_data.get("is_range", False) and len(field_data.get("range_values", [])) == 2:
+                                    range_values = field_data["range_values"]
                                     val1, val2 = range_values
                                     if is_date_time_value(val1)[0] and is_date_time_value(val2)[0]:
                                         fmt1 = format_strings.get(val1)
@@ -531,20 +548,27 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             else:
                                                 try:
                                                     from datetime import datetime
-                                                    dt1 = datetime.strptime(val1,
-                                                                            fmt1.replace('YYYY', '%Y').replace('MM',
-                                                                                                               '%m').replace(
-                                                                                'DD', '%d').replace('"T"HH24',
-                                                                                                    'T%H').replace('MI',
-                                                                                                                   '%M').replace(
-                                                                                'SS', '%S').replace('US', '%f'))
-                                                    dt2 = datetime.strptime(val2,
-                                                                            fmt2.replace('YYYY', '%Y').replace('MM',
-                                                                                                               '%m').replace(
-                                                                                'DD', '%d').replace('"T"HH24',
-                                                                                                    'T%H').replace('MI',
-                                                                                                                   '%M').replace(
-                                                                                'SS', '%S').replace('US', '%f'))
+
+                                                    dt1 = datetime.strptime(
+                                                        val1,
+                                                        fmt1.replace("YYYY", "%Y")
+                                                        .replace("MM", "%m")
+                                                        .replace("DD", "%d")
+                                                        .replace('"T"HH24', "T%H")
+                                                        .replace("MI", "%M")
+                                                        .replace("SS", "%S")
+                                                        .replace("US", "%f"),
+                                                    )
+                                                    dt2 = datetime.strptime(
+                                                        val2,
+                                                        fmt2.replace("YYYY", "%Y")
+                                                        .replace("MM", "%m")
+                                                        .replace("DD", "%d")
+                                                        .replace('"T"HH24', "T%H")
+                                                        .replace("MI", "%M")
+                                                        .replace("SS", "%S")
+                                                        .replace("US", "%f"),
+                                                    )
                                                     if dt1 > dt2:
                                                         val1, val2 = val2, val1
                                                 except Exception:
@@ -568,10 +592,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                         if negative:
                                             conditions.append(
-                                                f"({field}::timestamp NOT BETWEEN TO_TIMESTAMP(:{p_start}, '{start_format}')::timestamp AND TO_TIMESTAMP(:{p_end}, '{end_format}')::timestamp)")
+                                                f"({field}::timestamp NOT BETWEEN TO_TIMESTAMP(:{p_start}, '{start_format}')::timestamp AND TO_TIMESTAMP(:{p_end}, '{end_format}')::timestamp)"
+                                            )
                                         else:
                                             conditions.append(
-                                                f"({field}::timestamp BETWEEN TO_TIMESTAMP(:{p_start}, '{start_format}')::timestamp AND TO_TIMESTAMP(:{p_end}, '{end_format}')::timestamp)")
+                                                f"({field}::timestamp BETWEEN TO_TIMESTAMP(:{p_start}, '{start_format}')::timestamp AND TO_TIMESTAMP(:{p_end}, '{end_format}')::timestamp)"
+                                            )
                                 else:
                                     for value in values:
                                         format_string = format_strings.get(value)
@@ -586,22 +612,24 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                             if negative:
                                                 conditions.append(
-                                                    f"({field}::timestamp < TO_TIMESTAMP(:{p_val}, '{format_string}')::timestamp OR {field}::timestamp >= TO_TIMESTAMP(:{p_next}, '{format_string}')::timestamp)")
+                                                    f"({field}::timestamp < TO_TIMESTAMP(:{p_val}, '{format_string}')::timestamp OR {field}::timestamp >= TO_TIMESTAMP(:{p_next}, '{format_string}')::timestamp)"
+                                                )
                                             else:
                                                 conditions.append(
-                                                    f"({field}::timestamp >= TO_TIMESTAMP(:{p_val}, '{format_string}')::timestamp AND {field}::timestamp < TO_TIMESTAMP(:{p_next}, '{format_string}')::timestamp)")
+                                                    f"({field}::timestamp >= TO_TIMESTAMP(:{p_val}, '{format_string}')::timestamp AND {field}::timestamp < TO_TIMESTAMP(:{p_next}, '{format_string}')::timestamp)"
+                                                )
 
                                 if conditions:
                                     if negative:
-                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                        join_operator = " OR " if operation == "AND" else " AND "
                                     else:
-                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                        join_operator = " AND " if operation == "AND" else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                            elif value_type == 'numeric':
+                            elif value_type == "numeric":
                                 conditions = []
 
-                                if field_data.get('is_range', False) and len(field_data.get('range_values', [])) == 2:
-                                    range_values = field_data['range_values']
+                                if field_data.get("is_range", False) and len(field_data.get("range_values", [])) == 2:
+                                    range_values = field_data["range_values"]
                                     val1, val2 = range_values
                                     try:
                                         val1 = float(val1)
@@ -619,9 +647,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bind_params[p2] = val2
 
                                     if negative:
-                                        conditions.append(f"(CAST({field} AS FLOAT) NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
+                                        conditions.append(
+                                            f"(CAST({field} AS FLOAT) NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))"
+                                        )
                                     else:
-                                        conditions.append(f"(CAST({field} AS FLOAT) BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))")
+                                        conditions.append(
+                                            f"(CAST({field} AS FLOAT) BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))"
+                                        )
                                 else:
                                     for value in values:
                                         try:
@@ -639,18 +671,18 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if conditions:
                                     if negative:
-                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                        join_operator = " OR " if operation == "AND" else " AND "
                                     else:
-                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                        join_operator = " AND " if operation == "AND" else " OR "
 
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
-                            elif value_type == 'boolean':
+                            elif value_type == "boolean":
                                 conditions = []
                                 for value in values:
                                     bool_value = value.lower()
                                     p_bool = f"s_p_{param_counter}"
                                     param_counter += 1
-                                    bind_params[p_bool] = bool_value == 'true'
+                                    bind_params[p_bool] = bool_value == "true"
                                     if negative:
                                         conditions.append(f"(CAST({field} AS BOOLEAN) != CAST(:{p_bool} AS boolean))")
                                     else:
@@ -658,14 +690,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                                 if conditions:
                                     if negative:
-                                        join_operator = " OR " if operation == 'AND' else " AND "
+                                        join_operator = " OR " if operation == "AND" else " AND "
                                     else:
-                                        join_operator = " AND " if operation == 'AND' else " OR "
+                                        join_operator = " AND " if operation == "AND" else " OR "
                                     statement = statement.where(text(join_operator.join(conditions)))
                             else:
                                 field_obj = getattr(table, field)
-                                is_timestamp = hasattr(field_obj, 'type') and str(field_obj.type).lower().startswith(
-                                    'timestamp')
+                                is_timestamp = hasattr(field_obj, "type") and str(field_obj.type).lower().startswith(
+                                    "timestamp"
+                                )
 
                                 if is_timestamp:
                                     conditions = []
@@ -678,13 +711,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         else:
                                             conditions.append(f"{field}::text = :{p_val}")
 
-                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                    join_operator = " AND " if operation == "AND" else " OR "
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                                 else:
                                     conditions = []
                                     for value in values:
-                                        if '*' in value:
-                                            pattern = value.replace('*', '%')
+                                        if "*" in value:
+                                            pattern = value.replace("*", "%")
                                             p_pat = f"s_p_{param_counter}"
                                             param_counter += 1
                                             bind_params[p_pat] = pattern
@@ -701,16 +734,16 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             else:
                                                 conditions.append(f"{field} = :{p_val}")
                                     if negative:
-                                        join_operator = ' AND '
+                                        join_operator = " AND "
                                     else:
-                                        join_operator = ' AND ' if operation == 'AND' else ' OR '
-                                    statement = statement.where(text('(' + join_operator.join(conditions) + ')'))
+                                        join_operator = " AND " if operation == "AND" else " OR "
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
 
                             if conditions:
                                 if negative:
-                                    join_operator = " OR " if operation == 'AND' else " AND "
+                                    join_operator = " OR " if operation == "AND" else " AND "
                                 else:
-                                    join_operator = " AND " if operation == 'AND' else " OR "
+                                    join_operator = " AND " if operation == "AND" else " OR "
                                 statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                     except Exception as e:
                         print(f"Error handling field {field}: {e}")
@@ -719,27 +752,19 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 statement = statement.params(**bind_params)
 
     if query.filter_schema_names:
-        if 'meta' in query.filter_schema_names:
-            query.filter_schema_names.remove('meta')
+        if "meta" in query.filter_schema_names:
+            query.filter_schema_names.remove("meta")
         if query.filter_schema_names:
             schema_params = {f"schema_{i}": name for i, name in enumerate(query.filter_schema_names)}
             placeholders = ", ".join(f":{k}" for k in schema_params)
-            statement = statement.where(
-                text(f"(payload ->> 'schema_shortname') IN ({placeholders})")
-            ).params(**schema_params)
+            statement = statement.where(text(f"(payload ->> 'schema_shortname') IN ({placeholders})")).params(**schema_params)
 
     if query.filter_shortnames:
-        statement = statement.where(
-            col(table.shortname).in_(query.filter_shortnames)
-        )
+        statement = statement.where(col(table.shortname).in_(query.filter_shortnames))
     if query.filter_types:
-        statement = statement.where(
-            col(table.resource_type).in_(query.filter_types)
-        )
+        statement = statement.where(col(table.resource_type).in_(query.filter_types))
     if query.filter_tags:
-        statement = statement.where(
-            col(table.tags).in_(query.filter_tags)
-        )
+        statement = statement.where(col(table.tags).in_(query.filter_tags))
     if query.from_date:
         statement = statement.where(table.created_at >= query.from_date)
     if query.to_date:
@@ -748,13 +773,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
     try:
         if not is_for_count:
             if query.sort_by:
-                if query.sort_by.startswith('attributes.'):
+                if query.sort_by.startswith("attributes."):
                     query.sort_by = query.sort_by[11:]
                 if "." in query.sort_by:
                     # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
                     sort_expression = transform_keys_to_sql(
-                        query.sort_by.replace("@", "", 1) if query.sort_by.startswith("@") else (
-                            f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by))
+                        query.sort_by.replace("@", "", 1)
+                        if query.sort_by.startswith("@")
+                        else (f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by)
+                    )
                     sort_type = " DESC" if query.sort_type == SortType.descending else ""
                     sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
                     statement = statement.order_by(text(sort_expression))
@@ -773,20 +800,27 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
         statement = statement.limit(query.limit)
 
-    if query.type == QueryType.tags and not is_for_count and hasattr(table, 'tags'):
+    if query.type == QueryType.tags and not is_for_count and hasattr(table, "tags"):
         if query.retrieve_json_payload:
-            statement = select(
-                func.jsonb_array_elements_text(col(table.tags)).label('tag'),
-                func.count('*').label('count')
-            ).where(col(table.uuid).in_(
-                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
-            )).group_by('tag')
+            statement = (
+                select(func.jsonb_array_elements_text(col(table.tags)).label("tag"), func.count("*").label("count"))
+                .where(
+                    col(table.uuid).in_(
+                        select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+                    )
+                )
+                .group_by("tag")
+            )
         else:
-            statement = select(
-                func.jsonb_array_elements_text(col(table.tags)).label('tag')
-            ).where(col(table.uuid).in_(
-                select(col(table.uuid)).where(statement.whereclause)  # type: ignore
-            )).distinct()
+            statement = (
+                select(func.jsonb_array_elements_text(col(table.tags)).label("tag"))
+                .where(
+                    col(table.uuid).in_(
+                        select(col(table.uuid)).where(statement.whereclause)  # type: ignore
+                    )
+                )
+                .distinct()
+            )
 
     return statement
 
@@ -808,10 +842,10 @@ class SQLAdapter(BaseDataAdapter):
         return total, locators
 
     def folder_path(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
     ) -> str:
         return ""
 
@@ -826,21 +860,17 @@ class SQLAdapter(BaseDataAdapter):
             return None
 
     async def save_otp(
-            self,
-            key: str,
-            otp: str,
+        self,
+        key: str,
+        otp: str,
     ):
         async with self.get_session() as session:
-            otp_entry = OTP(
-                key=key,
-                value={"otp": otp},
-                timestamp=datetime.now()
-            )
+            otp_entry = OTP(key=key, value={"otp": otp}, timestamp=datetime.now())
             await session.merge(otp_entry)
 
     async def get_otp(
-            self,
-            key: str,
+        self,
+        key: str,
     ):
         async with self.get_session() as session:
             result = await session.execute(select(OTP).where(OTP.key == key))
@@ -858,13 +888,14 @@ class SQLAdapter(BaseDataAdapter):
             statement = delete(OTP).where(col(OTP.key) == key)
             await session.execute(statement)
 
-    def metapath(self,
-                 space_name: str,
-                 subpath: str,
-                 shortname: str,
-                 class_type: Type[MetaChild],
-                 schema_shortname: str | None = None,
-                 ) -> tuple[Path, str]:
+    def metapath(
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: Type[MetaChild],
+        schema_shortname: str | None = None,
+    ) -> tuple[Path, str]:
         return (Path(), "")
 
     def __init__(self):
@@ -896,9 +927,7 @@ class SQLAdapter(BaseDataAdapter):
         self.engine = SQLAdapter._engine
         try:
             if SQLAdapter._async_session_factory is None:
-                SQLAdapter._async_session_factory = sessionmaker(
-                    self.engine, class_=AsyncSession, expire_on_commit=False
-                )  # type: ignore
+                SQLAdapter._async_session_factory = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore
             self.async_session = SQLAdapter._async_session_factory
         except Exception as e:
             print("[!FATAL]", e)
@@ -922,7 +951,7 @@ class SQLAdapter(BaseDataAdapter):
             await async_session.close()  # type: ignore
 
     def get_table(
-            self, class_type: Type[MetaChild]
+        self, class_type: Type[MetaChild]
     ) -> Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]:
 
         match class_type:
@@ -937,20 +966,21 @@ class SQLAdapter(BaseDataAdapter):
             case core.Lock:
                 return Locks
             case (
-            core.Alteration
-            | core.Media
-            | core.Lock
-            | core.Comment
-            | core.Reply
-            | core.Reaction
-            | core.Json
-            | core.DataAsset
+                core.Alteration
+                | core.Media
+                | core.Lock
+                | core.Comment
+                | core.Reply
+                | core.Reaction
+                | core.Json
+                | core.DataAsset
             ):
                 return Attachments
         return Entries
 
-    def get_base_model(self, class_type: Type[MetaChild], data,
-                       update=None) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
+    def get_base_model(
+        self, class_type: Type[MetaChild], data, update=None
+    ) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
         match class_type:
             case core.User:
                 return Users.model_validate(data, update=update)
@@ -961,14 +991,14 @@ class SQLAdapter(BaseDataAdapter):
             case core.Space:
                 return Spaces.model_validate(data, update=update)
             case (
-            core.Alteration
-            | core.Media
-            | core.Lock
-            | core.Comment
-            | core.Reply
-            | core.Reaction
-            | core.Json
-            | core.DataAsset
+                core.Alteration
+                | core.Media
+                | core.Lock
+                | core.Comment
+                | core.Reply
+                | core.Reaction
+                | core.Json
+                | core.DataAsset
             ):
                 if data.get("media", None) is None:
                     data["media"] = None
@@ -976,13 +1006,13 @@ class SQLAdapter(BaseDataAdapter):
         return Entries.model_validate(data, update=update)
 
     async def get_entry_attachments(
-            self,
-            subpath: str,
-            attachments_path: Path,
-            filter_types: list | None = None,
-            include_fields: list | None = None,
-            filter_shortnames: list | None = None,
-            retrieve_json_payload: bool = False,
+        self,
+        subpath: str,
+        attachments_path: Path,
+        filter_types: list | None = None,
+        include_fields: list | None = None,
+        filter_shortnames: list | None = None,
+        retrieve_json_payload: bool = False,
     ) -> dict:
         attachments_dict: dict[str, list] = {}
         async with self.get_session() as session:
@@ -996,7 +1026,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
+                .where(Attachments.subpath == f"{subpath}/{shortname}".replace("//", "/"))
             )
             results = list((await session.execute(statement)).all())
 
@@ -1011,7 +1041,7 @@ class SQLAdapter(BaseDataAdapter):
                     "resource_type": attachment_json["resource_type"],
                     "uuid": attachment_json["uuid"],
                     "shortname": attachment_json["shortname"],
-                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])  # join(),
+                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1]),  # join(),
                 }
                 del attachment_json["resource_type"]
                 del attachment_json["uuid"]
@@ -1030,11 +1060,12 @@ class SQLAdapter(BaseDataAdapter):
         return attachments_dict
 
     def payload_path(
-            self,
-            space_name: str,
-            subpath: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None, ) -> Path:
+        self,
+        space_name: str,
+        subpath: str,
+        class_type: Type[MetaChild],
+        schema_shortname: str | None = None,
+    ) -> Path:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
 
@@ -1054,13 +1085,13 @@ class SQLAdapter(BaseDataAdapter):
         return path
 
     async def db_load_or_none(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: Type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None:
         """Load a Meta Json according to the reuqested Class type"""
         if not subpath.startswith("/"):
@@ -1081,7 +1112,7 @@ class SQLAdapter(BaseDataAdapter):
 
         try:
             async with self.get_session() as session:
-                return (await session.execute(statement)).scalars().one_or_none() # type: ignore
+                return (await session.execute(statement)).scalars().one_or_none()  # type: ignore
         except Exception as e:
             print("[!load_or_none]", e)
             logger.error(f"Failed parsing an entry. Error: {e}")
@@ -1112,11 +1143,10 @@ class SQLAdapter(BaseDataAdapter):
                     if _result is None:
                         continue
 
-                    core_model_class_1: core.Meta = getattr(sys.modules["models.core"],
-                                                          camel_case(_result.resource_type))
-                    result = core_model_class_1.model_validate(
-                        _result.model_dump()
-                    ).to_record(_result.subpath, _result.shortname)
+                    core_model_class_1: core.Meta = getattr(sys.modules["models.core"], camel_case(_result.resource_type))
+                    result = core_model_class_1.model_validate(_result.model_dump()).to_record(
+                        _result.subpath, _result.shortname
+                    )
 
                     result.attributes = {**result.attributes, "space_name": _result.space_name}
 
@@ -1142,37 +1172,37 @@ class SQLAdapter(BaseDataAdapter):
                 if _result is None:
                     return None
 
-                core_model_class_2: core.Meta = getattr(sys.modules["models.core"],
-                                                      camel_case(_result.resource_type))
+                core_model_class_2: core.Meta = getattr(sys.modules["models.core"], camel_case(_result.resource_type))
 
-                result = core_model_class_2.model_validate(
-                    _result.model_dump()
-                ).to_record(_result.subpath, _result.shortname)
+                result = core_model_class_2.model_validate(_result.model_dump()).to_record(_result.subpath, _result.shortname)
                 result.attributes = {**result.attributes, "space_name": _result.space_name}
 
                 return result
 
     async def get_latest_history(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
     ) -> Histories | None:
         async with self.get_session() as session:
             try:
-                statement = select(Histories).where(
-                    col(Histories.space_name) == space_name,
-                    col(Histories.subpath) == subpath,
-                    col(Histories.shortname) == shortname
-                ).order_by(Histories.timestamp.desc()).limit(1)  # type: ignore
+                statement = (
+                    select(Histories)
+                    .where(
+                        col(Histories.space_name) == space_name,
+                        col(Histories.subpath) == subpath,
+                        col(Histories.shortname) == shortname,
+                    )
+                    .order_by(Histories.timestamp.desc())
+                    .limit(1)
+                )  # type: ignore
                 result = await session.execute(statement)
                 return result.scalars().first()  # type: ignore
-            except Exception as _: # type: ignore
+            except Exception as _:  # type: ignore
                 return None
 
-    async def query(
-            self, query: api.Query, user_shortname: str | None = None
-    ) -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> Tuple[int, list[core.Record]]:
         total: int
         results: list
 
@@ -1196,8 +1226,7 @@ class SQLAdapter(BaseDataAdapter):
         )
         if not query.exact_subpath:
             r = await get_user_query_policies(
-                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
-                query.type == QueryType.spaces
+                self, user_shortname, query.space_name, f"{query.subpath}/%".replace("//", "/"), query.type == QueryType.spaces
             )
             user_query_policies.extend(r)
 
@@ -1214,43 +1243,42 @@ class SQLAdapter(BaseDataAdapter):
         user_permissions = await self.get_user_permissions(user_shortname)
         filtered_policies = []
 
-        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        _subpath_target_permissions = "/" if query.subpath == "/" else query.subpath.removeprefix("/")
         if query.filter_types:
             for ft in query.filter_types:
-                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
-                filtered_policies = [policy for policy in user_query_policies if
-                                     policy.startswith(target_permissions)]
+                target_permissions = f"{query.space_name}:{_subpath_target_permissions}:{ft}"
+                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
         else:
-            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            target_permissions = f"{query.space_name}:{_subpath_target_permissions}"
             filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
 
         ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
         for user_query_policy in filtered_policies:
             for perm_key in user_permissions.keys():
                 if user_query_policy.startswith(perm_key):
-                    if ffv := user_permissions[perm_key]['filter_fields_values']:
+                    if ffv := user_permissions[perm_key]["filter_fields_values"]:
                         if ffv not in ffv_query:
                             ffv_query.append(ffv)
-                        perm_key_splited = perm_key.split(':')
+                        perm_key_splited = perm_key.split(":")
                         ffv_spaces.append(perm_key_splited[0])
                         ffv_subpath.append(perm_key_splited[1])
                         ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
-            perm_key_splited_query = f'@space_name:{"|".join(ffv_spaces)} @subpath:/{"|/".join(ffv_subpath)} @resource_type:{"|".join(ffv_resource_type)} {" ".join(ffv_query)}'
+            perm_key_splited_query = f"@space_name:{'|'.join(ffv_spaces)} @subpath:/{'|/'.join(ffv_subpath)} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}"
             if query.search:
-                query.search += f' {perm_key_splited_query}'
+                query.search += f" {perm_key_splited_query}"
             else:
                 query.search = perm_key_splited_query
         if query.search:
-            parts = [p for p in query.search.split(' ') if p]
+            parts = [p for p in query.search.split(" ") if p]
             seen = set()
             deduped_parts = []
             for p in parts:
                 if p not in seen:
                     seen.add(p)
                     deduped_parts.append(p)
-            query.search = ' '.join(deduped_parts)
+            query.search = " ".join(deduped_parts)
         statement_total = select(func.count(col(table.uuid)))
 
         if query and query.type == QueryType.events:
@@ -1290,21 +1318,20 @@ class SQLAdapter(BaseDataAdapter):
                 if query.retrieve_json_payload and tag_counts:
                     attributes["tag_counts"] = tag_counts  # type: ignore
 
-                return total, [core.Record(
-                    resource_type=core.ResourceType.content,
-                    shortname="tags",
-                    subpath=query.subpath,
-                    attributes=attributes,
-                )]
+                return total, [
+                    core.Record(
+                        resource_type=core.ResourceType.content,
+                        shortname="tags",
+                        subpath=query.subpath,
+                        attributes=attributes,
+                    )
+                ]
             except Exception as e:
                 print("[!!query_tags]", e)
                 return 0, []
 
         is_fetching_spaces = False
-        if (query.space_name
-                and query.type == QueryType.spaces
-                and query.space_name == "management"
-                and query.subpath == "/"):
+        if query.space_name and query.type == QueryType.spaces and query.space_name == "management" and query.subpath == "/":
             is_fetching_spaces = True
             statement = select(Spaces)  # type: ignore
             statement_total = select(func.count(col(Spaces.uuid)))
@@ -1314,15 +1341,11 @@ class SQLAdapter(BaseDataAdapter):
 
         if query.type != QueryType.spaces:
             statement = apply_acl_and_query_policies(statement, table, user_shortname, user_query_policies)
-            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname,
-                                                           user_query_policies)
+            statement_total = apply_acl_and_query_policies(statement_total, table, user_shortname, user_query_policies)
 
         try:
-            if query.type == QueryType.aggregation and query.aggregation_data and bool(
-                    query.aggregation_data.group_by):
-                statement_total = select(
-                    func.sum(statement_total.c["count"]).label('total_count')
-                )
+            if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
+                statement_total = select(func.sum(statement_total.c["count"]).label("total_count"))
 
             async with self.get_session() as session:
                 if query.retrieve_total:
@@ -1345,13 +1368,15 @@ class SQLAdapter(BaseDataAdapter):
                     attributes = {}
                     for item in results:
                         attributes.update({item[0]: item[1]})
-                    return 1, [core.Record(
-                        resource_type=ResourceType.content,
-                        uuid=uuid4(),
-                        shortname='aggregation_result',
-                        subpath=query.subpath,
-                        attributes=attributes
-                    )]
+                    return 1, [
+                        core.Record(
+                            resource_type=ResourceType.content,
+                            uuid=uuid4(),
+                            shortname="aggregation_result",
+                            subpath=query.subpath,
+                            attributes=attributes,
+                        )
+                    ]
                 elif query.type == QueryType.aggregation:
                     results = list((await session.execute(statement)).all())
                     await session.close()
@@ -1369,6 +1394,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if is_fetching_spaces:
                 from utils.access_control import access_control
+
                 _user = user_shortname if user_shortname else "anonymous"
                 results = [
                     r
@@ -1387,9 +1413,9 @@ class SQLAdapter(BaseDataAdapter):
 
             results = await self._set_query_final_results(query, results)
 
-            if getattr(query, 'join', None):
+            if getattr(query, "join", None):
                 try:
-                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous") # type: ignore
+                    results = await self._apply_client_joins(results, query.join, user_shortname or "anonymous")  # type: ignore
                 except Exception as e:
                     print("[!client_join]", e)
 
@@ -1405,19 +1431,21 @@ class SQLAdapter(BaseDataAdapter):
             )
         return total, results
 
-    async def _apply_client_joins(self, base_records: list[core.Record], joins: list[api.JoinQuery], user_shortname: str) -> list[core.Record]:
+    async def _apply_client_joins(
+        self, base_records: list[core.Record], joins: list[api.JoinQuery], user_shortname: str
+    ) -> list[core.Record]:
         def parse_join_on(expr: str) -> list[tuple[str, bool, str, bool]]:
             joins_list = []
-            for part in expr.split(','):
+            for part in expr.split(","):
                 part = part.strip()
                 if not part:
                     continue
-                parts = [p.strip() for p in part.split(':', 1)]
+                parts = [p.strip() for p in part.split(":", 1)]
                 if len(parts) != 2:
                     raise ValueError(f"Invalid join_on expression: {expr}")
                 left, right = parts[0], parts[1]
-                _l_arr = left.endswith('[]')
-                _r_arr = right.endswith('[]')
+                _l_arr = left.endswith("[]")
+                _r_arr = right.endswith("[]")
                 if _l_arr:
                     left = left[:-2]
                 if _r_arr:
@@ -1449,22 +1477,22 @@ class SQLAdapter(BaseDataAdapter):
                 return [val]
             except Exception as e:
                 logger.warning(
-                    f"Skipping bad record value extraction for path '{path}' "
-                    f"on record '{getattr(rec, 'shortname', '?')}': {e}"
+                    f"Skipping bad record value extraction for path '{path}' on record '{getattr(rec, 'shortname', '?')}': {e}"
                 )
                 return []
 
         for rec in base_records:
             if rec.attributes is None:
                 rec.attributes = {}
-            if rec.attributes.get('join') is None:
-                rec.attributes['join'] = {}
+            if rec.attributes.get("join") is None:
+                rec.attributes["join"] = {}
 
         import models.api as api
+
         for join_item in joins:
-            join_on = getattr(join_item, 'join_on', None)
-            alias = getattr(join_item, 'alias', None)
-            q = getattr(join_item, 'query', None)
+            join_on = getattr(join_item, "join_on", None)
+            alias = getattr(join_item, "alias", None)
+            q = getattr(join_item, "query", None)
             if not join_on or not alias or q is None:
                 continue
 
@@ -1474,7 +1502,7 @@ class SQLAdapter(BaseDataAdapter):
 
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
             q_raw = q if isinstance(q, dict) else q.model_dump(exclude_defaults=True)
-            user_limit = q_raw.get('limit') or q_raw.get('limit_')
+            user_limit = q_raw.get("limit") or q_raw.get("limit_")
             sub_query = copy(sub_query)
 
             search_terms = []
@@ -1558,18 +1586,18 @@ class SQLAdapter(BaseDataAdapter):
 
                 matched_list.append(matched)
 
-            if getattr(sub_query, 'jq_filter', None):
+            if getattr(sub_query, "jq_filter", None):
                 try:
                     import subprocess
                     from utils.helpers import jq_dict_parser
-                    
+
                     def _run_jq_subprocess() -> list:
                         _input_local = []
                         for m_list in matched_list:
                             _m_local = [record.model_dump() for record in m_list]
                             _m_local = jq_dict_parser(_m_local)
                             _input_local.append(_m_local)
-                        
+
                         input_json = json.dumps(_input_local)
                         vectorized_filter = f"map( [ {sub_query.jq_filter} ] )"
                         cmd = ["jq", "-c", vectorized_filter]
@@ -1613,7 +1641,7 @@ class SQLAdapter(BaseDataAdapter):
                                 if not line:
                                     continue
                                 results.append(json.loads(line))
-                        
+
                         return results
 
                     loop = asyncio.get_running_loop()
@@ -1632,27 +1660,26 @@ class SQLAdapter(BaseDataAdapter):
                     )
 
             for i, br in enumerate(base_records):
-                br.attributes['join'][alias] = matched_list[i] if i < len(matched_list) else []
+                br.attributes["join"][alias] = matched_list[i] if i < len(matched_list) else []
 
         return base_records
 
     async def load_or_none(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: Type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> MetaChild | None:
 
-        result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname,
-                                            schema_shortname)
+        result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
         if not result:
             return None
 
         try:
-            if hasattr(result, 'payload') and result.payload and isinstance(result.payload, dict):
+            if hasattr(result, "payload") and result.payload and isinstance(result.payload, dict):
                 if result.payload.get("body", None) is None:
                     result.payload["body"] = {}
                 result.payload = core.Payload.model_validate(result.payload, strict=False)
@@ -1662,16 +1689,17 @@ class SQLAdapter(BaseDataAdapter):
         return class_type.model_validate(result.model_dump())
 
     async def load(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: Type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> MetaChild:
-        meta: MetaChild | None = await self.load_or_none(space_name, subpath, shortname, class_type, user_shortname,
-                                                         schema_shortname)
+        meta: MetaChild | None = await self.load_or_none(
+            space_name, subpath, shortname, class_type, user_shortname, schema_shortname
+        )
         if meta is None:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1685,12 +1713,12 @@ class SQLAdapter(BaseDataAdapter):
         return meta
 
     async def load_resource_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            filename: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        filename: str,
+        class_type: Type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
         async with self.get_session() as session:
@@ -1700,11 +1728,9 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(table).where(table.space_name == space_name)
 
             if table in [Roles, Permissions, Users]:
-                statement = statement.where(table.shortname == filename.replace('.json', ''))
+                statement = statement.where(table.shortname == filename.replace(".json", ""))
             elif table in [Entries, Attachments, Histories]:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == filename.replace('.json', '')
-                )
+                statement = statement.where(table.subpath == subpath).where(table.shortname == filename.replace(".json", ""))
 
             result = (await session.execute(statement)).one_or_none()
             if result is None:
@@ -1717,7 +1743,7 @@ class SQLAdapter(BaseDataAdapter):
         if isinstance(meta, core.User):
             if meta.roles:
                 for role in meta.roles:
-                    if not await self.load_or_none(settings.management_space, 'roles', role, core.Role):
+                    if not await self.load_or_none(settings.management_space, "roles", role, core.Role):
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1728,7 +1754,7 @@ class SQLAdapter(BaseDataAdapter):
                         )
             if meta.groups:
                 for group in meta.groups:
-                    if not await self.load_or_none(settings.management_space, 'groups', group, core.Group):
+                    if not await self.load_or_none(settings.management_space, "groups", group, core.Group):
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1740,7 +1766,7 @@ class SQLAdapter(BaseDataAdapter):
         elif isinstance(meta, core.Role):
             if meta.permissions:
                 for permission in meta.permissions:
-                    if not await self.load_or_none(settings.management_space, 'permissions', permission, core.Permission):
+                    if not await self.load_or_none(settings.management_space, "permissions", permission, core.Permission):
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1750,9 +1776,9 @@ class SQLAdapter(BaseDataAdapter):
                             ),
                         )
         elif isinstance(meta, core.Group):
-            if hasattr(meta, 'roles') and meta.roles:
+            if hasattr(meta, "roles") and meta.roles:
                 for role in meta.roles:
-                    if not await self.load_or_none(settings.management_space, 'roles', role, core.Role):
+                    if not await self.load_or_none(settings.management_space, "roles", role, core.Role):
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1801,9 +1827,7 @@ class SQLAdapter(BaseDataAdapter):
                         ),
                     )
 
-    async def save(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ) -> Any:
+    async def save(self, space_name: str, subpath: str, meta: core.Meta) -> Any:
         """Save"""
         await self._validate_referential_integrity(meta)
         try:
@@ -1817,7 +1841,7 @@ class SQLAdapter(BaseDataAdapter):
                 if meta.__class__ is core.Folder:
                     if entity["subpath"] != "/":
                         if not entity["subpath"].startswith("/"):
-                            entity["subpath"] = f'/{entity["subpath"]}'
+                            entity["subpath"] = f"/{entity['subpath']}"
                         if entity["subpath"].endswith("/"):
                             entity["subpath"] = entity["subpath"][:-1]
 
@@ -1826,17 +1850,17 @@ class SQLAdapter(BaseDataAdapter):
                         entity["subpath"] = entity["subpath"][:-1]
                     entity["subpath"] = subpath_checker(entity["subpath"])
 
-                entity['resource_type'] = meta.__class__.__name__.lower()
+                entity["resource_type"] = meta.__class__.__name__.lower()
                 data = self.get_base_model(meta.__class__, entity)
 
                 if not isinstance(data, Attachments) and not isinstance(data, Histories):
                     data.query_policies = generate_query_policies(
                         space_name=space_name,
                         subpath=subpath,
-                        resource_type=entity['resource_type'],
-                        is_active=entity['is_active'],
-                        owner_shortname=entity.get('owner_shortname', 'dmart'),
-                        owner_group_shortname=entity.get('owner_group_shortname', None),
+                        resource_type=entity["resource_type"],
+                        is_active=entity["is_active"],
+                        owner_shortname=entity.get("owner_shortname", "dmart"),
+                        owner_group_shortname=entity.get("owner_group_shortname", None),
                     )
                 session.add(data)
                 try:
@@ -1882,32 +1906,22 @@ class SQLAdapter(BaseDataAdapter):
 
         await self.save(space_name, subpath, meta)
 
-    async def save_payload(
-            self, space_name: str, subpath: str, meta: core.Meta, attachment
-    ):
+    async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
         if meta.__class__ != core.Content:
             media = await attachment.read()
-            await self.update(
-                space_name, subpath, meta,
-                {}, {}, [],
-                "", attachment_media=media
-            )
+            await self.update(space_name, subpath, meta, {}, {}, [], "", attachment_media=media)
         else:
             content = json.load(attachment.file)
             if meta.payload:
                 meta.payload.body = content
-                await self.update(
-                    space_name, subpath, meta,
-                    {}, {}, [],
-                    ""
-                )
+                await self.update(space_name, subpath, meta, {}, {}, [], "")
 
     async def save_payload_from_json(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
     ):
         try:
             result = await self.db_load_or_none(space_name, subpath, meta.shortname, meta.__class__)
@@ -1928,7 +1942,7 @@ class SQLAdapter(BaseDataAdapter):
                     }
                 else:
                     meta.payload.body = payload_data
-            
+
             await self._validate_referential_integrity(meta)
             result.sqlmodel_update(meta.model_dump())
             async with self.get_session() as session:
@@ -1946,17 +1960,17 @@ class SQLAdapter(BaseDataAdapter):
             )
 
     async def update(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
-            attachment_media: Any | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
+        attachment_media: Any | None = None,
     ) -> dict:
         """Update the entry, store the difference and return it"""
         await self._validate_referential_integrity(meta)
@@ -1983,7 +1997,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if isinstance(result, Attachments) and attachment_media:
                 result.media = attachment_media
-            if hasattr(result, 'query_policies'):
+            if hasattr(result, "query_policies"):
                 result.query_policies = generate_query_policies(
                     space_name=space_name,
                     subpath=subpath,
@@ -1993,13 +2007,13 @@ class SQLAdapter(BaseDataAdapter):
                     owner_group_shortname=result.owner_shortname,
                 )
 
-            if  meta.__class__ is not core.Lock or not isinstance(result, Locks):
+            if meta.__class__ is not core.Lock or not isinstance(result, Locks):
                 result.updated_at = datetime.now()
-                new_version_flattend['updated_at'] = result.updated_at.isoformat() # type: ignore
+                new_version_flattend["updated_at"] = result.updated_at.isoformat()  # type: ignore
                 if "updated_at" not in updated_attributes_flattend:
                     updated_attributes_flattend.append("updated_at")
-                if 'updated_at' in old_version_flattend:
-                    old_version_flattend['updated_at'] = old_version_flattend['updated_at'].isoformat()
+                if "updated_at" in old_version_flattend:
+                    old_version_flattend["updated_at"] = old_version_flattend["updated_at"].isoformat()
 
             async with self.get_session() as session:
                 session.add(result)
@@ -2037,30 +2051,28 @@ class SQLAdapter(BaseDataAdapter):
         return history_diff
 
     async def update_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
-            owner_shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
+        owner_shortname: str,
     ):
         if not meta.payload:
             meta.payload = core.Payload()
         meta.payload.body = payload_data
-        await self.update(
-            space_name, subpath, meta, {}, {}, [], owner_shortname
-        )
+        await self.update(space_name, subpath, meta, {}, {}, [], owner_shortname)
 
     async def store_entry_diff(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            owner_shortname: str,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            resource_type,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        owner_shortname: str,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        resource_type,
     ) -> dict:
         try:
             diff_keys = list(old_version_flattend.keys())
@@ -2076,8 +2088,7 @@ class SQLAdapter(BaseDataAdapter):
                         old, new = arr_remove_common(old, new)
 
                     history_diff[key] = {"old": old, "new": new}
-            removed = get_removed_items(list(old_version_flattend.keys()),
-                                        list(new_version_flattend.keys()))
+            removed = get_removed_items(list(old_version_flattend.keys()), list(new_version_flattend.keys()))
             for r in removed:
                 history_diff[r] = {
                     "old": old_version_flattend[r],
@@ -2105,11 +2116,11 @@ class SQLAdapter(BaseDataAdapter):
                 session.add(Histories.model_validate(history_obj))
                 table = self.get_table(resource_type)
                 await session.execute(
-                    update(table).where(
-                        col(table.space_name) == space_name,
-                        col(table.subpath) == subpath,
-                        col(table.shortname) == shortname
-                    ).values(last_checksum_history=new_checksum)
+                    update(table)
+                    .where(
+                        col(table.space_name) == space_name, col(table.subpath) == subpath, col(table.shortname) == shortname
+                    )
+                    .values(last_checksum_history=new_checksum)
                 )
                 await session.commit()
 
@@ -2120,14 +2131,14 @@ class SQLAdapter(BaseDataAdapter):
             return {}
 
     async def move(
-            self,
-            src_space_name: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_space_name: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            meta: core.Meta,
+        self,
+        src_space_name: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_space_name: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        meta: core.Meta,
     ):
         """Move the file that match the criteria given, remove source folder if empty"""
         if not src_subpath.startswith("/"):
@@ -2160,7 +2171,7 @@ class SQLAdapter(BaseDataAdapter):
             old_subpath = ""
             try:
                 old_shortname = origin.shortname
-                if hasattr(origin, 'subpath'):
+                if hasattr(origin, "subpath"):
                     old_subpath = origin.subpath
                 table = self.get_table(meta.__class__)
                 statement = select(table).where(table.space_name == dest_space_name)
@@ -2168,9 +2179,7 @@ class SQLAdapter(BaseDataAdapter):
                 if table in [Roles, Permissions, Users, Spaces]:
                     statement = statement.where(table.shortname == dest_shortname)
                 else:
-                    statement = statement.where(table.subpath == dest_subpath).where(
-                        table.shortname == dest_shortname
-                    )
+                    statement = statement.where(table.subpath == dest_subpath).where(table.shortname == dest_shortname)
 
                 target = (await session.execute(statement)).one_or_none()
                 if target is not None:
@@ -2185,19 +2194,19 @@ class SQLAdapter(BaseDataAdapter):
                 if dest_shortname:
                     origin.shortname = dest_shortname
 
-                if hasattr(origin, 'subpath') and dest_subpath:
+                if hasattr(origin, "subpath") and dest_subpath:
                     origin.subpath = dest_subpath
 
-                if hasattr(origin, 'space_name') and dest_space_name:
+                if hasattr(origin, "space_name") and dest_space_name:
                     origin.space_name = dest_space_name
 
                 origin.query_policies = generate_query_policies(
                     space_name=dest_space_name,
                     subpath=dest_subpath,
-                    resource_type=origin.resource_type if hasattr(origin,
-                                                                  'resource_type') else origin.__class__.__name__.lower()[
-                        :-1],
-                    is_active=origin.is_active if hasattr(origin, 'is_active') else True,
+                    resource_type=origin.resource_type
+                    if hasattr(origin, "resource_type")
+                    else origin.__class__.__name__.lower()[:-1],
+                    is_active=origin.is_active if hasattr(origin, "is_active") else True,
                     owner_shortname=origin.owner_shortname,
                     owner_group_shortname=None,
                 )
@@ -2208,12 +2217,10 @@ class SQLAdapter(BaseDataAdapter):
                         await session.execute(
                             update(Spaces)
                             .where(col(Spaces.space_name) == src_space_name)
-                            .values(space_name=dest_shortname,shortname=dest_shortname)
+                            .values(space_name=dest_shortname, shortname=dest_shortname)
                         )
                         await session.execute(
-                            update(Entries)
-                            .where(col(Entries.space_name) == src_space_name)
-                            .values(space_name=dest_shortname)
+                            update(Entries).where(col(Entries.space_name) == src_space_name).values(space_name=dest_shortname)
                         )
                         await session.execute(
                             update(Attachments)
@@ -2222,7 +2229,7 @@ class SQLAdapter(BaseDataAdapter):
                         )
                 except Exception as e:
                     origin.shortname = old_shortname
-                    if hasattr(origin, 'subpath'):
+                    if hasattr(origin, "subpath"):
                         origin.subpath = old_subpath
 
                     session.add(origin)
@@ -2253,27 +2260,27 @@ class SQLAdapter(BaseDataAdapter):
         pass
 
     async def clone(
-            self,
-            src_space: str,
-            dest_space: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            class_type: Type[MetaChild],
+        self,
+        src_space: str,
+        dest_space: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        class_type: Type[MetaChild],
     ):
         pass
 
-    async def is_entry_exist(self,
-                             space_name: str,
-                             subpath: str,
-                             shortname: str,
-                             resource_type: ResourceType,
-                             schema_shortname: str | None = None, ) -> bool:
+    async def is_entry_exist(
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        resource_type: ResourceType,
+        schema_shortname: str | None = None,
+    ) -> bool:
         async with self.get_session() as session:
-            resource_cls = getattr(
-                sys.modules["models.core"], camel_case(resource_type)
-            )
+            resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
 
             table = self.get_table(resource_cls)
             if not subpath.startswith("/"):
@@ -2293,27 +2300,23 @@ class SQLAdapter(BaseDataAdapter):
                 core.Json,
                 core.DataAsset,
             ]:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
+                statement = statement.where(table.subpath == subpath).where(table.shortname == shortname)
 
             else:
-                statement = statement.where(table.subpath == subpath).where(
-                    table.shortname == shortname
-                )
+                statement = statement.where(table.subpath == subpath).where(table.shortname == shortname)
 
             result = (await session.execute(statement)).fetchall()
             result = [result[0] for result in result]
             return False if len(result) == 0 else True
 
     async def delete(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
     ):
         """Delete the file that match the criteria given, remove folder if empty"""
         await self._check_in_use(meta)
@@ -2326,14 +2329,42 @@ class SQLAdapter(BaseDataAdapter):
 
                 if meta.__class__ == core.User:
                     try:
-                        await session.execute(update(Spaces).where(col(Spaces.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
-                        await session.execute(update(Entries).where(col(Entries.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
-                        await session.execute(update(Attachments).where(col(Attachments.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
-                        await session.execute(update(Roles).where(col(Roles.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
-                        await session.execute(update(Permissions).where(col(Permissions.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(
+                            update(Spaces)
+                            .where(col(Spaces.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
+                        await session.execute(
+                            update(Entries)
+                            .where(col(Entries.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
+                        await session.execute(
+                            update(Attachments)
+                            .where(col(Attachments.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
+                        await session.execute(
+                            update(Roles)
+                            .where(col(Roles.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
+                        await session.execute(
+                            update(Permissions)
+                            .where(col(Permissions.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
 
-                        await session.execute(update(Locks).where(col(Locks.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
-                        await session.execute(update(Histories).where(col(Histories.owner_shortname) == meta.shortname).values(owner_shortname="anonymous"))
+                        await session.execute(
+                            update(Locks)
+                            .where(col(Locks.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
+                        await session.execute(
+                            update(Histories)
+                            .where(col(Histories.owner_shortname) == meta.shortname)
+                            .values(owner_shortname="anonymous")
+                        )
 
                         await session.execute(delete(Sessions).where(col(Sessions.shortname) == meta.shortname))
                     except Exception as _e:
@@ -2346,26 +2377,32 @@ class SQLAdapter(BaseDataAdapter):
                     statement = delete(Entries).where(col(Entries.space_name) == space_name)
                     await session.execute(statement)
                 if meta.__class__ == core.Folder:
-                    _subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
-                    folder_prefix = f"{_subpath}/".replace('//', '/')
-                    statement2 = delete(Attachments) \
-                        .where(col(Attachments.space_name) == space_name) \
+                    _subpath = f"{subpath}/{meta.shortname}".replace("//", "/")
+                    folder_prefix = f"{_subpath}/".replace("//", "/")
+                    statement2 = (
+                        delete(Attachments)
+                        .where(col(Attachments.space_name) == space_name)
                         .where(col(Attachments.subpath).startswith(_subpath))
+                    )
                     await session.execute(statement2)
-                    statement = delete(Entries) \
-                        .where(col(Entries.space_name) == space_name) \
+                    statement = (
+                        delete(Entries)
+                        .where(col(Entries.space_name) == space_name)
                         .where(
                             or_(
                                 col(Entries.subpath) == _subpath,
                                 col(Entries.subpath).startswith(folder_prefix),
                             )
                         )
+                    )
                     await session.execute(statement)
                 elif isinstance(result, Entries):
-                    entry_attachment_subpath = f"{subpath}/{meta.shortname}".replace('//', '/')
-                    statement = delete(Attachments) \
-                        .where(col(Attachments.space_name) == space_name) \
+                    entry_attachment_subpath = f"{subpath}/{meta.shortname}".replace("//", "/")
+                    statement = (
+                        delete(Attachments)
+                        .where(col(Attachments.space_name) == space_name)
                         .where(col(Attachments.subpath).startswith(entry_attachment_subpath))
+                    )
                     await session.execute(statement)
 
                 await session.commit()
@@ -2390,17 +2427,21 @@ class SQLAdapter(BaseDataAdapter):
                     ),
                 )
 
-    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str,
-                           action: LockAction) -> dict | None:
+    async def lock_handler(
+        self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
+    ) -> dict | None:
         if not subpath.startswith("/"):
             subpath = f"/{subpath}"
 
         async with self.get_session() as session:
             match action:
                 case LockAction.lock:
-                    statement = select(Locks).where(Locks.space_name == space_name) \
-                        .where(Locks.subpath == subpath) \
+                    statement = (
+                        select(Locks)
+                        .where(Locks.space_name == space_name)
+                        .where(Locks.subpath == subpath)
                         .where(Locks.shortname == shortname)
+                    )
                     result = (await session.execute(statement)).one_or_none()
                     if result:
                         raise api.Exception(
@@ -2409,7 +2450,7 @@ class SQLAdapter(BaseDataAdapter):
                                 type="lock",
                                 code=InternalErrorCode.LOCKED_ENTRY,
                                 message="entry already locked already exists!",
-                            )
+                            ),
                         )
 
                     lock = Locks(
@@ -2424,19 +2465,23 @@ class SQLAdapter(BaseDataAdapter):
                     await session.refresh(lock)
                     return lock.model_dump()
                 case LockAction.fetch:
-                    lock_payload = (await self.load(
-                        space_name=space_name,
-                        subpath=subpath,
-                        shortname=shortname,
-                        class_type=core.Lock,
-                        user_shortname=user_shortname,
-                    )).model_dump()
+                    lock_payload = (
+                        await self.load(
+                            space_name=space_name,
+                            subpath=subpath,
+                            shortname=shortname,
+                            class_type=core.Lock,
+                            user_shortname=user_shortname,
+                        )
+                    ).model_dump()
                     return lock_payload
                 case LockAction.unlock:
-                    statement2 = delete(Locks) \
-                        .where(col(Locks.space_name) == space_name) \
-                        .where(col(Locks.subpath) == subpath) \
+                    statement2 = (
+                        delete(Locks)
+                        .where(col(Locks.space_name) == space_name)
+                        .where(col(Locks.subpath) == subpath)
                         .where(col(Locks.shortname) == shortname)
+                    )
                     await session.execute(statement2)
                     await session.commit()
         return None
@@ -2452,8 +2497,9 @@ class SQLAdapter(BaseDataAdapter):
         try:
             total, last_session = await self.get_user_session(user_shortname, token)
 
-            if (settings.max_sessions_per_user == 1 and last_session is not None) \
-                    or (settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user):
+            if (settings.max_sessions_per_user == 1 and last_session is not None) or (
+                settings.max_sessions_per_user != 0 and total >= settings.max_sessions_per_user
+            ):
                 await self.remove_user_session(user_shortname)
 
             timestamp = datetime.now()
@@ -2474,8 +2520,7 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
         async with self.get_session() as session:
-            statement = select(Sessions) \
-                .where(col(Sessions.shortname) == user_shortname)
+            statement = select(Sessions).where(col(Sessions.shortname) == user_shortname)
 
             results = (await session.execute(statement)).all()
             results = [result[0] for result in results]
@@ -2499,9 +2544,12 @@ class SQLAdapter(BaseDataAdapter):
     async def remove_user_session(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
             try:
-                statement = select(Sessions).where(col(Sessions.shortname) == user_shortname).order_by(
-                    col(Sessions.timestamp).desc()
-                ).offset(settings.max_sessions_per_user - 1)
+                statement = (
+                    select(Sessions)
+                    .where(col(Sessions.shortname) == user_shortname)
+                    .order_by(col(Sessions.timestamp).desc())
+                    .offset(settings.max_sessions_per_user - 1)
+                )
                 oldest_sessions = (await session.execute(statement)).all()
                 oldest_sessions = [oldest_session[0] for oldest_session in oldest_sessions]
                 for oldest_session in oldest_sessions:
@@ -2600,8 +2648,8 @@ class SQLAdapter(BaseDataAdapter):
 
     @staticmethod
     def _sanitize_large_integers(obj):
-        _INT64_MIN = -(2 ** 63)
-        _INT64_MAX = 2 ** 63 - 1
+        _INT64_MIN = -(2**63)
+        _INT64_MAX = 2**63 - 1
         if isinstance(obj, dict):
             return {k: SQLAdapter._sanitize_large_integers(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -2647,20 +2695,17 @@ class SQLAdapter(BaseDataAdapter):
                 logger.warning(f"Skipping record due to conversion error: {e}")
                 continue
 
-            if rec.resource_type is ResourceType.user and 'password' in rec.attributes:
-                del rec.attributes['password']
+            if rec.resource_type is ResourceType.user and "password" in rec.attributes:
+                del rec.attributes["password"]
 
-            if 'query_policies' in rec.attributes:
-                del rec.attributes['query_policies']
+            if "query_policies" in rec.attributes:
+                del rec.attributes["query_policies"]
 
             if query.type == QueryType.history:
-                del rec.attributes['request_headers']
-                for main_key, changes in rec.attributes['diff'].items():
-                    if main_key == 'password':
-                        rec.attributes['diff'][main_key] = {
-                            'old': '********',
-                            'new': '********'
-                        }
+                del rec.attributes["request_headers"]
+                for main_key, changes in rec.attributes["diff"].items():
+                    if main_key == "password":
+                        rec.attributes["diff"][main_key] = {"old": "********", "new": "********"}
                     if not isinstance(changes, dict):
                         continue
                     for state in ("old", "new"):
@@ -2755,10 +2800,12 @@ class SQLAdapter(BaseDataAdapter):
             subpath = f"/{subpath}"
 
         async with self.get_session() as session:
-            statement = select(Attachments.media) \
-                .where(Attachments.space_name == space_name) \
-                .where(Attachments.subpath == subpath) \
+            statement = (
+                select(Attachments.media)
+                .where(Attachments.space_name == space_name)
+                .where(Attachments.subpath == subpath)
                 .where(Attachments.shortname == shortname)
+            )
 
             result = (await session.execute(statement)).one_or_none()
             if result:
@@ -2767,7 +2814,7 @@ class SQLAdapter(BaseDataAdapter):
         return None
 
     async def validate_uniqueness(
-            self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
     ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
@@ -2780,17 +2827,18 @@ class SQLAdapter(BaseDataAdapter):
         except Exception:
             folder_meta = None
 
-        if folder_meta is None or folder_meta.payload is None or not isinstance(folder_meta.payload.body,
-                                                                                dict) or not isinstance(
-            folder_meta.payload.body.get("unique_fields", None), list):  # type: ignore
+        if (
+            folder_meta is None
+            or folder_meta.payload is None
+            or not isinstance(folder_meta.payload.body, dict)
+            or not isinstance(folder_meta.payload.body.get("unique_fields", None), list)
+        ):  # type: ignore
             return True
 
         current_record = None
         if action is api.RequestType.update:
             try:
-                resource_class = getattr(
-                    sys_modules["models.core"], camel_case(record.resource_type)
-                )
+                resource_class = getattr(sys_modules["models.core"], camel_case(record.resource_type))
                 current_record = await self.load(space_name, record.subpath, record.shortname, resource_class)
             except Exception:
                 current_record = None
@@ -2804,22 +2852,26 @@ class SQLAdapter(BaseDataAdapter):
             for composite_unique_key in compound:
                 is_payload_body_field = composite_unique_key.startswith("payload.body.")
                 payload_path = ""
-                
+
                 if is_payload_body_field:
                     payload_path = composite_unique_key.replace("payload.body.", "", 1)
                     payload_body = record.attributes.get("payload", {}).get("body", {})
                     value = get_nested_value(payload_body, payload_path) if isinstance(payload_body, dict) else None
                 else:
                     value = get_nested_value(record.attributes, composite_unique_key)
-                
+
                 if value is None or value == "":
                     continue
-                    
+
                 if current_user is not None:
                     if is_payload_body_field:
                         user_payload = getattr(current_user, "payload", None)
                         if user_payload and isinstance(user_payload.body, dict):
-                            user_value = get_nested_value(user_payload.body, payload_path) if isinstance(user_payload.body, dict) else None
+                            user_value = (
+                                get_nested_value(user_payload.body, payload_path)
+                                if isinstance(user_payload.body, dict)
+                                else None
+                            )
                             if user_value == value:
                                 continue
                     else:
@@ -2831,12 +2883,7 @@ class SQLAdapter(BaseDataAdapter):
             if query_string == "":
                 continue
 
-            q = api.Query(
-                space_name=space_name,
-                subpath=record.subpath,
-                type=QueryType.subpath,
-                search=query_string
-            )
+            q = api.Query(space_name=space_name, subpath=record.subpath, type=QueryType.subpath, search=query_string)
             owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
             total, records = await self.query(q, owner)
 
@@ -2859,10 +2906,10 @@ class SQLAdapter(BaseDataAdapter):
         return True
 
     async def validate_payload_with_schema(
-            self,
-            payload_data: UploadFile | dict,
-            space_name: str,
-            schema_shortname: str,
+        self,
+        payload_data: UploadFile | dict,
+        space_name: str,
+        schema_shortname: str,
     ):
         if not isinstance(payload_data, (dict, UploadFile)):
             raise API_Exception(
@@ -2878,7 +2925,7 @@ class SQLAdapter(BaseDataAdapter):
             space_name = "management"
         schema = await self.load(space_name, "/schema", schema_shortname, core.Schema)
         if schema.payload:
-            schema = schema.payload.model_dump()['body']
+            schema = schema.payload.model_dump()["body"]
 
         if not isinstance(payload_data, dict):
             data = json.load(payload_data.file)
@@ -2963,16 +3010,12 @@ class SQLAdapter(BaseDataAdapter):
     #     return items
 
     async def get_role_permissions(self, role: core.Role) -> list[core.Permission]:
-        role_records = await self.load_or_none(
-            settings.management_space, 'roles', role.shortname, core.Role
-        )
+        role_records = await self.load_or_none(settings.management_space, "roles", role.shortname, core.Role)
         if role_records is None:
             return []
         role_permissions: list[core.Permission] = []
         for permission in role_records.permissions:
-            permission_record = await self.load_or_none(
-                settings.management_space, 'permissions', permission, core.Permission
-            )
+            permission_record = await self.load_or_none(settings.management_space, "permissions", permission, core.Permission)
             if permission_record is None:
                 continue
             role_permissions.append(permission_record)
@@ -2980,22 +3023,16 @@ class SQLAdapter(BaseDataAdapter):
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
         try:
-            user = await self.load_or_none(
-                settings.management_space, settings.users_subpath, user_shortname, core.User
-            )
+            user = await self.load_or_none(settings.management_space, settings.users_subpath, user_shortname, core.User)
             if user is None:
                 return {}
             euser_roles: dict[str, core.Role] = {}
             if user_shortname != "anonymous":
-                role_record = await self.load_or_none(
-                    settings.management_space, 'roles', 'logged_in', core.Role
-                )
+                role_record = await self.load_or_none(settings.management_space, "roles", "logged_in", core.Role)
                 if role_record is not None:
-                    euser_roles['logged_in'] = role_record
+                    euser_roles["logged_in"] = role_record
             for role in user.roles:
-                role_record = await self.load_or_none(
-                    settings.management_space, 'roles', role, core.Role
-                )
+                role_record = await self.load_or_none(settings.management_space, "roles", role, core.Role)
                 if role_record is None:
                     continue
                 euser_roles[role] = role_record
@@ -3031,8 +3068,9 @@ class SQLAdapter(BaseDataAdapter):
         for _, role in user_roles.items():
             role_permissions = await self.get_role_permissions(role)
             if user_shortname == "anonymous":
-                permission_world_record = await self.load_or_none(settings.management_space, 'permissions', "world",
-                                                                  core.Permission)
+                permission_world_record = await self.load_or_none(
+                    settings.management_space, "permissions", "world", core.Permission
+                )
                 if permission_world_record:
                     role_permissions.append(permission_world_record)
 
@@ -3044,13 +3082,8 @@ class SQLAdapter(BaseDataAdapter):
                         for permission_resource_types in permission.resource_types:
                             actions = set(permission.actions)
                             conditions = set(permission.conditions)
-                            if (
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                    in user_permissions
-                            ):
-                                old_perm = user_permissions[
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                ]
+                            if f"{space_name}:{permission_subpath}:{permission_resource_types}" in user_permissions:
+                                old_perm = user_permissions[f"{space_name}:{permission_subpath}:{permission_resource_types}"]
 
                                 if isinstance(actions, list):
                                     actions = set(actions)
@@ -3060,33 +3093,26 @@ class SQLAdapter(BaseDataAdapter):
                                     conditions = set(conditions)
                                 conditions |= set(old_perm["conditions"])
 
-                            user_permissions[
-                                f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                            ] = {
+                            user_permissions[f"{space_name}:{permission_subpath}:{permission_resource_types}"] = {
                                 "allowed_actions": list(actions),
                                 "conditions": list(conditions),
                                 "restricted_fields": permission.restricted_fields,
                                 "allowed_fields_values": permission.allowed_fields_values,
-                                "filter_fields_values": permission.filter_fields_values
+                                "filter_fields_values": permission.filter_fields_values,
                             }
         return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with self.get_session() as session:
-            statement = select(UserPermissionsCache).where(
-                col(UserPermissionsCache.user_shortname) == user_shortname
-            )
+            statement = select(UserPermissionsCache).where(col(UserPermissionsCache.user_shortname) == user_shortname)
             cached = (await session.execute(statement)).scalars().first()
             if cached:
-                return cached.permissions # type: ignore
+                return cached.permissions  # type: ignore
 
         user_permissions = await self.generate_user_permissions(user_shortname)
 
         async with self.get_session() as session:
-            cache_entry = UserPermissionsCache(
-                user_shortname=user_shortname,
-                permissions=user_permissions
-            )
+            cache_entry = UserPermissionsCache(user_shortname=user_shortname, permissions=user_permissions)
             await session.merge(cache_entry)
             await session.commit()
 
@@ -3097,7 +3123,7 @@ class SQLAdapter(BaseDataAdapter):
             statement = select(Users).where(
                 getattr(Users, key) == value,
                 col(Users.space_name) == settings.management_space,
-                col(Users.subpath) == f"/{settings.users_subpath}"
+                col(Users.subpath) == f"/{settings.users_subpath}",
             )
             _user = (await session.execute(statement)).scalars().first()
         if _user is None:
@@ -3146,13 +3172,7 @@ class SQLAdapter(BaseDataAdapter):
     async def delete_user_permissions_map_in_redis(self) -> None:
         pass
 
-    async def internal_save_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload: dict | None = None
-    ):
+    async def internal_save_model(self, space_name: str, subpath: str, meta: core.Meta, payload: dict | None = None):
         await self.save(
             space_name=space_name,
             subpath=subpath,
@@ -3160,13 +3180,13 @@ class SQLAdapter(BaseDataAdapter):
         )
 
     async def internal_sys_update_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            updates: dict,
-            sync_redis: bool = True,
-            payload_dict: dict[str, Any] = {},
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        updates: dict,
+        sync_redis: bool = True,
+        payload_dict: dict[str, Any] = {},
     ):
         meta.updated_at = datetime.now()
         meta_updated = False
@@ -3177,12 +3197,10 @@ class SQLAdapter(BaseDataAdapter):
                 if meta.payload and isinstance(meta.payload.body, dict):
                     # Payload body is already loaded
                     payload_dict = meta.payload.body
-                    
+
                 elif meta.payload and isinstance(meta.payload.body, str):
                     # Payload body is the filename string
-                    mydict = await self.load_resource_payload(
-                        space_name, subpath, meta.payload.body, type(meta)
-                    )
+                    mydict = await self.load_resource_payload(space_name, subpath, meta.payload.body, type(meta))
                     payload_dict = mydict if mydict else {}
             except Exception:
                 pass
@@ -3209,30 +3227,20 @@ class SQLAdapter(BaseDataAdapter):
 
         if meta_updated:
             await self.update(
-                space_name,
-                subpath,
-                meta,
-                old_version_flattend,
-                {**meta.model_dump()},
-                list(updates.keys()),
-                meta.shortname
+                space_name, subpath, meta, old_version_flattend, {**meta.model_dump()}, list(updates.keys()), meta.shortname
             )
         if payload_updated and meta.payload and meta.payload.schema_shortname:
-            await self.validate_payload_with_schema(
-                payload_dict, space_name, meta.payload.schema_shortname
-            )
-            await self.save_payload_from_json(
-                space_name, subpath, meta, payload_dict
-            )
+            await self.validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname)
+            await self.save_payload_from_json(space_name, subpath, meta, payload_dict)
 
     async def get_entry_by_var(
-            self,
-            key: str,
-            val: str,
-            logged_in_user,
-            retrieve_json_payload: bool = False,
-            retrieve_attachments: bool = False,
-            retrieve_lock_status: bool = False,
+        self,
+        key: str,
+        val: str,
+        logged_in_user,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
     ) -> core.Record:
         _result = await self.get_entry_by_criteria({key: val})
 
@@ -3245,16 +3253,17 @@ class SQLAdapter(BaseDataAdapter):
             )
 
         from utils.access_control import access_control
+
         if not await access_control.check_access(
-                user_shortname=logged_in_user,
-                space_name=_result.attributes['space_name'],
-                subpath=_result.subpath,
-                resource_type=_result.resource_type,
-                action_type=core.ActionType.view,
-                resource_is_active=_result.attributes['is_active'],
-                resource_owner_shortname=_result.attributes['owner_shortname'],
-                resource_owner_group=_result.attributes['owner_group_shortname'],
-                entry_shortname=_result.shortname
+            user_shortname=logged_in_user,
+            space_name=_result.attributes["space_name"],
+            subpath=_result.subpath,
+            resource_type=_result.resource_type,
+            action_type=core.ActionType.view,
+            resource_is_active=_result.attributes["is_active"],
+            resource_owner_shortname=_result.attributes["owner_shortname"],
+            resource_owner_group=_result.attributes["owner_group_shortname"],
+            entry_shortname=_result.shortname,
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
@@ -3262,30 +3271,28 @@ class SQLAdapter(BaseDataAdapter):
                     type="request",
                     code=InternalErrorCode.NOT_ALLOWED,
                     message="You don't have permission to this action [42]",
-                )
+                ),
             )
 
         return _result
 
     async def delete_space(self, space_name, record, owner_shortname):
-        resource_obj = core.Meta.from_record(
-            record=record, owner_shortname=owner_shortname
-        )
+        resource_obj = core.Meta.from_record(record=record, owner_shortname=owner_shortname)
         await self.delete(space_name, record.subpath, resource_obj, owner_shortname)
         shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
-            self,
-            space_name: str,
-            schema_names: list,
-            retrieve_json_payload: bool,
-            logged_in_user: str,
+        self,
+        space_name: str,
+        schema_names: list,
+        retrieve_json_payload: bool,
+        logged_in_user: str,
     ):
         pass
 
     async def get_group_users(self, group_name: str):
         async with self.get_session() as session:
-            statement = select(Users.shortname).where(col(Users.groups).contains([group_name])) 
+            statement = select(Users.shortname).where(col(Users.groups).contains([group_name]))
             result = await session.execute(statement)
             shortnames = result.scalars().all()
             return shortnames

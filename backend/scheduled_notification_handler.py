@@ -13,10 +13,15 @@ import asyncio
 async def trigger_admin_notifications() -> None:
     from_time = int((datetime.now() - timedelta(minutes=15)).timestamp() * 1000)
     to_time = int(datetime.now().timestamp() * 1000)
-    total, admin_notifications = await db.query(Query(
-        space_name=settings.management_space, schema_name="admin_notification_request",
-        search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
-        filters={}, limit=10000, offset=0)
+    total, admin_notifications = await db.query(
+        Query(
+            space_name=settings.management_space,
+            schema_name="admin_notification_request",
+            search=f"@subpath:/notifications/admin (-@status:finished) @scheduled_at:[{from_time} {to_time}]",
+            filters={},
+            limit=10000,
+            offset=0,
+        )
     )
 
     if total == 0:
@@ -28,14 +33,19 @@ async def trigger_admin_notifications() -> None:
         formatted_req = await prepare_request(notification_dict)
 
         # Get notification receivers users
-        search_criteria = notification_dict.get('msisdns_search_string')
+        search_criteria = notification_dict.get("msisdns_search_string")
         if not search_criteria:
-            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns', ""))
+            search_criteria = "@msisdn:" + "|".join(notification_dict.get("msisdns", ""))
 
-        total, receivers = await db.query(Query(
-            space_name=settings.management_space, schema_name="user",
-            search=f"@subpath:users {search_criteria}",
-            filters={}, limit=10000, offset=0)
+        total, receivers = await db.query(
+            Query(
+                space_name=settings.management_space,
+                schema_name="user",
+                search=f"@subpath:users {search_criteria}",
+                filters={},
+                limit=10000,
+                offset=0,
+            )
         )
 
         if total == 0:
@@ -47,9 +57,7 @@ async def trigger_admin_notifications() -> None:
         try:
             for receiver_data in receivers:
                 if not formatted_req["push_only"]:
-                    notification_obj = await Notification.from_request(
-                        notification_dict
-                    )
+                    notification_obj = await Notification.from_request(notification_dict)
                     await db.internal_save_model(
                         space_name="personal",
                         subpath=f"people/{receiver_data.shortname}/notifications",
@@ -85,17 +93,14 @@ async def trigger_admin_notifications() -> None:
                 {"status": "finished"},
             )
         except Exception as e:
-            logger.error(
-                f"Error at sending/updating admin based notification: {e.args}"
-            )
+            logger.error(f"Error at sending/updating admin based notification: {e.args}")
             pass
 
 
 async def prepare_request(notification_dict) -> dict:
     # Get Notification Request Images
     attachments_path = (
-        settings.spaces_folder
-        / f"{settings.management_space}"
+        settings.spaces_folder / f"{settings.management_space}"
         f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
     )
     notification_attachments = await db.get_entry_attachments(

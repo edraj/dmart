@@ -26,9 +26,7 @@ class Plugin(PluginBase):
             logger.warning("invalid data at action_log")
             return
 
-        class_type = getattr(
-            sys.modules["models.core"], camel_case(ResourceType(data.resource_type))
-        )
+        class_type = getattr(sys.modules["models.core"], camel_case(ResourceType(data.resource_type)))
 
         if data.action_type == ActionType.delete:
             entry = data.attributes["entry"]
@@ -46,12 +44,12 @@ class Plugin(PluginBase):
 
         action_attributes = {}
         if data.action_type == ActionType.create:
-            payload: dict[str,Any] = {}
-            if(
-                entry.payload and
-                isinstance(entry.payload, Payload) and
-                entry.payload.content_type and
-                entry.payload.content_type == ContentType.json
+            payload: dict[str, Any] = {}
+            if (
+                entry.payload
+                and isinstance(entry.payload, Payload)
+                and entry.payload.content_type
+                and entry.payload.content_type == ContentType.json
                 and entry.payload.body
             ):
                 mypayload = await db.load_resource_payload(
@@ -85,11 +83,7 @@ class Plugin(PluginBase):
             attributes=action_attributes,
         )
 
-        events_file_path = (
-            settings.spaces_folder
-            / data.space_name
-            / ".dm"
-        )
+        events_file_path = settings.spaces_folder / data.space_name / ".dm"
         events_file_path.mkdir(parents=True, exist_ok=True)
         events_file_path = events_file_path / "events.jsonl"
 
@@ -97,9 +91,7 @@ class Plugin(PluginBase):
         if isinstance(event_obj.attributes, dict) and "media" in event_obj.attributes:
             del event_obj.attributes["media"]
 
-        file_content = (
-            f"{event_obj.model_dump_json()}\n"
-        )
+        file_content = f"{event_obj.model_dump_json()}\n"
         async with aiofiles.open(events_file_path, "a") as events_file:
             await events_file.write(file_content)
 

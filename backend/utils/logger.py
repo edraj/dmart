@@ -13,12 +13,12 @@ class JSONEncoder(json.JSONEncoder):
 
 
 COMBINED_SENSITIVE_PATTERN = re.compile(
-    r'(?i)(?:'
-    r'(your\s+otp\s+code\s+is\s+)\d{4,8}|'
-    r'(otp\s+for\s+\d+\s+is\s+)\d{4,8}|'
-    r'(zip\s+pw\s+for\s+\d+\s+is\s+)[a-f0-9]{6,}|'
-    r'(your\s+password\s+for\s+the\s+export\s+zip\s+is\s+)[a-f0-9]{6,}|'
-    r'(invitation=)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|'
+    r"(?i)(?:"
+    r"(your\s+otp\s+code\s+is\s+)\d{4,8}|"
+    r"(otp\s+for\s+\d+\s+is\s+)\d{4,8}|"
+    r"(zip\s+pw\s+for\s+\d+\s+is\s+)[a-f0-9]{6,}|"
+    r"(your\s+password\s+for\s+the\s+export\s+zip\s+is\s+)[a-f0-9]{6,}|"
+    r"(invitation=)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|"
     r'("pin"\s*:\s*)"[^"]*"|'
     r'("authorization"\s*:\s*)"[^"]*"|'
     r'("auth_token"\s*:\s*)"[^"]*"|'
@@ -27,12 +27,11 @@ COMBINED_SENSITIVE_PATTERN = re.compile(
     r'("access_token"\s*:\s*)"[^"]*"|'
     r'("cookie"\s*:\s*)"[^"]*"|'
     r'("set-cookie"\s*:\s*)"[^"]*"'
-    r')'
+    r")"
 )
 
 
-SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cookie", "auth", "firebase_token",
-                      "evd-device-id")
+SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cookie", "auth", "firebase_token", "evd-device-id")
 
 
 def mask_replacement(match):
@@ -42,10 +41,10 @@ def mask_replacement(match):
         if group is not None:
             # For JSON format: "key": "value" → "key": "******"
             if '"' in group:
-                return group + '"' + ('*' * 6) + '"'
+                return group + '"' + ("*" * 6) + '"'
             # For plain format: key: value → key: ******
             else:
-                return group + ('*' * 6)
+                return group + ("*" * 6)
     return match.group(0)
 
 
@@ -65,6 +64,7 @@ class CustomFormatter(logging.Formatter):
     Emits one JSON line with this exact key order:
     correlation_id, time, level, message, props, thread, process
     """
+
     def __init__(self) -> None:
         log_dir = os.path.dirname(settings.log_file)
         if not os.path.exists(log_dir):
@@ -74,8 +74,7 @@ class CustomFormatter(logging.Formatter):
     def format(self, record):
         correlation_id = getattr(record, "correlation_id", "")
         if correlation_id == "ROOT" and getattr(record, "props", None):
-            correlation_id = getattr(record, "props", {})\
-                .get("response", {}).get("headers", {}).get("x-correlation-id", "")
+            correlation_id = getattr(record, "props", {}).get("response", {}).get("headers", {}).get("x-correlation-id", "")
 
         props = getattr(record, "props", {})
 
@@ -100,7 +99,7 @@ class CustomFormatter(logging.Formatter):
             return json.dumps({"error": str(e), "message": record.getMessage()})
 
 
-logging_schema : dict = {
+logging_schema: dict = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
@@ -162,6 +161,10 @@ logging_schema : dict = {
 
 def changeLogFile(log_file: str | None = None) -> None:
     global logging_schema
-    if (log_file and "handlers" in logging_schema and "file" in logging_schema["handlers"] 
-        and "filename" in logging_schema["handlers"]["file"]):
+    if (
+        log_file
+        and "handlers" in logging_schema
+        and "file" in logging_schema["handlers"]
+        and "filename" in logging_schema["handlers"]["file"]
+    ):
         logging_schema["handlers"]["file"]["filename"] = log_file

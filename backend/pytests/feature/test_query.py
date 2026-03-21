@@ -6,7 +6,7 @@ from pytests.base_test import (
 )
 from pytests.feature.test_resource_and_attachment import json_entry_shortname
 from fastapi import status
-from models.enums import RequestType,QueryType
+from models.enums import RequestType, QueryType
 from utils.settings import settings
 
 
@@ -140,6 +140,7 @@ async def test_query_aggregate(client: AsyncClient) -> None:
     assert isinstance(json_response["records"][0]["attributes"], dict)
     assert "active_num" in list(json_response["records"][0]["attributes"].keys())
 
+
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
 async def test_query_events(client: AsyncClient) -> None:
@@ -160,7 +161,4 @@ async def test_query_events(client: AsyncClient) -> None:
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["attributes"]["total"] > 0
-    assert (
-        json_response["records"][0]["attributes"]["request"]
-        in RequestType._value2member_map_
-    )
+    assert json_response["records"][0]["attributes"]["request"] in RequestType._value2member_map_

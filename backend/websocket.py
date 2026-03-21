@@ -16,6 +16,8 @@ from fastapi.logger import logger
 
 
 all_MKW = "__ALL__"
+
+
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: dict[str, WebSocket] = {}
@@ -26,10 +28,8 @@ class ConnectionManager:
         await websocket.accept()
         self.active_connections[user_shortname] = websocket
 
-
     def disconnect(self, user_shortname: str):
         del self.active_connections[user_shortname]
-
 
     async def send_message(self, message: str, user_shortname: str):
         if user_shortname in self.active_connections:
@@ -38,16 +38,14 @@ class ConnectionManager:
 
         return False
 
-    
     async def broadcast_message(self, message: str, channel_name: str):
         if channel_name not in self.channels:
             return False
-            
+
         for user_shortname in self.channels[channel_name]:
             await self.send_message(message, user_shortname)
 
         return True
-            
 
     def remove_all_subscriptions(self, username: str):
         updated_channels: dict[str, list[str]] = {}
@@ -57,21 +55,14 @@ class ConnectionManager:
             updated_channels[channel_name] = users
         self.channels = updated_channels
 
-
     async def channel_unsubscribe(self, websocket: WebSocket):
         connections_usernames = list(self.active_connections.keys())
         connections = list(self.active_connections.values())
         username = connections_usernames[connections.index(websocket)]
         self.remove_all_subscriptions(username)
-        subscribed_message = json.dumps({
-            "type": "notification_unsubscribe",
-            "message": {
-                "status": "success"
-            }
-        })
+        subscribed_message = json.dumps({"type": "notification_unsubscribe", "message": {"status": "success"}})
         await self.send_message(subscribed_message, username)
 
-    
     def generate_channel_name(self, msg: dict):
         if not {"space_name", "subpath"}.issubset(msg):
             return False
@@ -81,13 +72,8 @@ class ConnectionManager:
         action_type = msg.get("action_type", all_MKW)
         ticket_state = msg.get("ticket_state", all_MKW)
         return f"{space_name}:{subpath}:{schema_shortname}:{action_type}:{ticket_state}"
-            
 
-    async def channel_subscribe(
-        self,
-        websocket: WebSocket,
-        msg_json: dict
-    ):
+    async def channel_subscribe(self, websocket: WebSocket, msg_json: dict):
         channel_name = self.generate_channel_name(msg_json)
         if not channel_name:
             return False
@@ -100,14 +86,8 @@ class ConnectionManager:
         self.remove_all_subscriptions(username)
         self.channels[channel_name].append(username)
 
-        subscribed_message = json.dumps({
-            "type": "notification_subscription",
-            "message": {
-                "status": "success"
-            }
-        })
+        subscribed_message = json.dumps({"type": "notification_subscription", "message": {"status": "success"}})
         await self.send_message(subscribed_message, username)
-
 
 
 websocket_manager = ConnectionManager()
@@ -142,12 +122,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     except Exception as e:
         return status.HTTP_500_INTERNAL_SERVER_ERROR, [], str(e.__str__()).encode()
 
-    success_connection_message = json.dumps({
-        "type": "connection_response",
-        "message": {
-            "status": "success"
-        }
-    })
+    success_connection_message = json.dumps({"type": "connection_response", "message": {"status": "success"}})
 
     try:
         await websocket_manager.send_message(success_connection_message, user_shortname)
@@ -173,32 +148,20 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 @app.api_route(path="/send-message/{user_shortname}", methods=["post"])
 async def send_message(user_shortname: str, data: dict = Body(...)):
-    formatted_message = json.dumps({
-        "type": data["type"],
-        "message": data["message"]
-    })
+    formatted_message = json.dumps({"type": data["type"], "message": data["message"]})
     is_sent = await websocket_manager.send_message(formatted_message, user_shortname)
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"status": ResponseStatus.success, "message_sent": is_sent}
-    )
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": ResponseStatus.success, "message_sent": is_sent})
 
 
 @app.api_route(path="/broadcast-to-channels", methods=["post"])
 async def broadcast(data: dict = Body(...)):
-    formatted_message = json.dumps({
-        "type": data["type"],
-        "message": data["message"]
-    })
+    formatted_message = json.dumps({"type": data["type"], "message": data["message"]})
 
     is_sent = False
     for channel_name in data["channels"]:
         is_sent = await websocket_manager.broadcast_message(formatted_message, channel_name) or is_sent
 
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"status": ResponseStatus.success, "message_sent": is_sent}
-    )
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": ResponseStatus.success, "message_sent": is_sent})
 
 
 @app.api_route(path="/info", methods=["get"])
@@ -206,12 +169,12 @@ async def service_info():
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "status": ResponseStatus.success, 
+            "status": ResponseStatus.success,
             "data": {
                 "connected_clients": str(websocket_manager.active_connections),
-                "channels": str(websocket_manager.channels)
-            } 
-        }
+                "channels": str(websocket_manager.channels),
+            },
+        },
     )
 
 
@@ -226,6 +189,6 @@ async def main():
     config.accesslog = logger
     await serve(cast(Any, app), config)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     asyncio.run(main())

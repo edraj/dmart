@@ -12,19 +12,19 @@ router = APIRouter()
 
 
 def _build_engine():
-    driver   = settings.database_driver
-    user     = settings.database_username
+    driver = settings.database_driver
+    user = settings.database_username
     password = settings.database_password
-    host     = settings.database_host
-    port     = settings.database_port
-    name     = settings.database_name
+    host = settings.database_host
+    port = settings.database_port
+    name = settings.database_name
 
     url = f"{driver}://{user}:{password}@{host}:{port}/{name}"
     return create_async_engine(url, pool_pre_ping=True)
 
 
 _engine = _build_engine()
-_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) if _engine else None # type: ignore
+_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) if _engine else None  # type: ignore
 
 
 @asynccontextmanager
@@ -50,13 +50,7 @@ async def get_db_size_info() -> dict[str, Any]:
             result = await session.execute(text(query))
             rows = result.fetchall()
 
-        data = [
-            {
-                "table_name": str(row[0]),
-                "pretty_size": str(row[1])
-            }
-            for row in rows
-        ]
+        data = [{"table_name": str(row[0]), "pretty_size": str(row[1])} for row in rows]
         return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"db_size_info: query error: {e}")
