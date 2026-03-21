@@ -5,6 +5,7 @@ import os
 import secrets
 import re
 import string
+from typing import Any
 from venv import logger
 
 from pydantic import Field
@@ -141,6 +142,14 @@ class Settings(BaseSettings):
     max_failed_login_attempts: int = 5
 
     model_config = SettingsConfigDict(env_file=get_env_file(), env_file_encoding="utf-8")
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.jwt_secret == "AUTOGEN" or len(self.jwt_secret) < 32:
+            object.__setattr__(
+                self,
+                "jwt_secret",
+                "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)),
+            )
 
     def reload(self) -> None:
         env_file = get_env_file()

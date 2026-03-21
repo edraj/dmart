@@ -28,7 +28,7 @@ from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from utils.access_control import access_control
-from fastapi.responses import ORJSONResponse, FileResponse, RedirectResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from starlette.concurrency import iterate_in_threadpool
@@ -113,7 +113,7 @@ app = FastAPI(
             "description": "Public api for query and GET access to media",
         },
     ],
-    default_response_class=ORJSONResponse,
+    default_response_class=JSONResponse,
 )
 
 
@@ -146,7 +146,7 @@ async def capture_body(request: Request):
 
 @app.exception_handler(StarletteHTTPException)
 async def my_exception_handler(_, exception):
-    return ORJSONResponse(content=exception.detail, status_code=exception.status_code)
+    return JSONResponse(content=exception.detail, status_code=exception.status_code)
 
 
 @app.exception_handler(RequestValidationError)
@@ -289,7 +289,7 @@ async def middle(request: Request, call_next):
             except Exception:
                 response_body = {}
     except asyncio.TimeoutError:
-        response = ORJSONResponse(
+        response = JSONResponse(
             content={"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}},
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
         )
@@ -297,7 +297,7 @@ async def middle(request: Request, call_next):
     except api.Exception as e:
         if settings.active_data_db == "sql":
             if e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
-                response = ORJSONResponse(
+                response = JSONResponse(
                     status_code=500,
                     content={
                         "status": "failed",
@@ -305,12 +305,12 @@ async def middle(request: Request, call_next):
                     },
                 )
             else:
-                response = ORJSONResponse(
+                response = JSONResponse(
                     status_code=e.status_code,
                     content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
                 )
         else:
-            response = ORJSONResponse(
+            response = JSONResponse(
                 status_code=e.status_code,
                 content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
             )
@@ -320,7 +320,7 @@ async def middle(request: Request, call_next):
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=422,
             content={
                 "status": "failed",
@@ -336,7 +336,7 @@ async def middle(request: Request, call_next):
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=400,
             content={
                 "status": "failed",
@@ -360,7 +360,7 @@ async def middle(request: Request, call_next):
         error_log = {"type": "general", "code": 99, "message": exception_message}
         if settings.debug_enabled:
             error_log["stack"] = stack
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=500,
             content={
                 "status": "failed",

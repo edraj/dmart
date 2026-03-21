@@ -1014,7 +1014,7 @@ class SQLAdapter(BaseDataAdapter):
         filter_shortnames: list | None = None,
         retrieve_json_payload: bool = False,
     ) -> dict:
-        attachments_dict: dict[str, list] = {}
+        attachments_dict: dict[ResourceType, list] = {}
         async with self.get_session() as session:
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
@@ -1052,10 +1052,11 @@ class SQLAdapter(BaseDataAdapter):
                 del attachment_json["acl"]
                 del attachment_json["space_name"]
                 attachment["attributes"] = {**attachment_json}
-                if attachment_record.resource_type in attachments_dict:
-                    attachments_dict[attachment_record.resource_type].append(attachment)
+                key = ResourceType(attachment_record.resource_type)
+                if key in attachments_dict:
+                    attachments_dict[key].append(attachment)
                 else:
-                    attachments_dict[attachment_record.resource_type] = [attachment]
+                    attachments_dict[key] = [attachment]
 
         return attachments_dict
 
@@ -1345,7 +1346,8 @@ class SQLAdapter(BaseDataAdapter):
 
         try:
             if query.type == QueryType.aggregation and query.aggregation_data and bool(query.aggregation_data.group_by):
-                statement_total = select(func.sum(statement_total.c["count"]).label("total_count"))
+                subq = statement_total.subquery()
+                statement_total = select(func.sum(subq.c["count"]).label("total_count"))
 
             async with self.get_session() as session:
                 if query.retrieve_total:
@@ -3218,7 +3220,7 @@ class SQLAdapter(BaseDataAdapter):
             if key in restricted_fields:
                 continue
 
-            if key in meta.model_fields.keys():
+            if key in type(meta).model_fields:
                 meta_updated = True
                 meta.__setattr__(key, value)
             elif payload_dict:

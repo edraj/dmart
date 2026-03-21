@@ -17,7 +17,7 @@ from re import sub as res_sub
 # from time import time
 from typing import Any, Callable
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from fastapi.responses import RedirectResponse, ORJSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.responses import FileResponse, StreamingResponse
 
 import models.api as api
@@ -68,7 +68,7 @@ from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 from starlette.background import BackgroundTask
 
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 
 @router.post("/import", response_model=api.Response, response_model_exclude_none=True)
@@ -147,7 +147,7 @@ async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
 
         traceback.print_exc()
         print(f"Export error: {e}")
-        return ORJSONResponse(
+        return JSONResponse(
             status_code=400,
             content=api.Response(
                 status=api.Status.failed, attributes={"message": f"Failed to export data: {str(e)}"}
