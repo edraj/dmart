@@ -280,14 +280,19 @@ async def middle(request: Request, call_next):
 
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
-        raw_response = [section async for section in response.body_iterator]
-        response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        raw_data = b"".join(raw_response)
-        if raw_data and "application/json" in response.headers.get("content-type", ""):
-            try:
-                response_body = json.loads(raw_data)
-            except Exception:
-                response_body = {}
+        content_type = response.headers.get("content-type", "")
+        # Only buffer response body for JSON responses (for logging).
+        # Skip buffering for file downloads, images, streams, etc. to avoid
+        # loading large binary data into memory.
+        if "application/json" in content_type:
+            raw_response = [section async for section in response.body_iterator]
+            response.body_iterator = iterate_in_threadpool(iter(raw_response))
+            raw_data = b"".join(raw_response)
+            if raw_data:
+                try:
+                    response_body = json.loads(raw_data)
+                except Exception:
+                    response_body = {}
     except asyncio.TimeoutError:
         response = JSONResponse(
             content={"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}},

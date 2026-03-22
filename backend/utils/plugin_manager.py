@@ -1,9 +1,11 @@
 import asyncio
 import os
 import sys
+import time
 from importlib.util import find_spec, module_from_spec
 from inspect import iscoroutine
 from pathlib import Path
+from typing import Any
 import aiofiles
 from fastapi import Depends, FastAPI
 from fastapi.logger import logger
@@ -32,6 +34,27 @@ class PluginManager:
     plugins_wrappers: dict[ActionType, list[PluginWrapper]] = {}  # {action_type: list_of_plugins_wrappers]}
 
     active_plugins: list[str] = []
+
+    # Short-lived cache for space lookups to avoid redundant Redis calls
+    # within the same request (before_action + after_action both fetch the same space)
+    _space_cache: dict[str, tuple[float, Any]] = {}
+    _SPACE_CACHE_TTL: float = 2.0  # seconds
+
+    @classmethod
+    async def _get_space_cached(cls, space_name: str) -> Any:
+        """Fetch space with a short TTL cache to avoid double-loading within a single request."""
+        now = time.monotonic()
+        cached = cls._space_cache.get(space_name)
+        if cached is not None:
+            ts, space = cached
+            if now - ts < cls._SPACE_CACHE_TTL:
+                return space
+
+        from data_adapters.adapter import data_adapter as db
+
+        space = await db.fetch_space(space_name)
+        cls._space_cache[space_name] = (now, space)
+        return space
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
@@ -145,18 +168,21 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        from data_adapters.adapter import data_adapter as db
+        # Short-circuit: check if any plugin for this action listens to 'before'
+        plugins = self.plugins_wrappers[event.action_type]
+        before_plugins = [p for p in plugins if p.listen_time == EventListenTime.before and p.filters]
+        if not before_plugins:
+            return
 
-        space = await db.fetch_space(event.space_name)
+        space = await self._get_space_cached(event.space_name)
         if space is None:
             return
         space_plugins = space.active_plugins
 
-        for plugin_model in self.plugins_wrappers[event.action_type]:
+        for plugin_model in before_plugins:
             if (
                 plugin_model.shortname in space_plugins
-                and plugin_model.listen_time == EventListenTime.before
-                and plugin_model.filters
+                and plugin_model.filters is not None
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
@@ -174,19 +200,22 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        from data_adapters.adapter import data_adapter as db
+        # Short-circuit: check if any plugin for this action listens to 'after'
+        plugins = self.plugins_wrappers[event.action_type]
+        after_plugins = [p for p in plugins if p.listen_time == EventListenTime.after and p.filters]
+        if not after_plugins:
+            return
 
-        space = await db.fetch_space(event.space_name)
+        space = await self._get_space_cached(event.space_name)
         if space is None:
             return
         space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
-        for plugin_model in self.plugins_wrappers[event.action_type]:
+        for plugin_model in after_plugins:
             if (
                 plugin_model.shortname in space_plugins
-                and plugin_model.listen_time == EventListenTime.after
-                and plugin_model.filters
+                and plugin_model.filters is not None
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:

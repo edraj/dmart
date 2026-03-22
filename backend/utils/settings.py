@@ -234,15 +234,12 @@ class Settings(BaseSettings):
         return result
 
 
+# Create a single settings instance (avoid double instantiation)
+settings = Settings()
 try:
-    Settings.model_validate(Settings())
+    Settings.model_validate(settings)
 except Exception as e:
     logger.error(f"Failed to load settings.\nError: {e}")
-    # sys.exit(1)
-    pass
-
-
-settings = Settings()
 settings.load_config_files()
 
 

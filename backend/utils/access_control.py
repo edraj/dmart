@@ -20,8 +20,9 @@ class AccessControl:
             management_modules: dict[str, type[Meta]] = {"groups": Group, "roles": Role, "permissions": Permission}
 
             for module_name, module_value in management_modules.items():
-                self_module = getattr(self, module_name)
-                self_module = {}
+                # Clear and repopulate the module dict on the instance
+                module_dict: dict = getattr(self, module_name)
+                module_dict.clear()
                 path = management_path / module_name
                 entries_glob = ".dm/*/meta.*.json"
                 if path.exists():
@@ -39,9 +40,8 @@ class AccessControl:
                                 "anonymous",
                             )
                             if resource_obj.is_active:
-                                self_module[shortname] = resource_obj  # store in redis doc
+                                module_dict[shortname] = resource_obj
                         except Exception as ex:
-                            # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                             raise ex
 
             await db.create_user_premission_index()

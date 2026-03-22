@@ -131,7 +131,7 @@ async def set_init_state_from_record(ticket: core.Record, logged_in_user, space_
 
         ticket.attributes = {
             **workflow_attr,
-            "state": workflows_payload["initial_state"][0]["name"],
+            "state": workflows_payload["initial_state"],
         }
         return ticket
 

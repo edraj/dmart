@@ -290,16 +290,25 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     )
 
     keys = [key for key in keys if keys_existence[key]]
-    v_path = StringIO()
-    v_path.write(codecs.BOM_UTF8.decode("utf-8"))
 
     list_deprecated_keys = list(deprecated_keys)
     keys = list(filter(lambda item: item not in list_deprecated_keys, keys))
-    writer = csv.DictWriter(v_path, fieldnames=(keys + list(new_keys)))
-    writer.writeheader()
-    writer.writerows(json_data)
+    fieldnames = keys + list(new_keys)
 
-    response = StreamingResponse(iter([v_path.getvalue()]), media_type="text/csv")
+    def csv_row_generator():
+        """Stream CSV rows one at a time to avoid building the full CSV in memory."""
+        buf = StringIO()
+        buf.write(codecs.BOM_UTF8.decode("utf-8"))
+        writer = csv.DictWriter(buf, fieldnames=fieldnames)
+        writer.writeheader()
+        yield buf.getvalue()
+        for row in json_data:
+            buf = StringIO()
+            writer = csv.DictWriter(buf, fieldnames=fieldnames)
+            writer.writerow(row)
+            yield buf.getvalue()
+
+    response = StreamingResponse(csv_row_generator(), media_type="text/csv")
     response.headers["Content-Disposition"] = f"attachment; filename={query.space_name}_{query.subpath}.csv"
 
     return response

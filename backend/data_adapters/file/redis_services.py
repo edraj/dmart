@@ -836,6 +836,17 @@ class RedisServices(Redis):
 
         return query_string or "*"
 
+    async def get_space_by_name(self, space_name: str) -> Any:
+        """Fetch a single space entry from the 'spaces' Redis JSON doc by name,
+        avoiding loading the entire spaces document."""
+        try:
+            x = self.json().get("spaces", f".{space_name}")
+            if x and isinstance(x, Awaitable):
+                return await x
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_space_by_name: {space_name=} {e}")
+        return None
+
     async def get_doc_by_id(self, doc_id: str) -> Any:
         try:
             x = self.json().get(name=doc_id)

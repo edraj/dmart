@@ -50,12 +50,22 @@ from utils.password_hashing import hash_password
 from utils.plugin_manager import plugin_manager
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN, SPACES_PATTERN
 from utils.settings import settings
+from functools import lru_cache
 from jsonschema import Draft7Validator
 from starlette.datastructures import UploadFile
 from pathlib import Path as FSPath
 import models.api as api
 from fastapi import status
 import json
+
+
+@lru_cache(maxsize=128)
+def _get_cached_validator(schema_path: str, mtime_ns: int) -> Draft7Validator:
+    """Cache compiled JSON schema validators keyed by path and file mtime.
+    The mtime_ns parameter ensures the cache is invalidated when the schema
+    file is modified on disk."""
+    schema = json.loads(FSPath(schema_path).read_text())
+    return Draft7Validator(schema)
 
 
 def sort_alteration(attachments_dict, attachments_path):
@@ -448,13 +458,14 @@ class FileAdapter(BaseDataAdapter):
                 )
                 return []
 
+        if not base_records:
+            return base_records
+
         for rec in base_records:
             if rec.attributes is None:
                 rec.attributes = {}
             if rec.attributes.get("join") is None:
                 rec.attributes["join"] = {}
-
-        import models.api as api
 
         for join_item in joins:
             join_on = getattr(join_item, "join_on", None)
@@ -464,8 +475,6 @@ class FileAdapter(BaseDataAdapter):
                 continue
 
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
-            import models.api as api
-            from utils.settings import settings
 
             q_raw = q if isinstance(q, dict) else q.model_dump(exclude_defaults=True)
             user_limit = q_raw.get("limit") or q_raw.get("limit_")
@@ -586,10 +595,8 @@ class FileAdapter(BaseDataAdapter):
                 os.makedirs(path)
 
             meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-            with open(path / filename, "w") as file:
-                file.write(meta_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(path / filename, "w") as file:
+                await file.write(meta_json)
             return meta_json
         except Exception as e:
             raise API_Exception(
@@ -613,10 +620,8 @@ class FileAdapter(BaseDataAdapter):
         if not path.is_dir():
             os.makedirs(path)
 
-        with open(path / filename, "w") as file:
-            file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
 
     async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
         path, filename = self.metapath(space_name, subpath, meta.shortname, meta.__class__)
@@ -630,10 +635,8 @@ class FileAdapter(BaseDataAdapter):
             )
 
         content = await attachment.read()
-        with open(payload_file_path / payload_filename, "wb") as file:
-            file.write(content)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
+            await file.write(content)
 
     async def save_payload_from_json(
         self,
@@ -666,15 +669,11 @@ class FileAdapter(BaseDataAdapter):
 
         payload_json = json.dumps(payload_data)
         if issubclass(meta.__class__, core.Log) and (payload_file_path / payload_filename).is_file():
-            with open(payload_file_path / payload_filename, "a") as file:
-                file.write(f"\n{payload_json}")
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "a") as file:
+                await file.write(f"\n{payload_json}")
         else:
-            with open(payload_file_path / payload_filename, "w") as file:
-                file.write(payload_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
+                await file.write(payload_json)
 
     async def update(
         self,
@@ -726,10 +725,8 @@ class FileAdapter(BaseDataAdapter):
 
         meta.updated_at = datetime.now()
         meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-        with open(path / filename, "w") as file:
-            file.write(meta_json)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta_json)
 
         if issubclass(meta.__class__, core.Log):
             return {}
@@ -891,10 +888,8 @@ class FileAdapter(BaseDataAdapter):
 
         if meta_updated:
             meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-            with open(dest_path / dest_filename, "w") as opened_file:
-                opened_file.write(meta_json)
-                opened_file.flush()
-                os.fsync(opened_file)
+            async with aiofiles.open(dest_path / dest_filename, "w") as opened_file:
+                await opened_file.write(meta_json)
 
         # Delete Src path if empty
         if src_path.parent.is_dir():
@@ -973,14 +968,24 @@ class FileAdapter(BaseDataAdapter):
         if payload_file.is_file():
             return True
 
+        # Try the known resource type first to avoid iterating all types
+        resource_cls = getattr(sys_modules["models.core"], camel_case(resource_type.value), None)
+        if resource_cls:
+            meta_path, meta_file = self.metapath(space_name, subpath, shortname, resource_cls, schema_shortname)
+            if (meta_path / meta_file).is_file():
+                return True
+
+        # Fall back to checking all other resource types
         for r_type in ResourceType:
+            if r_type == resource_type:
+                continue  # Already checked above
             # Spaces compared with each others only
             if r_type == ResourceType.space and r_type != resource_type:
                 continue
-            resource_cls = getattr(sys.modules["models.core"], camel_case(r_type.value), None)
-            if not resource_cls:
+            r_cls = getattr(sys_modules["models.core"], camel_case(r_type.value), None)
+            if not r_cls:
                 continue
-            meta_path, meta_file = self.metapath(space_name, subpath, shortname, resource_cls, schema_shortname)
+            meta_path, meta_file = self.metapath(space_name, subpath, shortname, r_cls, schema_shortname)
             if (meta_path / meta_file).is_file():
                 return True
 
@@ -1065,10 +1070,19 @@ class FileAdapter(BaseDataAdapter):
         return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
-        spaces = await self.get_spaces()
-        if space_name not in spaces:
+        """Fetch a single space by name from Redis without loading all spaces."""
+        async with RedisServices() as redis_services:
+            try:
+                result = await redis_services.get_space_by_name(space_name)
+            except Exception:
+                return None
+        if not result:
             return None
-        return core.Space.model_validate_json(spaces[space_name])
+        if isinstance(result, str):
+            return core.Space.model_validate_json(result)
+        elif isinstance(result, dict):
+            return core.Space.model_validate(result)
+        return None
 
     async def get_entry_attachments(
         self,
@@ -1289,7 +1303,10 @@ class FileAdapter(BaseDataAdapter):
             schema_shortname=f"{schema_shortname}.json",
         )
 
-        schema = json.loads(FSPath(schema_path).read_text())
+        # Use cached validator: keyed by path + mtime so cache auto-invalidates on schema change
+        schema_file = FSPath(schema_path)
+        mtime_ns = schema_file.stat().st_mtime_ns
+        validator = _get_cached_validator(str(schema_path), mtime_ns)
 
         if not isinstance(payload_data, dict):
             data = json.load(payload_data.file)
@@ -1297,7 +1314,7 @@ class FileAdapter(BaseDataAdapter):
         else:
             data = payload_data
 
-        Draft7Validator(schema).validate(data)  # type: ignore
+        validator.validate(data)  # type: ignore
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         async with RedisServices() as redis_services:
