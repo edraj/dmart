@@ -24,7 +24,7 @@ from utils.helpers import camel_case, remove_none_dict, snake_case
 import utils.regex as regex
 from utils.settings import settings
 import utils.password_hashing as password_hashing
-from hashlib import sha1 as hashlib_sha1
+from hashlib import sha256 as hashlib_sha256
 
 KeyType = TypeVar("KeyType")
 
@@ -64,14 +64,14 @@ class Payload(Resource):
         BaseModel.__init__(self, **data)
 
         if not self.checksum and self.body:
-            sha1 = hashlib_sha1()
+            sha256 = hashlib_sha256()
 
             if isinstance(self.body, dict):
-                sha1.update(json.dumps(self.body).encode("utf-8"))
+                sha256.update(json.dumps(self.body).encode("utf-8"))
             else:
-                sha1.update(self.body.encode("utf-8"))
+                sha256.update(self.body.encode("utf-8"))
 
-            self.checksum = sha1.hexdigest()
+            self.checksum = sha256.hexdigest()
 
     def update(self, payload: dict, old_body: dict | None = None, replace: bool = False) -> dict | None:
 

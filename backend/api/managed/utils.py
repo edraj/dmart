@@ -27,6 +27,7 @@ from models.enums import (
 import sys
 import json
 from utils.access_control import access_control
+import utils.regex as regex
 import utils.repository as repository
 from utils.helpers import (
     camel_case,
@@ -1146,6 +1147,31 @@ async def serve_request_move(request, owner_shortname: str):
                         message="Please provide a source and destination path and a src shortname",
                     ),
                 )
+
+            # Validate move attributes against path traversal
+            import re as _re
+
+            _spacename_re = _re.compile(regex.SPACENAME)
+            _subpath_re = _re.compile(regex.SUBPATH)
+            _shortname_re = _re.compile(regex.SHORTNAME)
+            for attr_name, pattern_re in [
+                ("src_space_name", _spacename_re),
+                ("dest_space_name", _spacename_re),
+                ("src_subpath", _subpath_re),
+                ("dest_subpath", _subpath_re),
+                ("src_shortname", _shortname_re),
+                ("dest_shortname", _shortname_re),
+            ]:
+                val = record.attributes.get(attr_name, "")
+                if not isinstance(val, str) or not pattern_re.match(val):
+                    raise api.Exception(
+                        status.HTTP_400_BAD_REQUEST,
+                        api.Error(
+                            type="move",
+                            code=InternalErrorCode.INVALID_DATA,
+                            message=f"Invalid value for {attr_name}",
+                        ),
+                    )
 
             await plugin_manager.before_action(
                 core.Event(

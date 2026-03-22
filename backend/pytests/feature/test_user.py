@@ -235,7 +235,7 @@ async def test_validate_password_correct(client: AsyncClient) -> None:
     """Validate the current user's password with the correct password."""
     response = await client.post(
         "/user/validate_password",
-        params={"password": "Test1234"},
+        json={"password": "Test1234"},
     )
     assert_code_and_status_success(response)
 
@@ -246,7 +246,7 @@ async def test_validate_password_wrong(client: AsyncClient) -> None:
     """Validate password with a wrong password should return 401."""
     response = await client.post(
         "/user/validate_password",
-        params={"password": "WrongPassword999"},
+        json={"password": "WrongPassword999"},
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json()["status"] == "failed"

@@ -803,7 +803,7 @@ async def logout(
     response: Response,
     shortname=Depends(JWTBearer()),
 ) -> api.Response:
-    response.set_cookie(value="", max_age=0, key="auth_token", httponly=True, secure=True, samesite="none")
+    response.set_cookie(value="", max_age=0, key="auth_token", httponly=True, secure=True, samesite="lax")
 
     await db.remove_user_session(shortname)
 
@@ -1146,7 +1146,7 @@ async def user_reset(
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-async def validate_password(password: str, shortname=Depends(JWTBearer())) -> api.Response:
+async def validate_password(password: str = Body(..., embed=True), shortname=Depends(JWTBearer())) -> api.Response:
     """Validate Password"""
     user = await db.load(MANAGEMENT_SPACE, USERS_SUBPATH, shortname, core.User, shortname)
     if user and password_hashing.verify_password(password, user.password or ""):

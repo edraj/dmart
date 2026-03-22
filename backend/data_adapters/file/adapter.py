@@ -198,7 +198,18 @@ class FileAdapter(BaseDataAdapter):
         subpath: str,
         shortname: str,
     ):
-        return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
+        result = (settings.spaces_folder / space_name / subpath / shortname).resolve()
+        spaces_root = settings.spaces_folder.resolve()
+        if not str(result).startswith(str(spaces_root)):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Invalid path: directory traversal detected",
+                ),
+            )
+        return str(result)
 
     async def otp_created_since(self, key: str) -> int | None:
         async with RedisServices() as redis_services:
@@ -226,6 +237,21 @@ class FileAdapter(BaseDataAdapter):
     async def delete_otp(self, key: str):
         async with RedisServices() as redis_services:
             await redis_services.del_keys([key])
+
+    @staticmethod
+    def _validate_path_within_spaces(path: Path) -> None:
+        """Ensure the resolved path stays within the spaces folder to prevent directory traversal."""
+        resolved = path.resolve()
+        spaces_root = settings.spaces_folder.resolve()
+        if not str(resolved).startswith(str(spaces_root) + os.sep) and resolved != spaces_root:
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Invalid path: directory traversal detected",
+                ),
+            )
 
     def metapath(
         self,
@@ -260,6 +286,7 @@ class FileAdapter(BaseDataAdapter):
         else:
             path = path / subpath / ".dm" / shortname
             filename = f"meta.{snake_case(class_type.__name__)}.json"
+        self._validate_path_within_spaces(path)
         return path, filename
 
     def payload_path(
@@ -281,6 +308,7 @@ class FileAdapter(BaseDataAdapter):
             path = path / parent_subpath / ".dm" / attachment_folder
         else:
             path = path / subpath
+        self._validate_path_within_spaces(path)
         return path
 
     async def load_or_none(

@@ -51,6 +51,20 @@ async def get_me(shortname=Depends(JWTBearer())) -> api.Response:
     return api.Response(status=api.Status.success, attributes={"shortname": shortname})
 
 
+_SENSITIVE_SETTINGS_KEYS = {
+    "jwt_secret",
+    "redis_password",
+    "database_password",
+    "mail_password",
+    "ldap_pass",
+    "smpp_auth_key",
+    "google_client_secret",
+    "apple_client_secret",
+    "facebook_client_secret",
+    "mock_otp_code",
+}
+
+
 @router.get("/settings", response_model=api.Response, response_model_exclude_none=True)
 async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
     if shortname != "dmart":
@@ -60,7 +74,8 @@ async def get_settings(shortname=Depends(JWTBearer())) -> api.Response:
                 type="access", code=InternalErrorCode.NOT_ALLOWED, message="You don't have permission to this action [21]"
             ),
         )
-    return api.Response(status=api.Status.success, attributes=settings.model_dump())
+    safe_settings = {k: "******" if k in _SENSITIVE_SETTINGS_KEYS else v for k, v in settings.model_dump().items()}
+    return api.Response(status=api.Status.success, attributes=safe_settings)
 
 
 @router.get("/manifest", response_model=api.Response, response_model_exclude_none=True)

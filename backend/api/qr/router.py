@@ -98,7 +98,7 @@ async def validate_qr_user_profile(
     m.update(f"{req_date}.{data}".encode())
     hexed_data = m.hexdigest()
 
-    if hexed_data == req_data:
+    if hmac.compare_digest(hexed_data, req_data):
         return api.Response(status=api.Status.success)
     else:
         raise api.Exception(

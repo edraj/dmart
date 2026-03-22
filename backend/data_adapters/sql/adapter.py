@@ -2100,7 +2100,7 @@ class SQLAdapter(BaseDataAdapter):
                 return {}
 
             new_version_json = json.dumps(new_version_flattend, sort_keys=True, default=str)
-            new_checksum = hashlib.sha1(new_version_json.encode()).hexdigest()
+            new_checksum = hashlib.sha256(new_version_json.encode()).hexdigest()
 
             history_obj = Histories(
                 space_name=space_name,

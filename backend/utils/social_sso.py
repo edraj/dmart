@@ -49,7 +49,7 @@ def get_apple_sso() -> SSOBase:
             "authorization_endpoint": "https://appleid.apple.com/auth/authorize",
             "token_endpoint": "https://appleid.apple.com/auth/token",
             # "jwks_uri":"https://appleid.apple.com/auth/keys",
-            "userinfo_endpoint": "http://localhost:9090/me",
+            "userinfo_endpoint": "https://appleid.apple.com/auth/userinfo",
         }
     )
     AppleProvider: type[SSOBase] = create_provider(
@@ -63,5 +63,5 @@ def get_apple_sso() -> SSOBase:
         client_id=APPLE_CLIENT_ID,
         client_secret=APPLE_CLIENT_SECRET,
         redirect_uri=f"{settings.app_url}/user/apple/callback",
-        allow_insecure_http=True,
+        allow_insecure_http=False,
     )

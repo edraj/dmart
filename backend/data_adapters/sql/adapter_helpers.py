@@ -87,8 +87,21 @@ def subpath_checker(subpath: str):
     return subpath
 
 
+_SAFE_SQL_FIELD_RE = re.compile(r"^[a-zA-Z0-9_]+$")
+
+
+def _sanitize_sql_part(part: str) -> str:
+    """Validate that a field name part contains only safe characters to prevent SQL injection."""
+    if not _SAFE_SQL_FIELD_RE.match(part):
+        raise ValueError(f"Invalid field name part: '{part}' — only alphanumeric and underscore are allowed")
+    return part
+
+
 def transform_keys_to_sql(path):
     parts = path.split(".")
+    # Validate all parts to prevent SQL injection via field names
+    for part in parts:
+        _sanitize_sql_part(part)
     sql_path = parts[0]
     if len(parts[1:-1]) != 0:
         sql_path += " -> " + " -> ".join([f"'{part}'" for part in parts[1:-1]])
@@ -142,7 +155,12 @@ def parse_search_array(input_string: str, key: str, value: str) -> str:
     dict_key = parts[3].strip().replace("'", "").replace(">", "")
     if dict_key.startswith(" "):
         dict_key = dict_key[1:]
-    output_sql = f"payload::jsonb -> 'body' -> '{key}' @> '[{{\"{dict_key}\": \"{value}\"}}]'"
+    # Sanitize all parts to prevent SQL injection
+    _sanitize_sql_part(key)
+    _sanitize_sql_part(dict_key)
+    # Escape value to prevent injection via double quotes
+    safe_value = value.replace("\\", "\\\\").replace('"', '\\"').replace("'", "''")
+    output_sql = f"payload::jsonb -> 'body' -> '{key}' @> '[{{\"{dict_key}\": \"{safe_value}\"}}]'"
     return output_sql
 
 

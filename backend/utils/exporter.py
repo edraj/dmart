@@ -211,7 +211,9 @@ async def extract(
         encrypted_out = enc_dict(out, hashed_data)
         open(data_file, "a").write(json.dumps(encrypted_out) + "\n")
 
-    open(f"{output_subpath}/hashed_data.json", "w").write(json.dumps(hashed_data))
+    # Security: Do not write the hash-to-plaintext mapping to disk, as it
+    # completely negates the purpose of hashing PII fields.
+    # open(f"{output_subpath}/hashed_data.json", "w").write(json.dumps(hashed_data))
 
 
 async def main(tasks):

@@ -369,9 +369,9 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    sha1 = hashlib.sha1()
-    sha1.update(payload_file.file.read())
-    checksum = sha1.hexdigest()
+    sha256 = hashlib.sha256()
+    sha256.update(payload_file.file.read())
+    checksum = sha256.hexdigest()
     if isinstance(sha, str) and sha != checksum:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -621,9 +621,9 @@ async def create_attachment(space_name: str, record: str = Form(...), payload_fi
     if payload_file:
         payload_filename = payload_file.filename or ""
         resource_content_type = get_resource_content_type_from_payload_content_type(payload_file, payload_filename, record_obj)
-        sha1 = hashlib.sha1()
-        sha1.update(payload_file.file.read())
-        checksum = sha1.hexdigest()
+        sha256 = hashlib.sha256()
+        sha256.update(payload_file.file.read())
+        checksum = sha256.hexdigest()
         await payload_file.seek(0)
 
         attachment_obj, record_obj = await create_or_update_resource_with_payload_handler(

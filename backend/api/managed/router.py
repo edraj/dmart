@@ -203,7 +203,8 @@ async def generate_csv_from_report_saved_query(space_name: str, record: core.Rec
     writer.writerows(json_data)
 
     response = StreamingResponse(iter([v_path.getvalue()]), media_type="text/csv")
-    response.headers["Content-Disposition"] = f"attachment; filename={space_name}_{record.subpath}.csv"
+    safe_filename = f"{space_name}_{record.subpath}".replace("/", "_").replace("\\", "_").replace('"', "")
+    response.headers["Content-Disposition"] = f'attachment; filename="{safe_filename}.csv"'
 
     await plugin_manager.after_action(
         core.Event(
@@ -309,7 +310,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             yield buf.getvalue()
 
     response = StreamingResponse(csv_row_generator(), media_type="text/csv")
-    response.headers["Content-Disposition"] = f"attachment; filename={query.space_name}_{query.subpath}.csv"
+    safe_filename = f"{query.space_name}_{query.subpath}".replace("/", "_").replace("\\", "_").replace('"', "")
+    response.headers["Content-Disposition"] = f'attachment; filename="{safe_filename}.csv"'
 
     return response
 
@@ -752,9 +754,9 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    sha1 = hashlib.sha1()
-    sha1.update(payload_file.file.read())
-    checksum = sha1.hexdigest()
+    sha256 = hashlib.sha256()
+    sha256.update(payload_file.file.read())
+    checksum = sha256.hexdigest()
     if isinstance(sha, str) and sha != checksum:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,

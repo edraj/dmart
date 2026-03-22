@@ -91,6 +91,11 @@ async def get_db_entries_count_history() -> dict[str, Any]:
                 if table == "count_history" or "log" in table or "history" in table:
                     continue
                 try:
+                    # Validate table name to prevent SQL injection (only allow identifier chars)
+                    import re as _re
+
+                    if not _re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
+                        continue
                     count_res = await session.execute(text(f"SELECT space_name, count(*) FROM {table} GROUP BY space_name"))
                     for row in count_res.fetchall():
                         space_name, count = row[0], row[1]

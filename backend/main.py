@@ -13,7 +13,7 @@ import time
 import traceback
 from datetime import datetime
 from typing import Any, cast
-from urllib.parse import urlparse, quote
+from urllib.parse import quote
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 from starlette.middleware.gzip import GZipMiddleware
@@ -199,19 +199,19 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
 
 
 def set_middleware_response_headers(request, response):
-    referer = request.headers.get(
-        "referer",
-        request.headers.get(
-            "origin",
-            request.headers.get("x-forwarded-proto", "http")
-            + "://"
-            + request.headers.get("x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"),
-        ),
-    )
-    origin = urlparse(referer)
-    response.headers["Access-Control-Allow-Origin"] = f"{origin.scheme}://{origin.netloc}"
+    request_origin = request.headers.get("origin", "")
 
-    response.headers["Access-Control-Allow-Credentials"] = "true"
+    if settings.allowed_cors_origins:
+        if request_origin in settings.allowed_cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        # If origin not in allowlist, do not set CORS headers (browser will block)
+    else:
+        # Fallback: allow same-host origin only (no open reflection)
+        default_origin = f"http://{settings.listening_host}:{settings.listening_port}"
+        response.headers["Access-Control-Allow-Origin"] = request_origin if request_origin == default_origin else default_origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
     response.headers["Access-Control-Max-Age"] = "600"
     response.headers["Access-Control-Allow-Methods"] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
@@ -221,6 +221,13 @@ def set_middleware_response_headers(request, response):
     response.headers["Expires"] = "0"
     response.headers["x-server-time"] = datetime.now().isoformat()
     response.headers["Access-Control-Expose-Headers"] = "x-server-time"
+
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+
     return response
 
 
@@ -396,16 +403,20 @@ async def middle(request: Request, call_next):
 
     set_logging(response, extra, request, exception_data)
 
-    # TODO: CHECK THIS
-    # if settings.hide_stack_trace:
-    #     if (
-    #         response_body and isinstance(response_body, dict)
-    #         and "error" in response_body
-    #         and "stack" in response_body["error"]
-    #     ):
-    #         response_body["error"].pop("stack", None)
-    #
-    #     response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
+    if settings.hide_stack_trace:
+        if (
+            response_body
+            and isinstance(response_body, dict)
+            and "error" in response_body
+            and isinstance(response_body["error"], dict)
+            and "stack" in response_body["error"]
+        ):
+            response_body["error"].pop("stack", None)
+            response = JSONResponse(
+                status_code=response.status_code,
+                content=response_body,
+                headers=dict(response.headers),
+            )
 
     return response
 

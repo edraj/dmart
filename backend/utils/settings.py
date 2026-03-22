@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     websocket_url: str = ""  # "http://127.0.0.1:8484"
     websocket_port: int = 8484
     base_path: str = ""
-    debug_enabled: bool = True
+    debug_enabled: bool = False
     debug_perm: bool = False
     log_handlers: list[str] = ["file"]
     log_file: str = "../logs/dmart.ljson.log"
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     smpp_auth_key: str = ""
     sms_sender: str = ""
     send_sms_api: str = ""
-    mock_smtp_api: bool = True
+    mock_smtp_api: bool = False
 
     mail_driver: str = "smtp"
     mail_host: str = ""
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     mail_use_tls: bool = False
 
     files_query: str = "scandir"
-    mock_smpp_api: bool = True
+    mock_smpp_api: bool = False
     mock_otp_code: str = "123456"
     invitation_link: str = ""
     ldap_url: str = "ldap://"
@@ -112,7 +112,7 @@ class Settings(BaseSettings):
     jq_timeout: int = 2  # secs
     is_sha_required: bool = False
     logout_on_pwd_change: bool = True
-    url_shorter_expires: int = 60 * 60 * 48  # 48 hours
+    url_shorter_expires: int = 60 * 60  # 1 hour
 
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -139,8 +139,9 @@ class Settings(BaseSettings):
     database_max_overflow: int = 2
     database_pool_timeout: int = 30
     database_pool_recycle: int = 30
+    allowed_cors_origins: list[str] = []
     user_profile_payload_protected_fields: list[str] = []
-    hide_stack_trace: bool = False
+    hide_stack_trace: bool = True
     max_failed_login_attempts: int = 5
 
     model_config = SettingsConfigDict(env_file=get_env_file(), env_file_encoding="utf-8")

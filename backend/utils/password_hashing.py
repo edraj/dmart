@@ -1,6 +1,6 @@
 from argon2 import PasswordHasher
 
-ph = PasswordHasher(memory_cost=102400, time_cost=1, parallelism=8)
+ph = PasswordHasher(memory_cost=102400, time_cost=3, parallelism=8)
 
 
 def verify_password(plain_password: str, hashed_password: str):

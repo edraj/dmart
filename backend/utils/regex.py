@@ -8,7 +8,7 @@ SPACENAME = "^[a-zA-Z\u0621-\u064a0-9\u0660-\u0669\u064b-\u065f_]{1,32}$"
 EXT = "^(gif|png|jpeg|jpg|webp|json|md|pdf|wsq|mp3|mp4|csv|jsonl|parquet|sqlite|sqlite3|db|db3|s3db|sl3|duckdb|svg|xsls|docx|apk)$"
 IMG_EXT = "^(gif|png|jpeg|jpg|wsq|svg|webp)$"
 USERNAME = "^[a-zA-Z\u0621-\u064a0-9\u0660-\u0669\u064b-\u065f_]{3,10}$"
-PASSWORD = "^(?=.*[0-9\u0660-\u0669])(?=.*[A-Z\u0621-\u064a])[a-zA-Z\u0621-\u064a0-9\u0660-\u0669_#@%*!?$^-]{8,24}$"
+PASSWORD = "^(?=.*[0-9\u0660-\u0669])(?=.*[A-Z\u0621-\u064a])[a-zA-Z\u0621-\u064a0-9\u0660-\u0669 _#@%*!?$^&()+={}\\[\\]~|;:,.<>/-]{8,64}$"
 EMAIL = (
     "^[a-zA-Z\u0621-\u064a0-9\u0660-\u0669_\\.-]+@([a-zA-Z\u0621-\u064a0-9\u0660-\u0669_-]+\\.)+"
     "[a-zA-Z\u0621-\u064a0-9\u0660-\u0669_-]{2,4}$"
