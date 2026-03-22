@@ -45,7 +45,12 @@ _async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commi
 @asynccontextmanager
 async def get_session():
     async with _async_session() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def background_task() -> None:
@@ -62,7 +67,6 @@ async def background_task() -> None:
                 )
             )
             await session.execute(text("CREATE INDEX IF NOT EXISTS idx_count_history_spacename ON count_history(spacename)"))
-            await session.commit()
     except Exception as e:
         logger.error(f"db_entries_count_history: Failed to create table: {e}")
         return
@@ -111,8 +115,6 @@ async def get_db_entries_count_history() -> dict[str, Any]:
                         text("INSERT INTO count_history (spacename, entries_count) VALUES (:space_name, :count)"),
                         {"space_name": space_name, "count": current_count},
                     )
-
-            await session.commit()
 
     except Exception as e:
         logger.error(f"db_entries_count_history: Background task error: {e}")

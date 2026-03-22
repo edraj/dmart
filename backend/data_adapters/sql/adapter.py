@@ -2465,7 +2465,7 @@ class SQLAdapter(BaseDataAdapter):
                     session.add(lock)
                     await session.commit()
                     await session.refresh(lock)
-                    return lock.model_dump()
+                    return lock.model_dump(mode="json")
                 case LockAction.fetch:
                     lock_payload = (
                         await self.load(
@@ -2475,7 +2475,7 @@ class SQLAdapter(BaseDataAdapter):
                             class_type=core.Lock,
                             user_shortname=user_shortname,
                         )
-                    ).model_dump()
+                    ).model_dump(mode="json")
                     return lock_payload
                 case LockAction.unlock:
                     statement2 = (
