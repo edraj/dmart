@@ -3,6 +3,7 @@ from models.enums import (
     StrEnum,
     RequestType,
     Language,
+    PublicSubmitResourceType,
     ResourceType,
     DataAssetType,
     AttachmentType,
@@ -145,3 +146,31 @@ def test_redis_reducer_name():
 def test_reaction_type():
     assert ReactionType.like == "like"
     assert ReactionType.care == "care"
+
+
+def test_public_submit_resource_type():
+    assert PublicSubmitResourceType.content == "content"
+    assert PublicSubmitResourceType.ticket == "ticket"
+
+
+def test_content_type_missing():
+    """ContentType._missing_ should map 'image' to image_jpeg."""
+    assert ContentType("image") == ContentType.image_jpeg
+    assert ContentType("json") == ContentType.json
+    # Non-existent value should raise ValueError
+    with pytest.raises(ValueError):
+        ContentType("nonexistent_type")
+
+
+def test_content_type_image_types():
+    """ContentType.image_types() should return the set of image content types."""
+    image_types = ContentType.image_types()
+    assert ContentType.image_jpeg in image_types
+    assert ContentType.image_png in image_types
+    assert ContentType.image_svg in image_types
+    assert ContentType.image_gif in image_types
+    assert ContentType.image_webp in image_types
+    assert len(image_types) == 5
+    # Non-image types should not be in the set
+    assert ContentType.json not in image_types
+    assert ContentType.text not in image_types

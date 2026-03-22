@@ -231,6 +231,29 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
+async def test_validate_password_correct(client: AsyncClient) -> None:
+    """Validate the current user's password with the correct password."""
+    response = await client.post(
+        "/user/validate_password",
+        params={"password": "Test1234"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_validate_password_wrong(client: AsyncClient) -> None:
+    """Validate password with a wrong password should return 401."""
+    response = await client.post(
+        "/user/validate_password",
+        params={"password": "WrongPassword999"},
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json()["status"] == "failed"
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
 async def test_update_profile(client: AsyncClient) -> None:
     request_data = {
         "resource_type": ResourceType.user,
@@ -261,3 +284,96 @@ async def test_get_superman_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
     assert response.json()["records"][0]["shortname"] == superman["shortname"]
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_password_reset_request_with_email(client: AsyncClient) -> None:
+    """Password reset request always returns success (anti-enumeration)."""
+    response = await client.post(
+        "/user/password-reset-request",
+        json={"email": "nonexistent_user@test.com"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_password_reset_request_with_msisdn(client: AsyncClient) -> None:
+    """Password reset request via MSISDN also always returns success."""
+    response = await client.post(
+        "/user/password-reset-request",
+        json={"msisdn": "1234567890"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_create_user_for_reset(client: AsyncClient) -> None:
+    """Admin creates a user to test the admin reset endpoint."""
+    request_data = {
+        "space_name": MANAGEMENT_SPACE,
+        "request_type": "create",
+        "records": [
+            {
+                "resource_type": ResourceType.user,
+                "subpath": USERS_SUBPATH,
+                "shortname": "reset_target",
+                "attributes": {
+                    "roles": [],
+                    "msisdn": "1112223334",
+                    "email": "reset_target@test.com",
+                },
+            }
+        ],
+    }
+    assert_code_and_status_success(await client.post("/managed/request", json=request_data))
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_reset_user(client: AsyncClient) -> None:
+    """Admin resets a user account via POST /user/reset."""
+    response = await client.post(
+        "/user/reset",
+        json={"shortname": "reset_target"},
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert "sms_sent" in json_response.get("attributes", {}) or "email_sent" in json_response.get("attributes", {})
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_reset_nonexistent_user(client: AsyncClient) -> None:
+    """Admin reset for a non-existent user should fail."""
+    response = await client.post(
+        "/user/reset",
+        json={"shortname": "totally_nonexistent_user"},
+    )
+    assert response.status_code in [
+        status.HTTP_404_NOT_FOUND,
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    ]
+    assert response.json()["status"] == "failed"
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_delete_reset_target_user(client: AsyncClient) -> None:
+    """Cleanup: admin deletes the user created for reset tests."""
+    request_data = {
+        "space_name": MANAGEMENT_SPACE,
+        "request_type": "delete",
+        "records": [
+            {
+                "resource_type": ResourceType.user,
+                "subpath": USERS_SUBPATH,
+                "shortname": "reset_target",
+                "attributes": {},
+            }
+        ],
+    }
+    assert_code_and_status_success(await client.post("/managed/request", json=request_data))
