@@ -1195,7 +1195,7 @@ class SQLAdapter(BaseDataAdapter):
                         col(Histories.subpath) == subpath,
                         col(Histories.shortname) == shortname,
                     )
-                    .order_by(Histories.timestamp.desc())
+                    .order_by(col(Histories.timestamp).desc())
                     .limit(1)
                 )  # type: ignore
                 result = await session.execute(statement)

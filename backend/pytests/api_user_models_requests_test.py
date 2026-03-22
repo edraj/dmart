@@ -2,16 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from api.user.model.requests import (
-    OTPType,
     SendOTPRequest,
     PasswordResetRequest,
     ConfirmOTPRequest,
     UserLoginRequest,
     Exception,
-    Error,
     InternalErrorCode,
 )
-import utils.regex as rgx
 
 
 def test_send_otp_request_valid_msisdn():

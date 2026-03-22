@@ -12,8 +12,6 @@ from pytests.base_test import (
 )
 from models.api import Query
 from models.enums import QueryType, ResourceType
-from fastapi import status
-from utils.internal_error_code import InternalErrorCode
 
 
 new_user_data = {

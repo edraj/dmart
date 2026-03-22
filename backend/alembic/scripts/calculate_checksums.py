@@ -2,8 +2,7 @@
 import asyncio
 import hashlib
 import json
-from datetime import datetime
-from sqlalchemy import select, update, func
+from sqlalchemy import select
 from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.sql.create_tables import Histories, Users, Entries, Spaces, Roles, Permissions
 
