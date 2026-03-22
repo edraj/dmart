@@ -149,7 +149,7 @@ async def retrieve_entry_meta(
     ):
         # TODO
         # include locked before returning the dictionary
-        return {**meta.dict(exclude_none=True), "attachments": attachments}
+        return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
     payload_body = await db.load_resource_payload(
         space_name=space_name,
@@ -177,7 +177,7 @@ async def retrieve_entry_meta(
         )
     )
 
-    return {**meta.dict(exclude_none=True), "attachments": attachments}
+    return {**meta.model_dump(exclude_none=True), "attachments": attachments}
 
 
 # Public payload retrieval; can be used in "src=" in html pages
@@ -558,7 +558,7 @@ async def create_entry(
         )
     )
     response_data = response_data.model_dump(exclude_none=True, by_alias=True)
-    del response_data["query_policies"]
+    response_data.pop("query_policies", None)
     return api.Response(
         status=api.Status.success,
         records=[response_data],

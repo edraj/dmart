@@ -1,16 +1,18 @@
 """Application Settings"""
 
 import json
+import logging
 import os
 import secrets
 import re
 import string
 from typing import Any
-from venv import logger
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def get_env_file():

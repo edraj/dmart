@@ -28,7 +28,8 @@ class CustomRequestMiddleware:
             try:
                 await self.app(scope, receive, send)
             except Exception as _:
-                return
+                pass
+            return
 
         request = Request(scope, receive)
         request_headers = {}

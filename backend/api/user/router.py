@@ -21,7 +21,7 @@ from utils.settings import settings
 import utils.repository as repository
 from utils.plugin_manager import plugin_manager
 import utils.password_hashing as password_hashing
-from models.api import Error, Exception, Status
+from models.api import Status
 from utils.social_sso import get_apple_sso, get_facebook_sso, get_google_sso
 from .service import (
     gen_alphanumeric,
@@ -658,9 +658,9 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
 
     if profile_user.password and user.password and not user.force_password_change:
         if "old_password" not in profile.attributes:
-            raise Exception(
+            raise api.Exception(
                 status.HTTP_403_FORBIDDEN,
-                Error(
+                api.Error(
                     type="auth",
                     code=InternalErrorCode.PASSWORD_RESET_ERROR,
                     message="Wrong password have been provided!",
@@ -906,7 +906,7 @@ async def otp_request_login(
     msisdn = result.get("msisdn")
     email = result.get("email")
 
-    if bool(msisdn) ^ bool(email) ^ bool(shortname):
+    if sum([bool(msisdn), bool(email), bool(shortname)]) == 1:
         value = msisdn or email or shortname
         if value is None:
             raise api.Exception(
@@ -1030,9 +1030,9 @@ async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())
 
     code = await db.get_otp(key)
     if not code or code != user_request.code:
-        raise Exception(
+        raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            Error(
+            api.Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_EXPIRED,
                 message="Invalid OTP",
@@ -1061,9 +1061,9 @@ async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())
     if response.status == Status.success:
         return api.Response(status=api.Status.success, records=[])
     else:
-        raise Exception(
+        raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            Error(
+            api.Error(
                 type="OTP",
                 code=InternalErrorCode.OTP_FAILED,
                 message=response.error.message if response.error else "Internal error",
@@ -1121,7 +1121,7 @@ async def user_reset(
                 message=languages[user.language]["reset_message"].replace("{link}", sms_link),
             )
     if user.email and not user.is_email_verified:
-        token = await repository.store_user_invitation_token(user, "SMS")
+        token = await repository.store_user_invitation_token(user, "EMAIL")
         if token:
             email_link = await repository.url_shortner(token)
             await send_email(
@@ -1159,8 +1159,14 @@ async def validate_password(password: str, shortname=Depends(JWTBearer())) -> ap
 
 
 async def process_user_login(
-    user: core.User, response: Response, user_updates: dict = {}, firebase_token: str | None = None, request_headers=None
+    user: core.User,
+    response: Response,
+    user_updates: dict | None = None,
+    firebase_token: str | None = None,
+    request_headers=None,
 ) -> core.Record:
+    if user_updates is None:
+        user_updates = {}
     access_token = await sign_jwt({"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires)
 
     response.set_cookie(

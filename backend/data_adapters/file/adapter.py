@@ -1321,7 +1321,7 @@ class FileAdapter(BaseDataAdapter):
             token = await redis_services.get_key(f"users:login:invitation:{invitation_token}")
 
         if not token:
-            raise Exception(
+            raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
             )
@@ -1772,17 +1772,19 @@ class FileAdapter(BaseDataAdapter):
         meta: core.Meta,
         updates: dict,
         sync_redis: bool = True,
-        payload_dict: dict[str, Any] = {},
+        payload_dict: dict[str, Any] | None = None,
     ):
         meta.updated_at = datetime.now()
         meta_updated = False
         payload_updated = False
 
-        if not payload_dict:
+        resolved_payload: dict[str, Any] = payload_dict if payload_dict is not None else {}
+        if not resolved_payload:
             try:
                 body = str(meta.payload.body) if meta and meta.payload else ""
-                mydict = await self.load_resource_payload(space_name, subpath, body, core.Content)
-                payload_dict = mydict if mydict else {}
+                loaded = await self.load_resource_payload(space_name, subpath, body, core.Content)
+                if loaded:
+                    resolved_payload = loaded
             except Exception:
                 pass
 
@@ -1802,8 +1804,8 @@ class FileAdapter(BaseDataAdapter):
             if key in meta.model_fields.keys():
                 meta_updated = True
                 meta.__setattr__(key, value)
-            elif payload_dict:
-                payload_dict[key] = value
+            elif resolved_payload:
+                resolved_payload[key] = value
                 payload_updated = True
 
         if meta_updated:
@@ -1811,8 +1813,8 @@ class FileAdapter(BaseDataAdapter):
                 space_name, subpath, meta, old_version_flattend, {**meta.model_dump()}, list(updates.keys()), meta.shortname
             )
         if payload_updated and meta.payload and meta.payload.schema_shortname:
-            await self.validate_payload_with_schema(payload_dict, space_name, meta.payload.schema_shortname)
-            await self.save_payload_from_json(space_name, subpath, meta, payload_dict)
+            await self.validate_payload_with_schema(resolved_payload, space_name, meta.payload.schema_shortname)
+            await self.save_payload_from_json(space_name, subpath, meta, resolved_payload)
 
         if not sync_redis:
             return
@@ -1820,12 +1822,12 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.save_meta_doc(space_name, subpath, meta)
             if payload_updated:
-                payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                resolved_payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
                 await redis_services.save_payload_doc(
                     space_name,
                     subpath,
                     meta,
-                    payload_dict,
+                    resolved_payload,
                     ResourceType(snake_case(type(meta).__name__)),
                 )
 

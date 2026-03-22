@@ -238,9 +238,10 @@ async def soft_health_check(
                     meta = resource_class.model_validate(meta_doc_content)
                 except Exception as ex:
                     status["is_valid"] = False
-                    if not isinstance(status, dict) and isinstance(status["invalid"], dict):
-                        status["invalid"]["exception"] = str(ex)
-                        status["invalid"]["issues"].append("meta")
+                    invalid_info = status.get("invalid")
+                    if isinstance(status, dict) and isinstance(invalid_info, dict):
+                        invalid_info["exception"] = str(ex)
+                        invalid_info["issues"].append("meta")
                 if meta:
                     try:
                         if meta.payload and meta.payload.schema_shortname and payload_doc_content is not None:
@@ -262,9 +263,10 @@ async def soft_health_check(
                         status["is_valid"] = True
                     except Exception as ex:
                         status["is_valid"] = False
-                        if not isinstance(status, dict) and isinstance(status["invalid"], dict):
-                            status["invalid"]["exception"] = str(ex)
-                            status["invalid"]["issues"].append("payload")
+                        invalid_info = status.get("invalid")
+                        if isinstance(status, dict) and isinstance(invalid_info, dict):
+                            invalid_info["exception"] = str(ex)
+                            invalid_info["issues"].append("payload")
 
                 if not status["is_valid"]:
                     if not folders_report.get(subpath, {}).get("invalid_entries"):

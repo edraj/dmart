@@ -1257,7 +1257,7 @@ class SQLAdapter(BaseDataAdapter):
         for user_query_policy in filtered_policies:
             for perm_key in user_permissions.keys():
                 if user_query_policy.startswith(perm_key):
-                    if ffv := user_permissions[perm_key]["filter_fields_values"]:
+                    if ffv := user_permissions[perm_key].get("filter_fields_values"):
                         if ffv not in ffv_query:
                             ffv_query.append(ffv)
                         perm_key_splited = perm_key.split(":")
@@ -3188,12 +3188,14 @@ class SQLAdapter(BaseDataAdapter):
         meta: core.Meta,
         updates: dict,
         sync_redis: bool = True,
-        payload_dict: dict[str, Any] = {},
+        payload_dict: dict[str, Any] | None = None,
     ):
         meta.updated_at = datetime.now()
         meta_updated = False
         payload_updated = False
 
+        if payload_dict is None:
+            payload_dict = {}
         if not payload_dict:
             try:
                 if meta.payload and isinstance(meta.payload.body, dict):

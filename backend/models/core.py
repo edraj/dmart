@@ -278,7 +278,7 @@ class Meta(Resource):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
     ) -> Record:
         # Sanity check
 

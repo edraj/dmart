@@ -206,7 +206,6 @@ class RedisServices(Redis):
         "resource_type",
         "meta_doc_id",
         "payload_doc_id",
-        "payload_string",
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
@@ -788,7 +787,7 @@ class RedisServices(Redis):
         if sort_by:
             aggr_request.sort_by(
                 [  # type: ignore
-                    str(aggregation.Desc(f"@{sort_by}") if sort_type == SortType.ascending else aggregation.Asc(f"@{sort_by}"))
+                    str(aggregation.Asc(f"@{sort_by}") if sort_type == SortType.ascending else aggregation.Desc(f"@{sort_by}"))
                 ],
                 max=max,
             )

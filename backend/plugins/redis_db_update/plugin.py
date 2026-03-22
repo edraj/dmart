@@ -156,7 +156,7 @@ class Plugin(PluginBase):
             )
             meta_doc: dict = await redis_services.get_doc_by_id(doc_id)
 
-            if meta_doc is None:
+            if not meta_doc:
                 raise Exception("Meta doc not found")
 
             payload = {}

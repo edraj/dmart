@@ -80,6 +80,17 @@ async def import_data(
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             with zipfile.ZipFile(zip_file.file, "r") as zip_ref:
+                for member in zip_ref.namelist():
+                    member_path = os.path.realpath(os.path.join(temp_dir, member))
+                    if not member_path.startswith(os.path.realpath(temp_dir)):
+                        raise api.Exception(
+                            status.HTTP_400_BAD_REQUEST,
+                            api.Error(
+                                type="request",
+                                code=InternalErrorCode.NOT_ALLOWED,
+                                message="Zip file contains path traversal entries",
+                            ),
+                        )
                 zip_ref.extractall(temp_dir)
 
             original_spaces_folder = settings.spaces_folder
@@ -280,7 +291,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 
     keys = [key for key in keys if keys_existence[key]]
     v_path = StringIO()
-    v_path.write(codecs.BOM_UTF8.decode("utf-8"))
     v_path.write(codecs.BOM_UTF8.decode("utf-8"))
 
     list_deprecated_keys = list(deprecated_keys)

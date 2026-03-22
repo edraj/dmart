@@ -93,7 +93,7 @@ def transform_keys_to_sql(path):
     if len(parts[1:-1]) != 0:
         sql_path += " -> " + " -> ".join([f"'{part}'" for part in parts[1:-1]])
     sql_path += f" ->> '{parts[-1]}'"
-    sql_path.replace("->  ->>", "->>")
+    sql_path = sql_path.replace("->  ->>", "->>")
     return sql_path
 
 

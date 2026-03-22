@@ -614,6 +614,8 @@ async def serve_request_update(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
     return records, failed_records
 
 
@@ -774,6 +776,8 @@ async def serve_request_patch(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
     return records, failed_records
 
 
@@ -889,6 +893,8 @@ async def serve_request_assign(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
 
     return records, failed_records
 
@@ -999,6 +1005,8 @@ async def serve_request_update_acl(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
     return records, failed_records
 
 
@@ -1107,6 +1115,8 @@ async def serve_request_delete(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
 
     return records, failed_records
 
@@ -1232,6 +1242,8 @@ async def serve_request_move(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
+        elif rec is not None:
+            records.append(rec)
 
     return records, failed_records
 

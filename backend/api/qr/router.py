@@ -82,6 +82,11 @@ async def validate_qr_user_profile(
         logged_in_user=logged_in_user,
     )
     arr_data = qr_data.split(".")
+    if len(arr_data) < 2:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(type="qr", code=InternalErrorCode.QR_INVALID, message="Invalid QR data format"),
+        )
     req_date, req_data = arr_data[0], arr_data[1]
     if int(req_date) + 60 < int(time()):
         raise api.Exception(

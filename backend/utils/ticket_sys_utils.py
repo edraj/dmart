@@ -20,7 +20,7 @@ async def get_init_state_from_workflow(space_name: str, workflow_shortname: str)
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
                 message="Workflow not found",
             ),
         )
@@ -86,8 +86,8 @@ async def set_init_state_for_record(record: core.Record, space_name: str, logged
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
+            code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+            message="Workflow not found",
         ),
     )
 
@@ -131,7 +131,7 @@ async def set_init_state_from_record(ticket: core.Record, logged_in_user, space_
 
         ticket.attributes = {
             **workflow_attr,
-            "state": workflows_payload["initial_state"],
+            "state": workflows_payload["initial_state"][0]["name"],
         }
         return ticket
 
@@ -139,8 +139,8 @@ async def set_init_state_from_record(ticket: core.Record, logged_in_user, space_
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
+            code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+            message="Workflow not found",
         ),
     )
 

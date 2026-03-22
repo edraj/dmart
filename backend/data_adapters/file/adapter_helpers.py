@@ -16,7 +16,9 @@ from utils.query_policies_helper import get_user_query_policies
 from utils.settings import settings
 
 
-async def redis_query_search(query: api.Query, user_shortname: str, redis_query_policies: list = []) -> tuple:
+async def redis_query_search(query: api.Query, user_shortname: str, redis_query_policies: list | None = None) -> tuple:
+    if redis_query_policies is None:
+        redis_query_policies = []
     search_res: list = []
     total = 0
 
@@ -155,8 +157,10 @@ async def get_record_from_redis_doc(
 
 async def redis_query_aggregate(
     query: api.Query,
-    redis_query_policies: list = [],
+    redis_query_policies: list | None = None,
 ) -> list:
+    if redis_query_policies is None:
+        redis_query_policies = []
     if not query.aggregation_data:
         return []
 
@@ -298,7 +302,7 @@ async def serve_query_search(db, query, logged_in_user):
 
         if query.highlight_fields:
             for key, value in query.highlight_fields.items():
-                resource_base_record.attributes[value] = getattr(redis_doc_dict, key, None)
+                resource_base_record.attributes[value] = redis_doc_dict.get(key, None)
 
         resource_base_record.attributes = alter_dict_keys(
             jsonable_encoder(resource_base_record.attributes, exclude_none=True),

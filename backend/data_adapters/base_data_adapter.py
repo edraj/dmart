@@ -423,7 +423,7 @@ class BaseDataAdapter(ABC):
         meta: core.Meta,
         updates: dict,
         sync_redis: bool = True,
-        payload_dict: dict[str, Any] = {},
+        payload_dict: dict[str, Any] | None = None,
     ):
         pass
 

@@ -105,7 +105,7 @@ def flatten_list_of_dicts_in_dict(d: dict) -> dict:
     return flattened_d
 
 
-def resolve_schema_references(schema: dict, refs: dict = {}) -> dict:
+def resolve_schema_references(schema: dict, refs: dict | None = None) -> dict:
     """Resolves and replaces json-schema $refs with the appropriate dict.
 
     Recursively walks the given schema dict, converting every instance
@@ -278,11 +278,11 @@ def replace_message_vars(message: str, dest_data: dict, locale: str):
         else:
             message = message.replace(f"{{{field}}}", languages[Language[locale]].get(str(value), str(value)))
 
-    return re_sub(r"\{\w*.*\}", "", message)
+    return re_sub(r"\{[^}]*\}", "", message)
 
 
-def str_to_datetime(str: str, format: str = "%Y-%m-%dT%H:%M:%S.%f"):
-    return datetime.strptime(str, format)
+def str_to_datetime(date_str: str, fmt: str = "%Y-%m-%dT%H:%M:%S.%f"):
+    return datetime.strptime(date_str, fmt)
 
 
 def pp(*args, **kwargs):
