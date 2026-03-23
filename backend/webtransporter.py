@@ -5,16 +5,16 @@ import logging
 import base64
 import datetime
 import ipaddress
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, cast, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Body, status, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pywebtransport import ServerApp, WebTransportSession, ServerConfig
-from pywebtransport.server.middleware import create_logging_middleware
-from pywebtransport.events import Event
+from pywebtransport import ServerApp, WebTransportSession, ServerConfig  # type: ignore
+from pywebtransport.server.middleware import create_logging_middleware  # type: ignore
+from pywebtransport.events import Event  # type: ignore
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from cryptography import x509
@@ -105,13 +105,14 @@ class WebTransportConnectionManager:
 
     async def check_eligibility(self, user_shortname: str, space_name: str, subpath: str) -> bool:
         try:
-            return await access_control.check_access(
+            result = await access_control.check_access(
                 user_shortname=user_shortname,
                 space_name=space_name,
                 subpath=subpath,
                 resource_type=ResourceType.notification,
                 action_type=ActionType.query,
             )
+            return bool(result)
         except Exception as e:
             print(f"Eligibility check failed for {user_shortname}: {e}")
             return False
@@ -145,7 +146,7 @@ class WebTransportConnectionManager:
         await self.send_message(subscribed_message, user_shortname)
         return True, "Subscribed successfully"
 
-    async def channel_unsubscribe(self, user_shortname: str, msg_json: dict = None):
+    async def channel_unsubscribe(self, user_shortname: str, msg_json: Optional[dict] = None):
         if msg_json and {"space_name", "subpath"}.issubset(msg_json):
             channel_name = self.generate_channel_name(msg_json)
             if channel_name in self.channels and user_shortname in self.channels[channel_name]:
@@ -235,8 +236,9 @@ async def handle_session(session: WebTransportSession, token: str):
         user_shortname = decoded_token["shortname"]
     except Exception as e:
         error_msg = str(e)
-        if hasattr(e, 'error') and hasattr(e.error, 'message'):
-            error_msg = e.error.message
+        err_obj = getattr(e, 'error', None)
+        if err_obj is not None and hasattr(err_obj, 'message'):
+            error_msg = getattr(err_obj, 'message')
         print(f"WebTransport authentication failed for token {token[:10]}...: {error_msg}")
         await session.reject(status_code=401)
         return
@@ -326,8 +328,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     except Exception as e:
         logger.error(f"WebSocket authentication failed for token {e}")
         error_msg = str(e)
-        if hasattr(e, 'error') and hasattr(e.error, 'message'):
-            error_msg = e.error.message
+        err_obj = getattr(e, 'error', None)
+        if err_obj is not None and hasattr(err_obj, 'message'):
+            error_msg = getattr(err_obj, 'message')
         logger.error(f"WebSocket authentication failed for token {token[:10]}...: {error_msg}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
