@@ -1,6 +1,4 @@
-import { Dmart, ResourceType, type ResponseEntry } from "@edraj/tsdmart";
-import { Level, showToast } from "@/utils/toast";
-import { createAjvValidator } from "svelte-jsoneditor";
+import { ResourceType } from "@edraj/tsdmart";
 
 export function cleanUpSchema(obj: Object) {
     for (let prop in obj) {

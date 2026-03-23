@@ -144,7 +144,8 @@ export function generateNavigationInfo(params: {
 }
 
 /**
- * Handles complete shortname update process
+ * Handles complete shortname update process.
+ * Returns navigation info so the caller (.svelte file) can perform routing.
  */
 export async function updateEntryShortname(params: {
     space_name: string;
@@ -152,7 +153,7 @@ export async function updateEntryShortname(params: {
     oldShortname: string;
     newShortname: string;
     resourceType: ResourceType;
-}): Promise<void> {
+}): Promise<{ url: string; payload: Record<string, string> } | null> {
     // Validate new shortname
     const validation = validateShortname(params.newShortname);
     if (!validation.isValid) {
@@ -161,14 +162,14 @@ export async function updateEntryShortname(params: {
 
     // Skip if shortname hasn't changed
     if (!params.newShortname || params.newShortname === params.oldShortname) {
-        return;
+        return null;
     }
 
     // Perform the move operation
     await moveEntry(params);
 
-    // Navigate to the new location
-    const navInfo = generateNavigationInfo({
+    // Return navigation info for the caller to handle routing
+    return generateNavigationInfo({
         space_name: params.space_name,
         subpath: params.subpath,
         shortname: params.newShortname,
