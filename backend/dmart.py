@@ -53,6 +53,7 @@ commands = """
     test
     apply_plugin_config
     ws
+    wt
 """
 
 sentinel = object()
@@ -612,6 +613,23 @@ def main():
             import websocket
 
             asyncio.run(websocket.main())
+        case "wt":
+            reload_settings = False
+            if "--dmart-config" in sys.argv:
+                idx = sys.argv.index("--dmart-config")
+                if idx + 1 < len(sys.argv):
+                    os.environ["BACKEND_ENV"] = sys.argv[idx + 1]
+                    sys.argv.pop(idx + 1)
+                sys.argv.pop(idx)
+                reload_settings = True
+
+            if reload_settings:
+                settings.reload()
+            else:
+                settings.load_cxb_config()
+
+            import webtransporter
+            asyncio.run(webtransporter.main())
         case "cli":
             config_file = None
             if "--config" in sys.argv:
