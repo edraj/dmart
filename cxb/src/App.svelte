@@ -4,7 +4,7 @@
     import {SvelteToast, type SvelteToastOptions} from "@zerodevx/svelte-toast";
     import './app.css'
 
-    const prefix='cxb'; // ""
+    const prefix = (import.meta.env.BASE_URL || '/cxb').replace(/^\/|\/$/g, '');
 
   const options: SvelteToastOptions = {
     duration: 2500, // duration of progress bar tween to the `next` value
@@ -25,23 +25,28 @@
   import { setupI18n, dir } from "./i18n";
   import refresh_spaces from "@/stores/management/refresh_spaces";
   import {locale} from "svelte-i18n";
-  function findRoute(routers, paths, lang) {
+  function findRoute(routers: any, paths: string[], _lang: string): any {
     if (paths.length === 0) {
       return routers;
     }
 
     const [currentPath, ...remainingPaths] = paths;
 
-    const matchingChild = routers.children.find(
-            (child) => child.name === `${currentPath}`
+    const matchingChild = routers.children?.find(
+            (child: any) => child.name === currentPath
     );
     if (matchingChild) {
-      return findRoute(matchingChild, remainingPaths, lang);
+      return findRoute(matchingChild, remainingPaths, _lang);
     } else {
       return null;
     }
   }
-  var appRouter = null;
+
+  function buildRewrittenUrl(url: string, lastSegment: string): string {
+    const parts = url.split("/");
+    return parts.slice(0, parts.length - 1).join("/") + `/${lastSegment}`;
+  }
+  let appRouter = null;
   async function prepareRouter() {
     if (appRouter) return appRouter;
     appRouter = createRouter({
@@ -65,58 +70,18 @@
           }
 
           if (![".en", ".ar", ".ku"].includes(fileName)) {
-            paths[paths.length - 1] = `${fileName}.${lang}`;
-            let result = findRoute(routes, paths, lang);
-            // if the REQUIRED+LANG file is NOT found
-            // then look for the REQUIRED file
-            if (result === null) {
-              paths[paths.length - 1] = fileName;
-              result = findRoute(routes, paths, lang);
-              // if the REQUIRED file is NOT found
-              // then look for the INDEX+LANG file
-              if (result === null) {
-                paths[paths.length - 1] = `index.${lang}`;
-                result = findRoute(routes, paths, lang);
-                // if the INDEX+LANG file is NOT found
-                // then look for the INDEX file
-                if (result === null) {
-                  paths[paths.length - 1] = `index`;
-                  result = findRoute(routes, paths, lang);
-                  if (result !== null) {
-                    // return INDEX
-                    return (
-                            url
-                              .split("/")
-                              .slice(0, url.split("/").length - 1)
-                              .join("/") + `/${paths[paths.length - 1]}`
-                    );
-                  }
-                } else {
-                  // return INDEX+LANG
-                  return (
-                          url
-                            .split("/")
-                            .slice(0, url.split("/").length - 1)
-                            .join("/") + `/${paths[paths.length - 1]}`
-                  );
-                }
-              } else {
-                // return REQUIRED
-                return (
-                        url
-                          .split("/")
-                          .slice(0, url.split("/").length - 1)
-                          .join("/") + `/${paths[paths.length - 1]}`
-                );
+            // Try candidates in order: file.lang, file, index.lang, index
+            const candidates = [
+              `${fileName}.${lang}`,
+              fileName,
+              `index.${lang}`,
+              `index`,
+            ];
+            for (const candidate of candidates) {
+              paths[paths.length - 1] = candidate;
+              if (findRoute(routes, paths, lang) !== null) {
+                return buildRewrittenUrl(url, candidate);
               }
-            } else {
-              // return REQUIRED+LANG
-              return (
-                      url
-                        .split("/")
-                        .slice(0, url.split("/").length - 1)
-                        .join("/") + `/${paths[paths.length - 1]}`
-              );
             }
           }
 

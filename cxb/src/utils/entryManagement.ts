@@ -48,14 +48,14 @@ export async function saveEntry(
         };
     }
 
-    if (resource_type === ResourceType.user && content.password === null || (content.password && content.password.startsWith("$argon2id") || content.password === '')) {
+    if (resource_type === ResourceType.user && (content.password === null || (content.password && content.password.startsWith("$argon2id")) || content.password === '')) {
         delete content.password;
     }
 
     if (content.password && content.password !== '') {
         if (!content.old_password) {
             showToast(Level.warn, `Old password is required for password change`);
-            return
+            return { success: false, errorMessage: "Old password is required for password change" };
         }
     }
 

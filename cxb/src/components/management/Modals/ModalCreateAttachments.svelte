@@ -302,8 +302,7 @@
                 showToast(Level.warn);
             }
         } catch (e) {
-            console.log(e)
-            showToast(Level.warn, e.response.data);
+            showToast(Level.warn, e.response?.data ?? e.message);
             errorContent = e.response.data;
         } finally {
             isLoading = false;

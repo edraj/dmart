@@ -1,10 +1,10 @@
-import {generateUUID} from "@/utils/uuid";
+
 
 export function transformEntryToRender(entries: any): any {
     if (entries.properties) {
         const properties = [];
         Object.keys(entries.properties).forEach((entry) => {
-            const id = generateUUID();
+            const id = crypto.randomUUID();
             if (entries?.properties[entry]?.properties) {
                 properties.push({
                     id,
@@ -30,36 +30,36 @@ export function removeEmpty(data: any): any {
         return undefined;
     }
 
-    // // Handle arrays
-    // if (Array.isArray(data)) {
-    //     const filteredArray = data
-    //         .map(item => removeEmpty(item))
-    //         .filter(item => item !== undefined);
-    //     return filteredArray.length ? filteredArray : undefined;
-    // }
-    //
-    // // Handle objects
-    // if (typeof data === 'object') {
-    //     const cleanedObj = { ...data };
-    //     let isEmpty = true;
-    //
-    //     for (const key in cleanedObj) {
-    //         const cleanedValue = removeEmpty(cleanedObj[key]);
-    //         if (cleanedValue === undefined) {
-    //             delete cleanedObj[key];
-    //         } else {
-    //             cleanedObj[key] = cleanedValue;
-    //             isEmpty = false;
-    //         }
-    //     }
-    //
-    //     return isEmpty ? undefined : cleanedObj;
-    // }
-    //
-    // // Handle strings
-    // if (typeof data === 'string' && data.trim() === '') {
-    //     return undefined;
-    // }
+    // Handle arrays
+    if (Array.isArray(data)) {
+        const filteredArray = data
+            .map(item => removeEmpty(item))
+            .filter(item => item !== undefined);
+        return filteredArray.length ? filteredArray : undefined;
+    }
+
+    // Handle objects
+    if (typeof data === 'object') {
+        const cleanedObj = { ...data };
+        let isEmpty = true;
+
+        for (const key in cleanedObj) {
+            const cleanedValue = removeEmpty(cleanedObj[key]);
+            if (cleanedValue === undefined) {
+                delete cleanedObj[key];
+            } else {
+                cleanedObj[key] = cleanedValue;
+                isEmpty = false;
+            }
+        }
+
+        return isEmpty ? undefined : cleanedObj;
+    }
+
+    // Handle strings
+    if (typeof data === 'string' && data.trim() === '') {
+        return undefined;
+    }
 
     // Return other primitive values as-is
     return data;

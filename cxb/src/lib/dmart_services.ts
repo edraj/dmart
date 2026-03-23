@@ -35,7 +35,7 @@ export async function getAvatar(shortname: string) {
 }
 
 export async function getSpaces(): Promise<ApiQueryResponse> {
-    const _spaces: any = await Dmart.query({
+    const _spaces = await Dmart.query({
         type: QueryType.spaces,
         space_name: "management",
         subpath: "/",
@@ -72,7 +72,7 @@ export async function getChildren(
         limit: limit,
         offset: offset,
     });
-    if (ignoreFilter == false && spaces !== null) {
+    if (ignoreFilter === false && spaces !== null) {
         const selectedSpace = spaces.records.find(record => record.shortname === space_name);
         const hiddenFolders: string[] = selectedSpace.attributes.hide_folders;
         if (hiddenFolders) {
@@ -88,7 +88,7 @@ export async function getChildren(
     return folders
 }
 
-export async function getChildrenAndSubChildren(subpathsPTR: any, spacename, base: string, _subpaths: any) {
+export async function getChildrenAndSubChildren(subpathsPTR: string[], spacename: string, base: string, _subpaths: { records: Array<{ resource_type: string; shortname: string }> }) {
     for (const _subpath of _subpaths.records) {
         if (_subpath.resource_type === "folder") {
             const fullPath = `${base}/${_subpath.shortname}`;
@@ -108,7 +108,8 @@ export async function fetchWorkflows(space_name: string) {
             subpath: '/workflows'
         });
         return result.records || [];
-    } catch (e) {
+    } catch {
         showToast(Level.warn, "Failed to fetch workflows");
+        return [];
     }
 }
