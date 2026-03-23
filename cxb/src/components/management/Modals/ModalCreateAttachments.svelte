@@ -301,9 +301,10 @@
             } else {
                 showToast(Level.warn);
             }
-        } catch (e) {
-            showToast(Level.warn, e.response?.data ?? e.message);
-            errorContent = e.response.data;
+        } catch (e: any) {
+            const errorData = e?.response?.data || e?.message || "An unexpected error occurred";
+            showToast(Level.warn, errorData);
+            errorContent = errorData;
         } finally {
             isLoading = false;
         }

@@ -30,8 +30,6 @@
     import {filterRequestHeaders, getRowsPerPageSetting, getValueByPath} from "@/utils/listViewUtils";
     import {website} from "@/config";
 
-    $goto;
-
     $bulkBucket = [];
 
     let {
@@ -248,7 +246,9 @@
 
         if (type === QueryType.events) {
             open = true;
-            modalData = JSON.parse(JSON.stringify(record));
+
+            const blacklist = ["sec", "content-type", "accept", "host", "connection"];
+            modalData = structuredClone(record);
 
             if (modalData?.attributes?.attributes?.request_headers) {
                 modalData.attributes.attributes.request_headers =
@@ -342,8 +342,12 @@
                 localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
             }
             (async () => {
-                await fetchPageRecords(true, {});
-                handleAllBulk(null, isAllBulkChecked);
+                try {
+                    await fetchPageRecords(true, {});
+                    handleAllBulk(null, isAllBulkChecked);
+                } catch (e) {
+                    showToast(Level.warn, "Failed to fetch records after changing page size");
+                }
             })();
         }
     });
@@ -397,7 +401,7 @@
             e.target.checked = isAllBulkChecked;
         }
 
-        objectDatatable.arrayRawData.map((e, i) => {
+        objectDatatable.arrayRawData.forEach((e, i) => {
             const _shortname = e.shortname;
 
             const input: any = document.getElementById(_shortname);
@@ -419,7 +423,7 @@
     }
 
     function handleSortRendered(node) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             const spanButton = node.querySelector(
                 'span[role="button"][style*="cursor:pointer"][style*="white-space: nowrap"]',
             );
@@ -441,6 +445,7 @@
 
         return {
             destroy() {
+                clearTimeout(timer);
             },
         };
     }
@@ -535,7 +540,7 @@
                             {/each}
                         </TableHead>
                         <TableBody>
-                            {#each objectDatatable.arrayRawData as row, index}
+                            {#each objectDatatable.arrayRawData as row, index (row.shortname)}
                                 <TableBodyRow
                                         class="hover:bg-gray-200"
                                         onclick={(e) => onListClick(e, row)}

@@ -21,10 +21,6 @@
         ShareNodesSolid,
         TrashBinOutline,
         TrashBinSolid,
-        GridSolid,
-        ImageSolid,
-        CodeOutline,
-        ClipboardListSolid,
         ClockArrowOutline,
     } from "flowbite-svelte-icons";
     import { JSONEditor, Mode } from "svelte-jsoneditor";
@@ -44,7 +40,7 @@
     import MetaRoleForm from "@/components/management/forms/MetaRoleForm.svelte";
     import MetaPermissionForm from "@/components/management/forms/MetaPermissionForm.svelte";
     import SpaceForm from "@/components/management/forms/SpaceForm.svelte";
-    import { untrack } from "svelte";
+    import { untrack, onDestroy } from "svelte";
     import { goto } from "@roxi/routify";
     import HistoryListView from "@/components/management/HistoryListView.svelte";
     import MetaTicketForm from "@/components/management/forms/MetaTicketForm.svelte";
@@ -67,8 +63,6 @@
     } from "@/utils/entryManagement";
     import { bulkBucket } from "@/stores/management/bulk_bucket";
     import { showToast, Level } from "@/utils/toast";
-
-    $goto;
 
     const EDITOR_INIT_DELAY = 512;
     const DEFAULT_RECORDS_LIMIT = 50;
@@ -110,10 +104,14 @@
     let jeContent: any = $state({ json: structuredClone(entry) });
     let entryRelationships: any[] = $state(entry.relationships || []);
     let originalJeContent: any = $state({});
-    setTimeout(() => {
+    let _initTimer = setTimeout(() => {
         originalJeContent = jsonEditorContentParser($state.snapshot(jeContent));
     }, EDITOR_INIT_DELAY);
     let isJEDirty = $state(false);
+
+    onDestroy(() => {
+        clearTimeout(_initTimer);
+    });
 
     let ticketData: any = $state({
         action: null,
@@ -359,7 +357,8 @@
         }
         jeContent = { json: $state.snapshot(entry) };
         entryRelationships = entry.relationships || [];
-        setTimeout(() => {
+        clearTimeout(_initTimer);
+        _initTimer = setTimeout(() => {
             originalJeContent = jsonEditorContentParser(
                 $state.snapshot(jeContent),
             );
@@ -812,37 +811,6 @@
                                 bind:content={jeContent.json.payload.body}
                             />
                         </Card>
-                        <!--{#if resource_type === ResourceType.schema}-->
-                        <!--    <SchemaForm bind:content={jeContent.json.payload.body}  />-->
-                        <!--{:else if resource_type === ResourceType.folder}-->
-                        <!--    <FolderForm bind:content={jeContent.json.payload.body} />-->
-                        <!--{:else if resource_type === ResourceType.content && subpath === "workflows"}-->
-                        <!--    <WorkflowForm bind:content={jeContent.json.payload.body} />-->
-                        <!--{:else}-->
-                        <!--    {#if schemaShortname}-->
-                        <!--        &lt;!&ndash;{#if resource_type === ResourceType.content && schemaShortname === "configuration"}&ndash;&gt;-->
-                        <!--        &lt;!&ndash;    <ConfigForm bind:entries={jeContent.json.payload.body.items}/>&ndash;&gt;-->
-                        <!--        {#if resource_type === ResourceType.content && schemaShortname === "translation"}-->
-                        <!--            {#await getPayloadSchema()}-->
-                        <!--                <TextPlaceholder class="m-5" size="lg" style="width: 100vw"/>-->
-                        <!--            {:then schema}-->
-                        <!--                <TranslationForm-->
-                        <!--                    bind:entries={jeContent.json.payload.body}-->
-                        <!--                    columns={Object.keys(schema.payload.body.properties.items.items.properties)}-->
-                        <!--                />-->
-                        <!--            {/await}-->
-                        <!--        {:else}-->
-                        <!--            {#await getPayloadSchema()}-->
-                        <!--                <CardPlaceholder size="md" class="mt-8" />-->
-                        <!--            {:then schema}-->
-                        <!--                <DynamicSchemaBasedForms-->
-                        <!--                        schema={schema.payload.body}-->
-                        <!--                        bind:content={jeContent.json.payload.body}-->
-                        <!--                />-->
-                        <!--            {/await}-->
-                        <!--        {/if}-->
-                        <!--    {/if}-->
-                        <!--{/if}-->
                     {/if}
                 {/if}
                 {#if errorMessage}

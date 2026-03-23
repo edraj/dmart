@@ -1,4 +1,6 @@
 import {Dmart, RequestType, ResourceType} from "@edraj/tsdmart";
+import { goto } from "@roxi/routify";
+import { get } from "svelte/store";
 
 /**
  * Utility functions for Meta Form components
@@ -173,6 +175,8 @@ export async function updateEntryShortname(params: {
         shortname: params.newShortname,
         resourceType: params.resourceType
     });
+    
+    get(goto)(navInfo.url, navInfo.payload);
 }
 
 /**

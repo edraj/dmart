@@ -230,7 +230,7 @@
     <div
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 w-full place-items-center"
     >
-        {#each ($spaces ?? []).filter((space) => space?.attributes?.hide_space !== true) as space}
+        {#each ($spaces ?? []).filter((space) => space?.attributes?.hide_space !== true) as space (space.shortname)}
             <Card class="relative w-full">
                 <div class="absolute top-2 left-2">
                     <Button class="!p-1" color="light">
