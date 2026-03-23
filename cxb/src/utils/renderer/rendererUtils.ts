@@ -103,36 +103,6 @@ export function resolveResourceType(space_name: string, subpath: string, resourc
     return fullSubpath.endsWith("/schema") ? ResourceType.schema : resourceType;
 }
 
-// export async function get_schema(space_name:string, schema_shortname:string) {
-//     try {
-//         const schema_data: ResponseEntry | null = await Dmart.retrieve_entry(
-//             ResourceType.schema,
-//             space_name,
-//             "/schema",
-//             schema_shortname,
-//             true,
-//             false
-//         );
-//         if (schema_data === null){
-//             return  null;
-//         }
-//         if (schema_data?.payload?.body) {
-//             const schema = schema_data.payload.body;
-//             cleanUpSchema(schema.properties);
-//             return {
-//                 schema: schema,
-//                 validator: createAjvValidator({ schema })
-//             }
-//         } else {
-//             return null;
-//         }
-//     }
-//     catch (x) {
-//         showToast(Level.warn, "Schema loading failed");
-//         return  null;
-//     }
-// }
-
 export function scrollToElById(elementId: string) {
     const el = document.getElementById(elementId);
     if (el) {

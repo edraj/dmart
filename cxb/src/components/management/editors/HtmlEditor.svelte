@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {createEventDispatcher, onMount} from "svelte";
+    import {createEventDispatcher, onMount, onDestroy} from "svelte";
     import {Editor, format, h} from 'typewriter-editor';
     import {Card} from "flowbite-svelte";
 
@@ -15,6 +15,8 @@
 
     let maindiv;
     let editor = null;
+    let toolbarElement: HTMLDivElement | null = null;
+    let buttonCleanups: Array<{ button: HTMLButtonElement; action: () => void }> = [];
 
     const underline = format({
         name: 'underline',
@@ -125,6 +127,7 @@
             const toolbar = document.createElement('div');
             toolbar.id = `toolbar-${uid}`;
             toolbar.className = 'editor-toolbar';
+            toolbarElement = toolbar;
 
             const textFormatGroup = document.createElement('div');
             textFormatGroup.className = 'toolbar-group';
@@ -207,8 +210,28 @@
         button.textContent = icon;
 
         button.addEventListener('click', action);
+        buttonCleanups.push({ button, action });
         toolbar.appendChild(button);
     }
+
+    onDestroy(() => {
+        // Clean up all event listeners from toolbar buttons
+        for (const { button, action } of buttonCleanups) {
+            button.removeEventListener('click', action);
+        }
+        buttonCleanups = [];
+
+        // Remove the toolbar DOM element
+        if (toolbarElement && toolbarElement.parentNode) {
+            toolbarElement.parentNode.removeChild(toolbarElement);
+        }
+
+        // Destroy the editor instance
+        if (editor) {
+            editor.destroy?.();
+            editor = null;
+        }
+    });
 
     $effect(() => {
         if (editor && typeof editor.setHTML === 'function') {

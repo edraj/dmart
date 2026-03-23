@@ -252,7 +252,7 @@
         <!-- Existing relationships list -->
         {#if relationships && relationships.length > 0}
             <div class="space-y-2 w-full max-w-2xl mx-auto">
-                {#each relationships as rel, index}
+                {#each relationships as rel, index (index)}
                     <Card class="p-3 w-full">
                         <div class="flex items-center justify-between">
                             <div class="flex-1">

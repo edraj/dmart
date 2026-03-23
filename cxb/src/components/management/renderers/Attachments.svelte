@@ -39,7 +39,6 @@
   import ModalCreateAttachments from "@/components/management/Modals/ModalCreateAttachments.svelte";
   import RelationshipModal from "@/components/management/Modals/RelationshipModal.svelte";
   import { currentEntry } from "@/stores/global";
-  import { untrack } from "svelte";
 
   let {
     attachments = [],
@@ -196,17 +195,6 @@
 
   function editAttachment(attachment) {
     selectedAttachment = attachment;
-
-    // Only update payload for json, text, comment, markdown, html types
-    // if (attachment.resource_type === ResourceType.json
-    //     || [ContentType.text, ContentType.json, ContentType.markdown, ContentType.html].includes(attachment.attributes?.payload?.content_type)
-    //     || attachment.resource_type === ResourceType.comment) {
-    //   handleContentEditModal(attachment);
-    // } else {
-    //   // For all other types, only update metadata
-    //   handleMetaEditModal(attachment);
-    // }
-
     handleEditModal(selectedAttachment);
   }
 
@@ -225,14 +213,6 @@
     openViewContentModal = true;
   }
 
-  $effect(() => {
-    if (selectedFilter === "all") {
-      filteredAttachments = Object.values(attachments).flat(1);
-    } else {
-      filteredAttachments = attachments[selectedFilter] || [];
-    }
-  });
-
   let createMetaContent = $state({});
   let createPayloadContent = $state({});
   function handleCreateAttachmentModal(e) {
@@ -245,7 +225,6 @@
   }
 
   let selectedFilter = $state("all");
-  let filteredAttachments: any = $state(Object.values(attachments).flat(1));
   let contentTypeGroups: any = $state({});
 
   function groupAttachmentsByContentType() {
@@ -274,20 +253,14 @@
 
     return groups;
   }
+
+  // Single unified $effect to handle both attachment grouping and filter changes
+  let filteredAttachments: any = $state(Object.values(attachments).flat(1));
   $effect(() => {
     contentTypeGroups = groupAttachmentsByContentType();
-    untrack(() => {
-      filteredAttachments =
-        contentTypeGroups[selectedFilter] || contentTypeGroups.all;
-    });
-  });
-  $effect(() => {
-    if (selectedFilter) {
-      untrack(() => {
-        filteredAttachments =
-          contentTypeGroups[selectedFilter] || contentTypeGroups.all;
-      });
-    }
+    // Re-derive filtered list when groups or filter changes
+    filteredAttachments =
+      contentTypeGroups[selectedFilter] || contentTypeGroups.all;
   });
 </script>
 
@@ -329,7 +302,7 @@
           ALL ({contentTypeGroups.all?.length || 0})
         </Badge>
 
-        {#each Object.keys(contentTypeGroups).filter((key) => key !== "all") as contentType}
+        {#each Object.keys(contentTypeGroups).filter((key) => key !== "all") as contentType (contentType)}
           <Badge
             class={selectedFilter === contentType
               ? "m-1 bg-primary text-white"
@@ -389,7 +362,7 @@
     <div
       class="my-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 w-full place-items-center"
     >
-      {#each filteredAttachments as attachment}
+      {#each filteredAttachments as attachment (attachment.shortname)}
         <Card class="relative w-full">
           <div class="absolute top-2 left-2">
             <Button class="!p-1" color="light">
