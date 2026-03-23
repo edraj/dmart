@@ -388,7 +388,6 @@ fingerprint_cache = None
 @app.api_route(path="/wt-fingerprint", methods=["get"])
 async def get_fingerprint():
     global fingerprint_cache
-    print("Getting fingerprint")
     if not fingerprint_cache:
         fingerprint_cache = get_certificate_fingerprint("localhost.crt")
     return JSONResponse(
