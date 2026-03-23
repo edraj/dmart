@@ -57,6 +57,7 @@ export let website: WebsiteConfig = {
   delay_total_count: false
 };
 
-loadConfig().then(config => {
+/** Resolves once the runtime config.json has been loaded and applied. */
+export const configReady: Promise<void> = loadConfig().then(config => {
   website = config;
 });

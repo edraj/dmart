@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     app_name: str = "dmart"
     websocket_url: str = ""  # "http://127.0.0.1:8484"
     websocket_port: int = 8484
+    webtransport_port: int = 8585
     base_path: str = ""
     debug_enabled: bool = False
     debug_perm: bool = False

@@ -51,7 +51,7 @@
     import { isDeepEqual } from "@/utils/compare";
     import { user } from "@/stores/user";
     import PayloadForm from "@/components/management/forms/PayloadForm.svelte";
-    import { getParentPath } from "@/utils/helpers";
+    import { getParentSubpath as getParentPath } from "@/utils/entryManagement";
     import { getChildren } from "@/lib/dmart_services";
     import RolesExplorer from "@/components/management/renderers/RolesExplorer.svelte";
     import PermissionsExplorer from "@/components/management/renderers/PermissionsExplorer.svelte";

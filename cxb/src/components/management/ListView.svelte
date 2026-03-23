@@ -27,7 +27,7 @@
     import ListViewActionBar from "@/components/management/ListViewActionBar.svelte";
     import {currentListView} from "@/stores/global";
     import {untrack} from "svelte";
-    import {getRowsPerPageSetting, getValueByPath} from "@/utils/listViewUtils";
+    import {filterRequestHeaders, getRowsPerPageSetting, getValueByPath} from "@/utils/listViewUtils";
     import {website} from "@/config";
 
     $bulkBucket = [];
@@ -183,10 +183,10 @@
             if ($spaces === null || $spaces.length === 0) {
                 await getSpaces();
             }
-            const currentSpace = $spaces.find((e) => e.shortname === space_name);
-            const hideFolders = currentSpace.attributes.hide_folders;
+            const currentSpace = $spaces?.find((e) => e.shortname === space_name);
+            const hideFolders = currentSpace?.attributes?.hide_folders;
 
-            if (hideFolders.length) {
+            if (hideFolders?.length) {
                 _search += ` -@shortname:${hideFolders.join("|")}`;
             }
         }
@@ -251,18 +251,8 @@
             modalData = structuredClone(record);
 
             if (modalData?.attributes?.attributes?.request_headers) {
-                modalData.attributes.attributes.request_headers = Object.keys(
-                    modalData.attributes.attributes.request_headers,
-                ).reduce(
-                    (acc, key) =>
-                        blacklist.some((item) => key.includes(item))
-                            ? acc
-                            : {
-                                ...acc,
-                                [key]: modalData.attributes.attributes.request_headers[key],
-                            },
-                    {},
-                );
+                modalData.attributes.attributes.request_headers =
+                    filterRequestHeaders(modalData.attributes.attributes.request_headers);
             }
             return;
         }
@@ -368,11 +358,6 @@
                 ...$params,
                 page: objectDatatable.numberActivePage.toString(),
             });
-            // numberActivePage = objectDatatable.numberActivePage;
-            // (async() => {
-            //     await fetchPageRecords(false,{},false);
-            //     handleAllBulk(null, false);
-            // })();
         }
     });
 

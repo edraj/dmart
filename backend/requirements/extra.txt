@@ -7,3 +7,4 @@ duckdb
 segno
 jq
 pygments
+pywebtransport
