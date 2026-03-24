@@ -314,11 +314,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                     is_array_query = False
                     array_prefix_path = ""
                     remaining_path_parts = []
-                    array_idx = -1
                     for idx, part in enumerate(parts):
                         if part.endswith("[]"):
                             is_array_query = True
-                            array_idx = idx
                             array_prefix_path = "->".join([f"'{p}'" for p in parts[:idx]] + [f"'{part[:-2]}'"])
                             remaining_path_parts = parts[idx + 1 :]
                             break
