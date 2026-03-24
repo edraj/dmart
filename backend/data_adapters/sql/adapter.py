@@ -325,6 +325,35 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
                     payload_path = "->".join([f"'{part}'" for part in parts])
 
+                    if "*" in payload_path:
+                        parts_before_wildcard = []
+                        for p in payload_field.split("."):
+                            if p == "*":
+                                break
+                            parts_before_wildcard.append(f"'{p}'")
+
+                        if parts_before_wildcard:
+                            parent_path = "->".join(parts_before_wildcard)
+                            base_expr = f"payload::jsonb->{parent_path}"
+                        else:
+                            base_expr = "payload::jsonb"
+
+                        conditions = []
+                        for value in values:
+                            p_val = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p_val] = value
+                            conditions.append(f"({base_expr})::text ILIKE '%' || :{p_val} || '%'")
+
+                        if conditions:
+                            join_operator = " AND " if operation == "AND" else " OR "
+                            if negative:
+                                combined_cond = "NOT (" + join_operator.join(conditions) + ")"
+                            else:
+                                combined_cond = "(" + join_operator.join(conditions) + ")"
+                            statement = statement.where(text(combined_cond))
+                        continue
+
                     payload_path_splited = payload_path.split("->")
                     if len(payload_path_splited) > 1:
                         _nested_no_last = "->".join(payload_path_splited[:-1])
