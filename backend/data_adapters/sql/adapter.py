@@ -719,6 +719,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             conditions.append(f"{field}::text = :{p_val}")
 
                                     join_operator = " AND " if operation == "AND" else " OR "
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
                                 else:
                                     conditions = []
                                     for value in values:
