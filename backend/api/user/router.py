@@ -1385,7 +1385,6 @@ if settings.social_login_allowed:
             )
             return api.Response(status=api.Status.success, records=[record])
 
-
     async def find_or_create_social_user(
         provider: str,
         provider_id: str,
@@ -1395,6 +1394,16 @@ if settings.social_login_allowed:
         picture: str | None
     ) -> core.User:
         shortname = f"{provider}_{provider_id}"
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.create,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
+            )
+        )
         user: core.User | None = await db.load_or_none(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
@@ -1415,6 +1424,16 @@ if settings.social_login_allowed:
             )
             setattr(user, f"{provider}_id", provider_id)
             await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    action_type=core.ActionType.create,
+                    resource_type=ResourceType.user,
+                    user_shortname=shortname,
+                )
+            )
         return user
 
     async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:
@@ -1457,7 +1476,7 @@ if settings.social_login_allowed:
                 )
 
             token_info = await res.json()
-        if token_info.get("aud") != settings.google_client_id:
+        if token_info.get("aud") != settings.google_client_id: 
             raise api.Exception(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 error=api.Error(
@@ -1491,7 +1510,37 @@ if settings.social_login_allowed:
         body: SocialMobileLoginRequest,
     ):
         """Endpoint for Facebook SSO login from mobile apps SDK implementation. using access token."""
+        app_access_token = f"{settings.facebook_client_id}|{settings.facebook_client_secret}"
         async with AsyncRequest() as session:
+            # Verify the token belongs to our app
+            debug_res = await session.get(
+                url="https://graph.facebook.com/debug_token",
+                params={
+                    "input_token": body.token,
+                    "access_token": app_access_token,
+                },
+            )
+            if debug_res.status != 200:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Invalid Facebook access token",
+                    ),
+                )
+            debug_data = (await debug_res.json()).get("data", {})
+            if not debug_data.get("is_valid") or str(debug_data.get("app_id")) != settings.facebook_client_id:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Token was not issued for this application",
+                    ),
+                )
+
+            # Fetch user profile
             res = await session.get(
                 url="https://graph.facebook.com/me",
                 params={
@@ -1505,7 +1554,7 @@ if settings.social_login_allowed:
                     error=api.Error(
                         type="auth",
                         code=InternalErrorCode.INVALID_DATA,
-                        message="Invalid Facebook access token",
+                        message="Failed to fetch Facebook user profile",
                     ),
                 )
 
