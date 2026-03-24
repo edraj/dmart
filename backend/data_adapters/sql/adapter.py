@@ -264,11 +264,16 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
-            if table is Users:
-                p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
-            if table is Roles:
-                p += " || ' ' || permissions"
+            try:
+                table_columns = {c.name: c for c in table.__table__.columns}  # type: ignore[attr-defined]
+                p_parts = [f"COALESCE({col_name}::text, '')" for col_name in table_columns.keys()]
+                p = " || ' ' || ".join(p_parts) if p_parts else "''"
+            except Exception:
+                p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+                if table is Users:
+                    p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
+                if table is Roles:
+                    p += " || ' ' || permissions"
             # Parameterize search string
             statement = statement.where(text("(" + p + ") ILIKE :search")).params(search=f"%{query.search}%")
         else:
