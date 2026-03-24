@@ -10,11 +10,15 @@ export function checkAccess(
     `${space}:${subpath}:${resourceType}`,
   ];
 
-  let permissions = {};
-  if (typeof localStorage !== "undefined"){
-    permissions = JSON.parse(localStorage.getItem("permissions"));
+  let permissions: Record<string, { allowed_actions: string[] }> = {};
+  if (typeof localStorage !== "undefined") {
+    try {
+      permissions = JSON.parse(localStorage.getItem("permissions") || "{}") || {};
+    } catch {
+      return false;
+    }
   }
-  if (permissions === null || Object.keys(permissions).length === 0) {
+  if (Object.keys(permissions).length === 0) {
     return false;
   }
 

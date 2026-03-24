@@ -6,12 +6,42 @@
     import { Card } from "flowbite-svelte";
     import { goto } from "@roxi/routify";
 
-    $goto;
-
     const { roles } = $props();
 
     // ── View mode ──────────────────────────────────────────────────────────────
     let viewMode: "list" | "map" = $state("list");
+
+    // ── Cached role data (avoids duplicate API calls in template) ─────────────
+    type RoleData = { permissions: string[] };
+    let roleDataCache: Record<string, RoleData> = $state({});
+    let roleDataLoading = $state(true);
+
+    async function loadRoleData() {
+        roleDataLoading = true;
+        const results = await Promise.allSettled(
+            roles.map((role) =>
+                Dmart.retrieveEntry({
+                    resource_type: ResourceType.role,
+                    space_name: "management",
+                    subpath: "roles",
+                    shortname: role,
+                    retrieve_json_payload: true,
+                    retrieve_attachments: false,
+                    validate_schema: true,
+                }),
+            ),
+        );
+        const cache: Record<string, RoleData> = {};
+        results.forEach((result, i) => {
+            if (result.status === "fulfilled") {
+                cache[roles[i]] = result.value as RoleData;
+            }
+        });
+        roleDataCache = cache;
+        roleDataLoading = false;
+    }
+
+    loadRoleData();
 
     // ── Helpers ────────────────────────────────────────────────────────────────
     function handleGoToRole(e, role) {
@@ -100,9 +130,10 @@
         mapLoading = true;
         spaceMap = {};
 
-        for (const role of roles) {
-            try {
-                const roleEntry = await Dmart.retrieveEntry({
+        // Fetch all roles in parallel instead of sequentially
+        const roleEntries = await Promise.allSettled(
+            roles.map((role) =>
+                Dmart.retrieveEntry({
                     resource_type: ResourceType.role,
                     space_name: "management",
                     subpath: "roles",
@@ -110,31 +141,38 @@
                     retrieve_json_payload: true,
                     retrieve_attachments: false,
                     validate_schema: true,
-                });
+                }),
+            ),
+        );
 
+        // Collect all unique permission names from successful role fetches
+        const permissionNamesSet = new Set<string>();
+        for (const result of roleEntries) {
+            if (result.status === "fulfilled") {
                 const permissionNames: string[] =
-                    (roleEntry as any)?.permissions ?? [];
-                for (const permName of permissionNames) {
-                    try {
-                        const perm = await Dmart.retrieveEntry({
-                            resource_type: ResourceType.permission,
-                            space_name: "management",
-                            subpath: "permissions",
-                            shortname: permName,
-                            retrieve_json_payload: true,
-                            retrieve_attachments: false,
-                            validate_schema: true,
-                        });
-                        mergePermission(perm);
-                    } catch (e) {
-                        console.warn(
-                            `Could not load permission ${permName}:`,
-                            e,
-                        );
-                    }
-                }
-            } catch (e) {
-                console.warn(`Could not load role ${role}:`, e);
+                    (result.value as any)?.permissions ?? [];
+                permissionNames.forEach((p) => permissionNamesSet.add(p));
+            }
+        }
+
+        // Fetch all permissions in parallel instead of N+1 sequential calls
+        const permResults = await Promise.allSettled(
+            Array.from(permissionNamesSet).map((permName) =>
+                Dmart.retrieveEntry({
+                    resource_type: ResourceType.permission,
+                    space_name: "management",
+                    subpath: "permissions",
+                    shortname: permName,
+                    retrieve_json_payload: true,
+                    retrieve_attachments: false,
+                    validate_schema: true,
+                }),
+            ),
+        );
+
+        for (const result of permResults) {
+            if (result.status === "fulfilled") {
+                mergePermission(result.value);
             }
         }
 
@@ -153,43 +191,47 @@
     <!-- Tab buttons -->
     <div class="flex gap-2 mb-4 border-b border-gray-200 pb-2">
         <button
-            class="px-4 py-1.5 rounded-t text-sm font-medium transition-colors {viewMode ===
+                class="px-4 py-1.5 rounded-t text-sm font-medium transition-colors {viewMode ===
             'list'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}"
-            onclick={() => (viewMode = "list")}
+                onclick={() => (viewMode = "list")}
         >
             List
         </button>
         <button
-            class="px-4 py-1.5 rounded-t text-sm font-medium transition-colors {viewMode ===
+                class="px-4 py-1.5 rounded-t text-sm font-medium transition-colors {viewMode ===
             'map'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}"
-            onclick={() => (viewMode = "map")}
+                onclick={() => (viewMode = "map")}
         >
             Map
         </button>
     </div>
 
-    <!-- List view (original) -->
+    <!-- List view (uses cached role data to avoid duplicate API calls) -->
     {#if viewMode === "list"}
-        {#each roles as role}
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <p
-                onclick={(e) => handleGoToRole(e, role)}
-                class="text-4xl cursor-pointer"
-            >
-                {role}
-            </p>
-            {#await Dmart.retrieveEntry( { resource_type: ResourceType.role, space_name: "management", subpath: "roles", shortname: role, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true }, ) then _role}
-                <PermissionsExplorer
-                    permissions={(_role as any).permissions}
-                    showTabs={false}
-                />
-            {/await}
-        {/each}
+        {#if roleDataLoading}
+            <p class="text-center text-gray-500 py-4">Loading roles...</p>
+        {:else}
+            {#each roles as role (role)}
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <p
+                        onclick={(e) => handleGoToRole(e, role)}
+                        class="text-4xl cursor-pointer"
+                >
+                    {role}
+                </p>
+                {#if roleDataCache[role]}
+                    <PermissionsExplorer
+                            permissions={roleDataCache[role].permissions}
+                            showTabs={false}
+                    />
+                {/if}
+            {/each}
+        {/if}
     {/if}
 
     <!-- Map view -->

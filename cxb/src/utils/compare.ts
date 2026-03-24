@@ -1,19 +1,19 @@
-export function isDeepEqual(x, y) {
+export function isDeepEqual(x: any, y: any) {
   if (x === y) {
     return true;
   } else if (
-    typeof x == "object" &&
+    typeof x === "object" &&
     x != null &&
-    typeof y == "object" &&
+    typeof y === "object" &&
     y != null
   ) {
-    if (Object.keys(x).length != Object.keys(y).length) {
+    if (Object.keys(x).length !== Object.keys(y).length) {
       return false;
     }
 
-    for (var prop in x) {
-      if (y.hasOwnProperty(prop)) {
-        if (!isDeepEqual(x[prop], y[prop])) {
+    for (const prop in x) {
+      if (Object.prototype.hasOwnProperty.call(y, prop)) {
+        if (!isDeepEqual((x as Record<string, unknown>)[prop], (y as Record<string, unknown>)[prop])) {
           return false;
         }
       } else {

@@ -3,6 +3,7 @@
     "module": "es2022",
     "moduleResolution": "node",
     "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
     "allowJs": true,
     "checkJs": true,
     "esModuleInterop": true,
@@ -24,6 +25,7 @@
     ]
   },
   "include": [
+    "vite-env.d.ts",
     "src/**/*.d.ts",
     "src/**/*.ts",
     "src/**/*.js",
