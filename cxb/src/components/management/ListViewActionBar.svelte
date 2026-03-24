@@ -105,15 +105,12 @@
         if ($bulkBucket.length) {
             try {
                 isActionLoading = true;
-                const records = [];
-                $bulkBucket.map((b) => {
-                    records.push({
-                        resource_type: b.resource_type,
-                        shortname: b.shortname,
-                        subpath: subpath || "/",
-                        attributes: {},
-                    });
-                });
+                const records = $bulkBucket.map((b) => ({
+                    resource_type: b.resource_type,
+                    shortname: b.shortname,
+                    subpath: subpath || "/",
+                    attributes: {},
+                }));
 
                 const request_body = {
                     space_name,
@@ -187,9 +184,7 @@
         isActionLoading = true;
 
         try {
-            const records = [];
-
-            $bulkBucket.map((b) => {
+            const records = $bulkBucket.map((b) => {
                 const scr_subpaths: string[] = b.subpath.split("/");
                 const remaining: string[] = scr_subpaths.slice(3);
 
@@ -211,12 +206,12 @@
                     dest_shortname: b.shortname,
                 };
 
-                records.push({
+                return {
                     resource_type: moveResourceType,
                     shortname: b.shortname,
                     subpath: b.subpath.replaceAll("-", "/"),
                     attributes: moveAttrb,
-                });
+                };
             });
 
             await Dmart.request({

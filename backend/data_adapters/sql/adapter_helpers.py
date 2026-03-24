@@ -87,7 +87,7 @@ def subpath_checker(subpath: str):
     return subpath
 
 
-_SAFE_SQL_FIELD_RE = re.compile(r"^[a-zA-Z0-9_]+$")
+_SAFE_SQL_FIELD_RE = re.compile(r"^[a-zA-Z0-9_*]+$")
 
 
 def _sanitize_sql_part(part: str) -> str:
@@ -102,6 +102,17 @@ def transform_keys_to_sql(path):
     # Validate all parts to prevent SQL injection via field names
     for part in parts:
         _sanitize_sql_part(part)
+
+    if "*" in parts:
+        wildcard_idx = parts.index("*")
+        if wildcard_idx == 0:
+            return "payload::text"
+        parent_parts = parts[:wildcard_idx]
+        base_expr = parent_parts[0]
+        if len(parent_parts) > 1:
+            base_expr += " -> " + " -> ".join([f"'{part}'" for part in parent_parts[1:]])
+        return f"({base_expr})::text"
+
     sql_path = parts[0]
     if len(parts[1:-1]) != 0:
         sql_path += " -> " + " -> ".join([f"'{part}'" for part in parts[1:-1]])

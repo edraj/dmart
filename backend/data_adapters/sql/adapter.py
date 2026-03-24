@@ -264,11 +264,16 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     if query.search:
         if not query.search.startswith("@") and not query.search.startswith("-"):
-            p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
-            if table is Users:
-                p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
-            if table is Roles:
-                p += " || ' ' || permissions"
+            try:
+                table_columns = {c.name: c for c in table.__table__.columns}  # type: ignore[attr-defined]
+                p_parts = [f"COALESCE({col_name}::text, '')" for col_name in table_columns.keys()]
+                p = " || ' ' || ".join(p_parts) if p_parts else "''"
+            except Exception:
+                p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
+                if table is Users:
+                    p += " || ' ' || COALESCE(email, '') || ' ' || COALESCE(msisdn, '') || ' ' || roles"
+                if table is Roles:
+                    p += " || ' ' || permissions"
             # Parameterize search string
             statement = statement.where(text("(" + p + ") ILIKE :search")).params(search=f"%{query.search}%")
         else:
@@ -310,7 +315,47 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith("payload."):
                     payload_field = field.replace("payload.", "", 1)
                     parts = payload_field.split(".")
+
+                    is_array_query = False
+                    array_prefix_path = ""
+                    remaining_path_parts = []
+                    for idx, part in enumerate(parts):
+                        if part.endswith("[]"):
+                            is_array_query = True
+                            array_prefix_path = "->".join([f"'{p}'" for p in parts[:idx]] + [f"'{part[:-2]}'"])
+                            remaining_path_parts = parts[idx + 1 :]
+                            break
+
                     payload_path = "->".join([f"'{part}'" for part in parts])
+
+                    if "*" in payload_path:
+                        parts_before_wildcard = []
+                        for p in payload_field.split("."):
+                            if p == "*":
+                                break
+                            parts_before_wildcard.append(f"'{p}'")
+
+                        if parts_before_wildcard:
+                            parent_path = "->".join(parts_before_wildcard)
+                            base_expr = f"payload::jsonb->{parent_path}"
+                        else:
+                            base_expr = "payload::jsonb"
+
+                        conditions = []
+                        for value in values:
+                            p_val = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p_val] = value
+                            conditions.append(f"({base_expr})::text ILIKE '%' || :{p_val} || '%'")
+
+                        if conditions:
+                            join_operator = " AND " if operation == "AND" else " OR "
+                            if negative:
+                                combined_cond = "NOT (" + join_operator.join(conditions) + ")"
+                            else:
+                                combined_cond = "(" + join_operator.join(conditions) + ")"
+                            statement = statement.where(text(combined_cond))
+                        continue
 
                     payload_path_splited = payload_path.split("->")
                     if len(payload_path_splited) > 1:
@@ -321,7 +366,44 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         _payload_text_extract = f"payload::jsonb->>{payload_path}"
                     conditions = []
 
-                    if (
+                    if is_array_query:
+                        for value in values:
+                            p_val = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p_val] = value
+
+                            if not remaining_path_parts:
+                                p_text_val = f"s_p_{param_counter}"
+                                param_counter += 1
+                                bind_params[p_text_val] = str(value)
+                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e = :{p_text_val})"
+                                base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
+                                cond = f"({base})" if not negative else f"(NOT ({base}))"
+                            else:
+                                if len(remaining_path_parts) > 1:
+                                    _rem_nested = "->".join([f"'{p}'" for p in remaining_path_parts[:-1]])
+                                    _rem_last = remaining_path_parts[-1]
+                                    sub_extract = f"x->{_rem_nested}->>'{_rem_last}'"
+                                else:
+                                    sub_extract = f"x->>'{remaining_path_parts[0]}'"
+                                p_text_val = f"s_p_{param_counter}"
+                                param_counter += 1
+                                bind_params[p_text_val] = str(value)
+                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
+                                base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
+                                cond = f"({base})" if not negative else f"(NOT ({base}))"
+                            conditions.append(cond)
+                    if is_array_query:
+                        if conditions:
+                            if negative:
+                                join_operator = " OR " if operation == "AND" else " AND "
+                            else:
+                                join_operator = " AND " if operation == "AND" else " OR "
+                            combined_cond = "(" + join_operator.join(conditions) + ")"
+                            print('[DEBUG] applying payload WHERE:', combined_cond, 'with params:', bind_params)
+                            statement = statement.where(text(combined_cond))
+                        continue
+                    elif (
                         value_type == "numeric"
                         and field_data.get("is_range", False)
                         and len(field_data.get("range_values", [])) == 2
@@ -504,7 +586,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             join_operator = " OR " if operation == "AND" else " AND "
                         else:
                             join_operator = " AND " if operation == "AND" else " OR "
-                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                        combined_cond = "(" + join_operator.join(conditions) + ")"
+                        statement = statement.where(text(combined_cond))
                 else:
                     try:
                         if hasattr(table, field):
