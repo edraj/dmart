@@ -2,7 +2,7 @@ from utils.settings import settings
 
 
 def get_nested_value(data, key):
-    keys = key.split('.')
+    keys = key.split(".")
     if len(keys) == 0:
         return None
     for k in keys:
@@ -13,7 +13,9 @@ def get_nested_value(data, key):
     return data
 
 
-def trans_magic_words(subpath: str, user_shortname: str):
+def trans_magic_words(subpath: str, user_shortname: str, owner_shortname: str | None = None):
+    owner_value: str = owner_shortname if owner_shortname is not None else settings.current_user_owner_mw
+    subpath = subpath.replace(settings.current_user_owner_mw, owner_value)
     subpath = subpath.replace(settings.current_user_mw, user_shortname)
     subpath = subpath.replace("//", "/")
 
@@ -24,4 +26,3 @@ def trans_magic_words(subpath: str, user_shortname: str):
     if subpath[-1] == "/" and len(subpath) > 1:
         subpath = subpath[:-1]
     return subpath
-

@@ -1,6 +1,6 @@
-import {Dmart, ResourceType, type ResponseEntry} from "@edraj/tsdmart";
-import {Level, showToast} from "@/utils/toast";
-import {createAjvValidator} from "svelte-jsoneditor";
+import { Dmart, ResourceType, type ResponseEntry } from "@edraj/tsdmart";
+import { Level, showToast } from "@/utils/toast";
+import { createAjvValidator } from "svelte-jsoneditor";
 
 export function cleanUpSchema(obj: Object) {
     for (let prop in obj) {
@@ -9,19 +9,19 @@ export function cleanUpSchema(obj: Object) {
     }
 }
 
-export function generateObjectFromSchema(schema){
+export function generateObjectFromSchema(schema) {
     if (schema.type === 'object' && schema.properties) {
         const generatedObject = {};
         Object.keys(schema.properties).forEach((property) => {
             const propertySchema = schema.properties[property];
             if (propertySchema.type === 'object') {
                 generatedObject[property] = generateObjectFromSchema(propertySchema);
-                if( generatedObject[property] === undefined){
+                if (generatedObject[property] === undefined) {
                     generatedObject[property] = {};
                 }
             } else if (propertySchema.type === 'array' && propertySchema.items) {
                 generatedObject[property] = [generateObjectFromSchema(propertySchema.items)];
-                if( generatedObject[property][0] === undefined){
+                if (generatedObject[property][0] === undefined) {
                     generatedObject[property] = [];
                 }
             } else {
@@ -42,6 +42,43 @@ export function generateObjectFromSchema(schema){
     }
 }
 
+export function generateSchemaFromObject(obj: any): any {
+    if (obj === null || obj === undefined) {
+        return { type: "string" }; // default fallback
+    }
+
+    if (Array.isArray(obj)) {
+        if (obj.length > 0) {
+            return {
+                type: "array",
+                items: generateSchemaFromObject(obj[0])
+            };
+        }
+        return { type: "array", items: { type: "string" } };
+    }
+
+    if (typeof obj === 'object') {
+        const properties: Record<string, any> = {};
+        Object.keys(obj).forEach(key => {
+            properties[key] = generateSchemaFromObject(obj[key]);
+        });
+        return {
+            type: "object",
+            properties
+        };
+    }
+
+    if (typeof obj === 'number') {
+        return Number.isInteger(obj) ? { type: "integer" } : { type: "number" };
+    }
+
+    if (typeof obj === 'boolean') {
+        return { type: "boolean" };
+    }
+
+    return { type: "string" };
+}
+
 export const managementEntities = [
     "management/users",
     "management/roles",
@@ -51,7 +88,7 @@ export const managementEntities = [
     "/schema",
 ];
 
-export function resolveResourceType(space_name:string, subpath:string ,resourceType: ResourceType = null) {
+export function resolveResourceType(space_name: string, subpath: string, resourceType: ResourceType = null) {
     const fullSubpath = `${space_name}/${subpath}`;
     switch (fullSubpath) {
         case "management/users":

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {Alert, Button, Fileupload, Label, Modal, Select, Textarea} from "flowbite-svelte";
+    import {Alert, Button, Card, Fileupload, Label, Modal, Select, Textarea} from "flowbite-svelte";
     import {ContentType, Dmart, QueryType, RequestType, ResourceAttachmentType, ResourceType} from "@edraj/tsdmart";
     import {JSONEditor, Mode} from "svelte-jsoneditor";
     import HtmlEditor from "@/components/management/editors/HtmlEditor.svelte";
@@ -390,132 +390,133 @@
             </h3>
         </div>
 
-        <div class="p-4 max-h-[75vh] overflow-y-auto">
+        <div class="p-4 w-full overflow-y-auto">
             {#if errorModalMessage}
                 <Alert color="red">
                     <span class="font-medium">{errorModalMessage}</span>
                 </Alert>
             {/if}
-            <div class="flex flex-col space-y-4">
+            <div class="flex flex-col">
                 <MetaForm bind:formData={meta} bind:validateFn={validateMetaForm} isCreate={!isUpdateMode}/>
-
-                <div>
-                    <Label for="resourceType">Attachment Type</Label>
-                    <Select id="resourceType" bind:value={resourceType} disabled={isUpdateMode}>
-                        {#each Object.values(ResourceAttachmentType).filter(type => type !== ResourceAttachmentType.alteration) as type}
-                            <option value={type}>{type}</option>
-                        {/each}
-                    </Select>
-                </div>
-                {resourceType}
-                {#if resourceType === ResourceAttachmentType.media}
+                <Card class="w-full max-w-4xl mx-auto p-4 my-2">
                     <div>
-                        <Label for="contentType">Content Type</Label>
-                        <Select id="contentType" bind:value={contentType} disabled={isUpdateMode}>
-                            {#each Object.values(ContentType).filter(c => ![ContentType.json, ContentType.csv, ContentType.jsonl, ContentType.sqlite, ContentType.parquet].includes(c)) as type}
+                        <Label for="resourceType">Attachment Typee</Label>
+                        <Select id="resourceType" bind:value={resourceType} disabled={isUpdateMode}>
+                            {#each Object.values(ResourceAttachmentType).filter(type => type !== ResourceAttachmentType.alteration) as type}
                                 <option value={type}>{type}</option>
                             {/each}
                         </Select>
                     </div>
-
-                    <hr class="my-4"/>
-
-                    {#if contentType === ContentType.image}
+                    {resourceType}
+                    {#if resourceType === ResourceAttachmentType.media}
                         <div>
-                            <Label for="imageFile">Image File</Label>
-                            <Fileupload id="imageFile" type="file" accept="image/png, image/jpeg, image/webp" clearable
-                                        bind:files={payloadFiles}/>
-                        </div>
-                    {:else if contentType === ContentType.pdf}
-                        <div>
-                            <Label for="pdfFile">PDF File</Label>
-                            <Fileupload id="pdfFile" type="file" accept="application/pdf" clearable
-                                        bind:files={payloadFiles}/>
-                        </div>
-                    {:else if contentType === ContentType.apk}
-                        <div>
-                            <Label for="apkFile">APK File</Label>
-                            <Fileupload id="apkFile" type="file" accept=".apk" clearable bind:files={payloadFiles}/>
-                        </div>
-                    {:else if contentType === ContentType.audio}
-                        <div>
-                            <Label for="audioFile">Audio File</Label>
-                            <Fileupload id="audioFile" type="file" accept="audio/*" clearable
-                                        bind:files={payloadFiles}/>
-                        </div>
-                    {:else if contentType === ContentType.python}
-                        <div>
-                            <Label for="pythonFile">Python File</Label>
-                            <Fileupload id="pythonFile" type="file" accept=".py" clearable bind:files={payloadFiles}/>
-                        </div>
-                    {:else if contentType === ContentType.markdown}
-                        <div>
-                            <MarkdownEditor bind:content={content}/>
-                        </div>
-                    {:else if contentType === ContentType.html}
-                        <div>
-                            <HtmlEditor bind:content={content}/>
-                        </div>
-                    {:else}
-                        <div>
-                            <Textarea bind:value={content}/>
-                        </div>
-                    {/if}
-                {:else if resourceType === ResourceAttachmentType.json}
-                    {#if content.json || content.text}
-                        <div>
-                            <JSONEditor onRenderMenu={handleRenderMenu} mode={Mode.text} bind:content={content}/>
-                        </div>
-                    {/if}
-                {:else if resourceType === ResourceAttachmentType.comment}
-                    <div>
-                        {#if isUpdateMode}
-                            <Textarea bind:value={content.body}/>
-                        {:else }
-                            <Textarea bind:value={content}/>
-                        {/if}
-                    </div>
-                {:else if resourceType === ResourceAttachmentType.csv}
-                    <div>
-                        <Label for="csvFile">CSV File</Label>
-                        <Fileupload id="csvFile" type="file" accept=".csv" clearable bind:files={payloadFiles}/>
-
-                        <div class="mt-3">
-                            <Label for="csvSchema">Schema</Label>
-                            <Select id="csvSchema" bind:value={selectedSchema} disabled={isUpdateMode}>
-                                <option value="">None</option>
-                                {#await Dmart.query({
-                                    space_name,
-                                    type: QueryType.search,
-                                    subpath: "/schema",
-                                    search: "",
-                                    retrieve_json_payload: true,
-                                    limit: 99
-                                }) then schemas}
-                                    {#each schemas.records.map(e => e.shortname) as schema}
-                                        <option value={schema}>{schema}</option>
-                                    {/each}
-                                {/await}
+                            <Label for="contentType">Content Type</Label>
+                            <Select id="contentType" bind:value={contentType} disabled={isUpdateMode}>
+                                {#each Object.values(ContentType).filter(c => ![ContentType.json, ContentType.csv, ContentType.jsonl, ContentType.sqlite, ContentType.parquet].includes(c)) as type}
+                                    <option value={type}>{type}</option>
+                                {/each}
                             </Select>
                         </div>
-                    </div>
-                {:else if resourceType === ResourceAttachmentType.jsonl}
-                    <div>
-                        <Label for="jsonlFile">JSONL File</Label>
-                        <Fileupload id="jsonlFile" type="file" accept=".jsonl" clearable bind:files={payloadFiles}/>
-                    </div>
-                {:else if resourceType === ResourceAttachmentType.sqlite}
-                    <div>
-                        <Label for="sqliteFile">SQLite File</Label>
-                        <Fileupload id="sqliteFile" type="file" accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" clearable
-                                    bind:files={payloadFiles}/>
-                    </div>
-                {:else if resourceType === ResourceAttachmentType.parquet}
-                    <div>
-                        <Label for="parquetFile">Parquet File</Label>
-                        <Fileupload id="parquetFile" type="file" accept=".parquet" clearable bind:files={payloadFiles}/>
-                    </div>
-                {/if}
+
+                        <hr class="my-4"/>
+
+                        {#if contentType === ContentType.image}
+                            <div>
+                                <Label for="imageFile">Image File</Label>
+                                <Fileupload id="imageFile" type="file" accept="image/png, image/jpeg, image/webp" clearable
+                                            bind:files={payloadFiles}/>
+                            </div>
+                        {:else if contentType === ContentType.pdf}
+                            <div>
+                                <Label for="pdfFile">PDF File</Label>
+                                <Fileupload id="pdfFile" type="file" accept="application/pdf" clearable
+                                            bind:files={payloadFiles}/>
+                            </div>
+                        {:else if contentType === ContentType.apk}
+                            <div>
+                                <Label for="apkFile">APK File</Label>
+                                <Fileupload id="apkFile" type="file" accept=".apk" clearable bind:files={payloadFiles}/>
+                            </div>
+                        {:else if contentType === ContentType.audio}
+                            <div>
+                                <Label for="audioFile">Audio File</Label>
+                                <Fileupload id="audioFile" type="file" accept="audio/*" clearable
+                                            bind:files={payloadFiles}/>
+                            </div>
+                        {:else if contentType === ContentType.python}
+                            <div>
+                                <Label for="pythonFile">Python File</Label>
+                                <Fileupload id="pythonFile" type="file" accept=".py" clearable bind:files={payloadFiles}/>
+                            </div>
+                        {:else if contentType === ContentType.markdown}
+                            <div>
+                                <MarkdownEditor bind:content={content}/>
+                            </div>
+                        {:else if contentType === ContentType.html}
+                            <div>
+                                <HtmlEditor bind:content={content}/>
+                            </div>
+                        {:else}
+                            <div>
+                                <Textarea bind:value={content}/>
+                            </div>
+                        {/if}
+                    {:else if resourceType === ResourceAttachmentType.json}
+                        {#if content.json || content.text}
+                            <div>
+                                <JSONEditor onRenderMenu={handleRenderMenu} mode={Mode.text} bind:content={content}/>
+                            </div>
+                        {/if}
+                    {:else if resourceType === ResourceAttachmentType.comment}
+                        <div>
+                            {#if isUpdateMode}
+                                <Textarea bind:value={content.body}/>
+                            {:else }
+                                <Textarea bind:value={content}/>
+                            {/if}
+                        </div>
+                    {:else if resourceType === ResourceAttachmentType.csv}
+                        <div>
+                            <Label for="csvFile">CSV File</Label>
+                            <Fileupload id="csvFile" type="file" accept=".csv" clearable bind:files={payloadFiles}/>
+
+                            <div class="mt-3">
+                                <Label for="csvSchema">Schema</Label>
+                                <Select id="csvSchema" bind:value={selectedSchema} disabled={isUpdateMode}>
+                                    <option value="">None</option>
+                                    {#await Dmart.query({
+                                        space_name,
+                                        type: QueryType.search,
+                                        subpath: "/schema",
+                                        search: "",
+                                        retrieve_json_payload: true,
+                                        limit: 99
+                                    }) then schemas}
+                                        {#each schemas.records.map(e => e.shortname) as schema}
+                                            <option value={schema}>{schema}</option>
+                                        {/each}
+                                    {/await}
+                                </Select>
+                            </div>
+                        </div>
+                    {:else if resourceType === ResourceAttachmentType.jsonl}
+                        <div>
+                            <Label for="jsonlFile">JSONL File</Label>
+                            <Fileupload id="jsonlFile" type="file" accept=".jsonl" clearable bind:files={payloadFiles}/>
+                        </div>
+                    {:else if resourceType === ResourceAttachmentType.sqlite}
+                        <div>
+                            <Label for="sqliteFile">SQLite File</Label>
+                            <Fileupload id="sqliteFile" type="file" accept=".sqlite,.sqlite3,.db,.db3,.s3db,.sl3" clearable
+                                        bind:files={payloadFiles}/>
+                        </div>
+                    {:else if resourceType === ResourceAttachmentType.parquet}
+                        <div>
+                            <Label for="parquetFile">Parquet File</Label>
+                            <Fileupload id="parquetFile" type="file" accept=".parquet" clearable bind:files={payloadFiles}/>
+                        </div>
+                    {/if}
+                </Card>
             </div>
 
             {#if errorContent}

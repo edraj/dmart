@@ -29,9 +29,7 @@ headers = {"Content-Type": "application/json", "auth-key": settings.smpp_auth_ke
 
 
 def gen_alphanumeric(length=16):
-    return "".join(
-        secrets.choice(string.ascii_letters + string.digits) for _ in range(length)
-    )
+    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
 def gen_numeric(length=6):
@@ -44,6 +42,7 @@ async def mock_sending_otp(msisdn) -> dict:
     json = {"status": "success", "data": {"status": "success"}}
     return json
 
+
 def get_otp_key(user_identifier: dict[str, str]) -> str:
     if "msisdn" in user_identifier:
         return f"users:otp:otps/{user_identifier['msisdn']}"
@@ -51,12 +50,13 @@ def get_otp_key(user_identifier: dict[str, str]) -> str:
         return f"users:otp:otps/{user_identifier['email']}"
     return ""
 
+
 async def send_otp(msisdn: str, language: str):
     json = {}
     status: int
     if settings.mock_smpp_api:
         return await mock_sending_otp(msisdn)
-        
+
     # Creating SMS message body
     code = gen_numeric()
     message = ""
@@ -69,7 +69,7 @@ async def send_otp(msisdn: str, language: str):
             message = f"رمز التحقق الخاص بك {code}"
 
     await db.save_otp(f"users:otp:otps/{msisdn}", code)
-    
+
     sms_payload: dict = {"msisdn": msisdn, "text": message}
     if settings.sms_sender:
         sms_payload["sender"] = settings.sms_sender
@@ -84,9 +84,7 @@ async def send_otp(msisdn: str, language: str):
         status = response.status
 
     if status != 200:
-        raise Exception(
-            status, Error(type="otp", code=InternalErrorCode.OTP_ISSUE, message="OTP issue", info=[json])
-        )
+        raise Exception(status, Error(type="otp", code=InternalErrorCode.OTP_ISSUE, message="OTP issue", info=[json]))
 
     return json.get("data")
 
@@ -106,7 +104,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
     status: int
     if settings.mock_smpp_api:
         return True
-        
+
     sms_payload: dict = {"msisdn": msisdn, "text": message}
     if settings.sms_sender:
         sms_payload["sender"] = settings.sms_sender
@@ -123,13 +121,7 @@ async def send_sms(msisdn: str, message: str) -> bool:
     if status != 200:
         logger.warning(
             "sms_sender_exception",
-            extra={
-                "props": {
-                    "status": status,
-                    "response": json,
-                    "target": msisdn
-                }
-            },
+            extra={"props": {"status": status, "response": json, "target": msisdn}},
         )
         return False
 
@@ -139,7 +131,9 @@ async def send_sms(msisdn: str, message: str) -> bool:
 async def _do_send_email(to_address: str, message: str, subject: str) -> None:
     """Actual SMTP send; runs in background."""
     start_time = time.time()
-    from_header = f"{settings.mail_from_name} <{settings.mail_from_address}>" if settings.mail_from_name else settings.mail_from_address
+    from_header = (
+        f"{settings.mail_from_name} <{settings.mail_from_address}>" if settings.mail_from_name else settings.mail_from_address
+    )
     msg = EmailMessage()
     msg["From"] = from_header
     msg["To"] = to_address
@@ -196,6 +190,7 @@ async def send_email(to_address: str, message: str, subject: str) -> bool:
     task.add_done_callback(_log_send_email_failure)
     return True
 
+
 async def get_shortname_from_identifier(key, value):
     if isinstance(value, str) and isinstance(key, str):
         shortname = await db.get_user_by_criteria(key, value)
@@ -206,7 +201,7 @@ async def get_shortname_from_identifier(key, value):
                     type="auth",
                     code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
                     message="User not found",
-                )
+                ),
             )
         if not (await db.is_user_verified(shortname, key)):
             raise Exception(
@@ -223,17 +218,9 @@ async def get_shortname_from_identifier(key, value):
 
 
 def check_user_validation(user, data, user_updates, invitation_token):
-    if (
-            data.get("channel") == "EMAIL"
-            and user.email
-            and f"EMAIL:{user.email}" in invitation_token
-    ):
+    if data.get("channel") == "EMAIL" and user.email and f"EMAIL:{user.email}" in invitation_token:
         user_updates["is_email_verified"] = True
-    elif (
-            data.get("channel") == "SMS"
-            and user.msisdn
-            and f"SMS:{user.msisdn}" in invitation_token
-    ):
+    elif data.get("channel") == "SMS" and user.msisdn and f"SMS:{user.msisdn}" in invitation_token:
         user_updates["is_msisdn_verified"] = True
 
     return user_updates
@@ -270,7 +257,7 @@ async def set_user_profile(profile, profile_user, user):
 
 async def get_otp_confirmation_email_or_msisdn(profile_user):
     if profile_user.email:
-       return await db.get_otp(f"users:otp:confirmation/email/{profile_user.email}")
+        return await db.get_otp(f"users:otp:confirmation/email/{profile_user.email}")
     elif profile_user.msisdn:
         return await db.get_otp(f"users:otp:confirmation/msisdn/{profile_user.msisdn}")
     return None
@@ -278,7 +265,7 @@ async def get_otp_confirmation_email_or_msisdn(profile_user):
 
 async def update_user_payload(profile, user):
     separate_payload_data = {}
-    
+
     if not user.payload:
         user.payload = core.Payload(
             content_type=ContentType.json,
@@ -289,7 +276,7 @@ async def update_user_payload(profile, user):
     payload = profile.attributes.get("payload")
     if payload and isinstance(payload, dict) and payload.get("body") is not None:
         separate_payload_data = payload["body"]
-        
+
         existing_body = {}
         if user.payload.body:
             if settings.active_data_db == "file":
@@ -302,10 +289,10 @@ async def update_user_payload(profile, user):
                             existing_body = json.loads(content)
             elif isinstance(user.payload.body, dict):
                 existing_body = user.payload.body
-        
+
         if isinstance(separate_payload_data, dict):
             separate_payload_data = core.deep_update(existing_body, separate_payload_data)
-        
+
         if settings.active_data_db == "file":
             user.payload.body = f"{user.shortname}.json"
         else:

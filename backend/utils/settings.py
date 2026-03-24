@@ -1,33 +1,38 @@
-""" Application Settings """
+"""Application Settings"""
 
 import json
+import logging
 import os
 import secrets
 import re
 import string
-from venv import logger
+from typing import Any
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 def get_env_file():
     env_file = os.getenv("BACKEND_ENV")
 
     if env_file and os.path.exists(env_file):
         return env_file
-    
+
     if not env_file or env_file == "config.env":
         if os.path.exists("config.env"):
             return "config.env"
 
         dmart_home = Path.home() / ".dmart"
         home_config = dmart_home / "config.env"
-        
+
         if home_config.exists():
             return str(home_config)
 
     return env_file or "config.env"
+
 
 class Settings(BaseSettings):
     """Main settings class"""
@@ -37,12 +42,13 @@ class Settings(BaseSettings):
     cxb_config_path: str = ""
     public_app_url: str = ""
     app_name: str = "dmart"
-    websocket_url: str = "" #"http://127.0.0.1:8484"
+    websocket_url: str = ""  # "http://127.0.0.1:8484"
     websocket_port: int = 8484
+    webtransport_port: int = 8585
     base_path: str = ""
-    debug_enabled: bool = True
+    debug_enabled: bool = False
     debug_perm: bool = False
-    log_handlers: list[str] = ['file']
+    log_handlers: list[str] = ["file"]
     log_file: str = "../logs/dmart.ljson.log"
     ws_log_file: str = "../logs/websocket.ljson.log"
     jwt_secret: str = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
@@ -64,16 +70,13 @@ class Settings(BaseSettings):
     is_registrable: bool = True
     is_otp_for_create_required: bool = True
     social_login_allowed: bool = True
-    all_spaces_mw: str = (
-        "__all_spaces__"  # magic word used in access control refers to any space
+    all_spaces_mw: str = "__all_spaces__"  # magic word used in access control refers to any space
+    all_subpaths_mw: str = "__all_subpaths__"  # used in access control refers to all subpaths
+    current_user_mw: str = "__current_user__"  # used in access control refers to current logged-in user
+    current_user_owner_mw: str = (
+        "__current_user__owner__"  # used in access control refers to the user who created this user (owner)
     )
-    all_subpaths_mw: str = (
-        "__all_subpaths__"  # used in access control refers to all subpaths
-    )
-    current_user_mw: str = (
-        "__current_user__"  # used in access control refers to current logged-in user
-    )
-    root_subpath_mw : str = "__root__"
+    root_subpath_mw: str = "__root__"
 
     otp_token_ttl: int = 60 * 5
     allow_otp_resend_after: int = 60
@@ -82,7 +85,7 @@ class Settings(BaseSettings):
     smpp_auth_key: str = ""
     sms_sender: str = ""
     send_sms_api: str = ""
-    mock_smtp_api: bool = True
+    mock_smtp_api: bool = False
 
     mail_driver: str = "smtp"
     mail_host: str = ""
@@ -95,7 +98,7 @@ class Settings(BaseSettings):
     mail_use_tls: bool = False
 
     files_query: str = "scandir"
-    mock_smpp_api: bool = True
+    mock_smpp_api: bool = False
     mock_otp_code: str = "123456"
     invitation_link: str = ""
     ldap_url: str = "ldap://"
@@ -103,12 +106,14 @@ class Settings(BaseSettings):
     ldap_root_dn: str = ""
     ldap_pass: str = ""
     max_query_limit: int = 10000
-    session_inactivity_ttl: int = 0 # Set initially to 0 to disable session timeout. Possible value : 60 * 60 * 24 * 7  # 7 days
-    request_timeout: int = 35 # In seconds the time of dmart requests.
-    jq_timeout: int = 2 # secs
+    session_inactivity_ttl: int = (
+        0  # Set initially to 0 to disable session timeout. Possible value : 60 * 60 * 24 * 7  # 7 days
+    )
+    request_timeout: int = 35  # In seconds the time of dmart requests.
+    jq_timeout: int = 2  # secs
     is_sha_required: bool = False
     logout_on_pwd_change: bool = True
-    url_shorter_expires: int = 60 * 60 * 48  # 48 hours
+    url_shorter_expires: int = 60 * 60  # 1 hour
 
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -117,7 +122,7 @@ class Settings(BaseSettings):
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
-    
+
     enable_channel_auth: bool = False
     channels: list = []
     store_payload_string: bool = True
@@ -125,49 +130,54 @@ class Settings(BaseSettings):
     active_operational_db: str = "redis"  # allowed values: redis, manticore
     active_data_db: str = "file"  # allowed values: file, sql
 
-    database_driver: str = 'sqlite+pysqlite'
-    database_username: str = 'postgres'
-    database_password: str = ''
-    database_host: str = 'localhost'
+    database_driver: str = "sqlite+pysqlite"
+    database_username: str = "postgres"
+    database_password: str = ""
+    database_host: str = "localhost"
     database_port: int = 5432
-    database_name: str = 'dmart'
+    database_name: str = "dmart"
     database_pool_size: int = 2
     database_max_overflow: int = 2
     database_pool_timeout: int = 30
     database_pool_recycle: int = 30
+    allowed_cors_origins: list[str] = []
     user_profile_payload_protected_fields: list[str] = []
-    hide_stack_trace: bool = False
+    hide_stack_trace: bool = True
     max_failed_login_attempts: int = 5
 
+    model_config = SettingsConfigDict(env_file=get_env_file(), env_file_encoding="utf-8")
 
-    model_config = SettingsConfigDict(
-        env_file=get_env_file(),
-        env_file_encoding="utf-8"
-    )
-    
+    def model_post_init(self, __context: Any) -> None:
+        if self.jwt_secret == "AUTOGEN" or len(self.jwt_secret) < 32:
+            object.__setattr__(
+                self,
+                "jwt_secret",
+                "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)),
+            )
+
     def reload(self) -> None:
         env_file = get_env_file()
-        new_settings = self.__class__(_env_file=env_file) # type: ignore
+        new_settings = self.__class__(_env_file=env_file)  # type: ignore
         new_settings.load_config_files()
-        self.__dict__.update(new_settings.__dict__) # type: ignore
+        self.__dict__.update(new_settings.__dict__)  # type: ignore
 
     def load_config_files(self) -> None:
-        channels_config_file = Path(__file__).resolve().parent.parent / 'config/channels.json'
+        channels_config_file = Path(__file__).resolve().parent.parent / "config/channels.json"
         if channels_config_file.exists():
             try:
-                with open(channels_config_file, 'r') as file:
+                with open(channels_config_file, "r") as file:
                     self.channels = json.load(file)
-                
+
                 # Compile the patterns for better performance
                 for idx, channel in enumerate(self.channels):
                     compiled_patterns: list[re.Pattern] = []
                     for pattern in channel.get("allowed_api_patterns", []):
                         compiled_patterns.append(re.compile(pattern))
                     self.channels[idx]["allowed_api_patterns"] = compiled_patterns
-                    
+
             except Exception as e:
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
-        
+
         self.load_cxb_config()
 
     def load_cxb_config(self) -> None:
@@ -175,7 +185,7 @@ class Settings(BaseSettings):
         cxb_path = backend_dir / "cxb"
         if (cxb_path / "client").is_dir():
             cxb_path = cxb_path / "client"
-        
+
         if not (cxb_path / "index.html").exists():
             project_root = backend_dir.parent
             cxb_dist_path = project_root / "cxb" / "dist" / "client"
@@ -194,7 +204,7 @@ class Settings(BaseSettings):
             config_path = str(Path.home() / ".dmart" / "config.json")
         elif (cxb_path / "config.json").exists():
             config_path = str(cxb_path / "config.json")
-            
+
         if config_path:
             self.cxb_config_path = config_path
             try:
@@ -208,7 +218,7 @@ class Settings(BaseSettings):
             except Exception as e:
                 logger.error(f"Failed to read CXB config at {config_path}. Error: {e}")
 
-    raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
+    raw_allowed_submit_models: str = Field(default="", alias="allowed_submit_models")
 
     @property
     def allowed_submit_models(self) -> dict[str, list[str]]:
@@ -225,18 +235,15 @@ class Settings(BaseSettings):
                     result[space].append(schema)
         return result
 
+
+# Create a single settings instance (avoid double instantiation)
+settings = Settings()
 try:
-    Settings.model_validate(
-        Settings()
-    )
+    Settings.model_validate(settings)
 except Exception as e:
     logger.error(f"Failed to load settings.\nError: {e}")
-    # sys.exit(1)
-    pass
-
-
-settings = Settings()
 settings.load_config_files()
+
 
 def reload():
     settings.reload()

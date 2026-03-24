@@ -1,29 +1,42 @@
 <script lang="ts">
-    import {Alert, Button, Label, Modal, Select, Spinner} from "flowbite-svelte";
-    import {CodeOutline, FileCodeOutline} from "flowbite-svelte-icons";
-    import {Dmart, RequestType, ResourceType} from "@edraj/tsdmart";
-    import {tick, untrack} from "svelte";
-    import {scrollToElById} from "@/utils/renderer/rendererUtils";
+    import {
+        Alert,
+        Button,
+        Label,
+        Modal,
+        Select,
+        Spinner,
+    } from "flowbite-svelte";
+    import { CodeOutline, FileCodeOutline } from "flowbite-svelte-icons";
+    import { Dmart, RequestType, ResourceType } from "@edraj/tsdmart";
+    import { tick, untrack } from "svelte";
+    import { scrollToElById } from "@/utils/renderer/rendererUtils";
     import Prism from "@/components/Prism.svelte";
     import MetaForm from "@/components/management/forms/MetaForm.svelte";
     import MetaUserForm from "@/components/management/forms/MetaUserForm.svelte";
-    import {jsonEditorContentParser} from "@/utils/jsonEditor";
-    import {currentEntry, currentListView, InputMode, resourcesWithFormAndJson, spaceChildren,} from "@/stores/global";
+    import { jsonEditorContentParser } from "@/utils/jsonEditor";
+    import {
+        currentEntry,
+        currentListView,
+        InputMode,
+        resourcesWithFormAndJson,
+        spaceChildren,
+    } from "@/stores/global";
     import MetaRoleForm from "@/components/management/forms/MetaRoleForm.svelte";
     import MetaPermissionForm from "@/components/management/forms/MetaPermissionForm.svelte";
-    import {Level, showToast} from "@/utils/toast";
-    import {checkAccess} from "@/utils/checkAccess";
+    import { Level, showToast } from "@/utils/toast";
+    import { checkAccess } from "@/utils/checkAccess";
     import PayloadForm from "@/components/management/forms/PayloadForm.svelte";
-    import {removeEmpty} from "@/utils/compare";
+    import { removeEmpty } from "@/utils/compare";
 
     let {
         space_name,
         subpath,
-        isOpen=$bindable(false),
-    }:{
-        space_name:string,
-        subpath:string
-        isOpen:boolean,
+        isOpen = $bindable(false),
+    }: {
+        space_name: string;
+        subpath: string;
+        isOpen: boolean;
     } = $props();
 
     const folderPreference = $currentEntry?.entry?.payload?.body;
@@ -33,108 +46,144 @@
 
     let selectedInputMode = $state(InputMode.form);
 
-    function setAllowedResourceTypes(){
-        if (space_name === "management"){
+    function setAllowedResourceTypes() {
+        if (space_name === "management") {
             if (subpath === "users") {
-                if(checkAccess('create', "management", "users", ResourceType.user)) {
+                if (
+                    checkAccess(
+                        "create",
+                        "management",
+                        "users",
+                        ResourceType.user,
+                    )
+                ) {
                     allowedResourceTypes = [
                         {
                             name: ResourceType.user.toString(),
                             value: ResourceType.user,
-                        }
+                        },
                     ];
                     return;
                 }
-            }
-            else if (subpath === "roles") {
-                if(checkAccess('create', "management", "roles", ResourceType.role)) {
+            } else if (subpath === "roles") {
+                if (
+                    checkAccess(
+                        "create",
+                        "management",
+                        "roles",
+                        ResourceType.role,
+                    )
+                ) {
                     allowedResourceTypes = [
                         {
                             name: ResourceType.role.toString(),
                             value: ResourceType.role,
-                        }
+                        },
                     ];
                     return;
                 }
-            }
-            else if (subpath === "permissions") {
-                if(checkAccess('create', "management", "permissions", ResourceType.permission)) {
+            } else if (subpath === "permissions") {
+                if (
+                    checkAccess(
+                        "create",
+                        "management",
+                        "permissions",
+                        ResourceType.permission,
+                    )
+                ) {
                     allowedResourceTypes = [
                         {
                             name: ResourceType.permission.toString(),
                             value: ResourceType.permission,
-                        }
+                        },
                     ];
                     return;
                 }
-            }
-            else {
+            } else {
                 allowedResourceTypes = [
                     {
                         name: ResourceType.content.toString(),
                         value: ResourceType.content,
-                    }
+                    },
                 ];
             }
         }
         if (subpath === "schema") {
-            if(checkAccess('create', space_name, "schema", ResourceType.schema)) {
+            if (
+                checkAccess("create", space_name, "schema", ResourceType.schema)
+            ) {
                 allowedResourceTypes = [
                     {
                         name: ResourceType.schema.toString(),
                         value: ResourceType.schema,
-                    }
+                    },
                 ];
                 return;
             }
-        }
-        else if (subpath === "workflows") {
-            if(checkAccess('create', space_name, "workflows", ResourceType.content)) {
+        } else if (subpath === "workflows") {
+            if (
+                checkAccess(
+                    "create",
+                    space_name,
+                    "workflows",
+                    ResourceType.content,
+                )
+            ) {
                 allowedResourceTypes = [
                     {
                         name: ResourceType.content.toString(),
                         value: ResourceType.content,
-                    }
+                    },
                 ];
                 return;
             }
-        }
-        else {
+        } else {
             allowedResourceTypes = [];
-            if(checkAccess('create', space_name, subpath, ResourceType.content)) {
+            if (
+                checkAccess("create", space_name, subpath, ResourceType.content)
+            ) {
                 allowedResourceTypes = [
                     ...allowedResourceTypes,
                     {
                         name: ResourceType.content.toString(),
                         value: ResourceType.content,
-                    }
+                    },
                 ];
             }
-            if(checkAccess('create', space_name, subpath, ResourceType.ticket)) {
+            if (
+                checkAccess("create", space_name, subpath, ResourceType.ticket)
+            ) {
                 allowedResourceTypes = [
                     ...allowedResourceTypes,
                     {
                         name: ResourceType.ticket.toString(),
                         value: ResourceType.ticket,
-                    }
+                    },
                 ];
             }
-            if(checkAccess('create', space_name, subpath, ResourceType.folder)) {
+            if (
+                checkAccess("create", space_name, subpath, ResourceType.folder)
+            ) {
                 allowedResourceTypes = [
                     ...allowedResourceTypes,
                     {
                         name: ResourceType.folder.toString(),
                         value: ResourceType.folder,
-                    }
+                    },
                 ];
             }
         }
     }
     function prepareResourceTypes() {
-        setAllowedResourceTypes()
+        setAllowedResourceTypes();
 
-        if(folderPreference && folderPreference?.content_resource_types?.length) {
-            allowedResourceTypes = allowedResourceTypes.filter(rt => folderPreference.content_resource_types.includes(rt.value));
+        if (
+            folderPreference &&
+            folderPreference?.content_resource_types?.length
+        ) {
+            allowedResourceTypes = allowedResourceTypes.filter((rt) =>
+                folderPreference.content_resource_types.includes(rt.value),
+            );
         }
         selectedResourceType = allowedResourceTypes[0].value;
     }
@@ -142,9 +191,8 @@
 
     let selectedSchema = $state(null);
 
-
     let content: any = $state({
-        json: {}
+        json: {},
     });
     let metaContent: any = $state({});
     let contentType = $state("json");
@@ -158,13 +206,21 @@
     async function handleCreateEntry() {
         errorModalMessage = null;
         if (!validateMetaForm()) {
-            errorModalMessage = "Please fill all required fields in the meta form.";
+            errorModalMessage =
+                "Please fill all required fields in the meta form.";
             return;
         }
 
-        if([ResourceType.user, ResourceType.role, ResourceType.permission].includes(selectedResourceType)){
+        if (
+            [
+                ResourceType.user,
+                ResourceType.role,
+                ResourceType.permission,
+            ].includes(selectedResourceType)
+        ) {
             if (!validateRTForm()) {
-                errorModalMessage = "Please fill all required fields in the respective resource type form.";
+                errorModalMessage =
+                    "Please fill all required fields in the respective resource type form.";
                 return;
             }
         }
@@ -177,72 +233,87 @@
             delete _metaContent.shortname;
 
             const requestCreate: any = {
-                "resource_type": selectedResourceType,
-                "shortname": shortname,
-                "subpath": subpath,
-                "attributes": {
-                    ..._metaContent
+                resource_type: selectedResourceType,
+                shortname: shortname,
+                subpath: subpath,
+                attributes: {
+                    ..._metaContent,
                 },
+            };
+            let parsedContent;
+            try {
+                parsedContent = jsonEditorContentParser(
+                    $state.snapshot(content),
+                );
+            } catch (e) {
+                errorModalMessage = "Invalid JSON format in payload.";
+                isHandleCreateEntryLoading = false;
+                return;
             }
-            if(selectedResourceType === ResourceType.ticket) {
+
+            if (selectedResourceType === ResourceType.ticket) {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     workflow_shortname: selectedWorkflow,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
+                        body: parsedContent,
                         schema_shortname: selectedSchema,
-                        content_type: "json"
-                    }
+                        content_type: "json",
+                    },
                 };
-            }
-            else if(selectedResourceType === ResourceType.schema) {
+            } else if (selectedResourceType === ResourceType.schema) {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
-                        schema_shortname: 'meta_schema',
-                        content_type: "json"
-                    }
+                        body: parsedContent,
+                        schema_shortname: "meta_schema",
+                        content_type: "json",
+                    },
                 };
-            }
-            else if(selectedResourceType === ResourceType.content && subpath === "workflows") {
+            } else if (
+                selectedResourceType === ResourceType.content &&
+                subpath === "workflows"
+            ) {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
-                        schema_shortname: 'workflow',
-                        content_type: "json"
-                    }
+                        body: parsedContent,
+                        schema_shortname: "workflow",
+                        content_type: "json",
+                    },
                 };
-            }
-            else if(selectedResourceType === ResourceType.content) {
+            } else if (selectedResourceType === ResourceType.content) {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
-                        schema_shortname: contentType === "json" ? selectedSchema : null,
-                        content_type: contentType
-                    }
+                        body: parsedContent,
+                        schema_shortname:
+                            contentType === "json" ? selectedSchema : null,
+                        content_type: contentType,
+                    },
                 };
-            } else if(selectedSchema) {
+            } else if (selectedSchema) {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
+                        body: parsedContent,
                         schema_shortname: selectedSchema,
-                        content_type: "json"
-                    }
+                        content_type: "json",
+                    },
                 };
             } else {
                 requestCreate.attributes = {
                     ...requestCreate.attributes,
                     payload: {
-                        body: jsonEditorContentParser($state.snapshot(content)),
+                        body: parsedContent,
                         schema_shortname: null,
-                        content_type: "json"
-                    }
+                        content_type: "json",
+                    },
                 };
-                if(requestCreate.attributes.payload === null && requestCreate.attributes.schema_shortname === null){
+                if (
+                    requestCreate.attributes.payload === null &&
+                    requestCreate.attributes.schema_shortname === null
+                ) {
                     delete requestCreate.attributes.payload;
                 }
             }
@@ -250,13 +321,15 @@
             const request = {
                 space_name,
                 request_type: RequestType.create,
-                records: [{
-                    resource_type: selectedResourceType,
-                    subpath: subpath,
-                    shortname: metaContent.shortname,
-                    attributes: removeEmpty(requestCreate.attributes)
-                }]
-            }
+                records: [
+                    {
+                        resource_type: selectedResourceType,
+                        subpath: subpath,
+                        shortname: metaContent.shortname,
+                        attributes: removeEmpty(requestCreate.attributes),
+                    },
+                ],
+            };
             response = await Dmart.request(request);
 
             if (response.attributes && response.attributes.error) {
@@ -265,7 +338,7 @@
                 return;
             }
             await $currentListView.fetchPageRecords();
-            if(selectedResourceType === ResourceType.folder){
+            if (selectedResourceType === ResourceType.folder) {
                 $spaceChildren.refresh(space_name, subpath, true);
             }
             isOpen = false;
@@ -284,10 +357,10 @@
 
     let selectedWorkflow = $state(null);
 
-    $effect(()=>{
-        if(isOpen === false) {
+    $effect(() => {
+        if (isOpen === false) {
             content = {
-                json: {}
+                json: {},
             };
             metaContent = {};
             contentType = "json";
@@ -298,54 +371,67 @@
         }
     });
 
-    $effect(()=>{
-       if(allowedResourceTypes.length === 1) {
-           untrack(()=>{
-               selectedResourceType = allowedResourceTypes[0].value;
-           })
-       }
+    $effect(() => {
+        if (allowedResourceTypes.length === 1) {
+            untrack(() => {
+                selectedResourceType = allowedResourceTypes[0].value;
+            });
+        }
     });
 </script>
 
-<Modal
-    bodyClass="h-s75vh justify-center"
-    bind:open={isOpen}
-    size="lg"
->
+<Modal bodyClass="h-s75vh justify-center" bind:open={isOpen} size="lg">
     {#snippet header()}
         <h3>Create New Entry</h3>
     {/snippet}
     {#if errorModalMessage}
-    <Alert color="red">
-        <span class="font-medium">{errorModalMessage}</span>
-    </Alert>
+        <Alert color="red">
+            <span class="font-medium">{errorModalMessage}</span>
+        </Alert>
     {/if}
     <div>
         <Label>
             Resource Type
-            <Select class="my-2" items={allowedResourceTypes} bind:value={selectedResourceType}
-                    disabled={allowedResourceTypes.length === 1}
+            <Select
+                class="my-2"
+                items={allowedResourceTypes}
+                bind:value={selectedResourceType}
+                disabled={allowedResourceTypes.length === 1}
             />
         </Label>
 
-        <MetaForm bind:formData={metaContent} bind:validateFn={validateMetaForm} isCreate={true}/>
+        <MetaForm
+            bind:formData={metaContent}
+            bind:validateFn={validateMetaForm}
+            isCreate={true}
+        />
 
         {#if selectedResourceType === ResourceType.user}
-            <MetaUserForm bind:formData={metaContent} bind:validateFn={validateRTForm} isCreate={true}/>
+            <MetaUserForm
+                bind:formData={metaContent}
+                bind:validateFn={validateRTForm}
+                isCreate={true}
+            />
         {:else if selectedResourceType === ResourceType.role}
-            <MetaRoleForm bind:formData={metaContent} bind:validateFn={validateRTForm} />
+            <MetaRoleForm
+                bind:formData={metaContent}
+                bind:validateFn={validateRTForm}
+            />
         {:else if selectedResourceType === ResourceType.permission}
-            <MetaPermissionForm bind:formData={metaContent} bind:validateFn={validateRTForm} />
+            <MetaPermissionForm
+                bind:formData={metaContent}
+                bind:validateFn={validateRTForm}
+            />
         {/if}
 
         <PayloadForm
-            bind:selectedResourceType={selectedResourceType}
-            bind:selectedSchema={selectedSchema}
-            bind:selectedWorkflow={selectedWorkflow}
-            bind:selectedInputMode={selectedInputMode}
-            bind:contentType={contentType}
-            bind:content={content}
-            bind:errorContent={errorContent}
+            bind:selectedResourceType
+            bind:selectedSchema
+            bind:selectedWorkflow
+            bind:selectedInputMode
+            bind:contentType
+            bind:content
+            bind:errorContent
         />
 
         {#if errorContent}
@@ -357,28 +443,41 @@
 
     {#snippet footer()}
         <div class="w-full flex flex-row justify-between">
-            {#if ([ResourceType.schema, ...resourcesWithFormAndJson].includes(selectedResourceType) || subpath === "workflows") && 
-                 (selectedResourceType !== ResourceType.content || contentType === "json")}
-                <Button class="cursor-pointer text-green-700 hover:text-green-500 mx-1" outline
-                        onclick={() => selectedInputMode = selectedInputMode === InputMode.form ? InputMode.json : InputMode.form}>
+            {#if ([ResourceType.schema, ...resourcesWithFormAndJson].includes(selectedResourceType) || subpath === "workflows") && (selectedResourceType !== ResourceType.content || contentType === "json")}
+                <Button
+                    class="cursor-pointer text-green-700 hover:text-green-500 mx-1"
+                    outline
+                    onclick={() =>
+                        (selectedInputMode =
+                            selectedInputMode === InputMode.form
+                                ? InputMode.json
+                                : InputMode.form)}
+                >
                     {#if selectedInputMode === InputMode.form}
                         <CodeOutline />
-                    {:else }
+                    {:else}
                         <FileCodeOutline />
                     {/if}
-                    {selectedInputMode === InputMode.form ? 'Json' : 'Form'} Mode
+                    {selectedInputMode === InputMode.form ? "Json" : "Form"} Mode
                 </Button>
             {:else}
                 <div></div>
             {/if}
             <div>
                 {#if !isHandleCreateEntryLoading}
-                    <Button class="cursor-pointer text-primary hover:text-primary mx-1" outline onclick={() => isOpen = false}>
+                    <Button
+                        class="cursor-pointer text-primary hover:text-primary mx-1"
+                        outline
+                        onclick={() => (isOpen = false)}
+                    >
                         Close
                     </Button>
                 {/if}
 
-                <Button class="cursor-pointer bg-primary mx-1" onclick={handleCreateEntry}>
+                <Button
+                    class="cursor-pointer bg-primary mx-1"
+                    onclick={handleCreateEntry}
+                >
                     {#if isHandleCreateEntryLoading}
                         <Spinner class="me-3" size="4" color="blue" />
                         Creating ...

@@ -14,19 +14,13 @@ from data_adapters.adapter import data_adapter as db
 def decode_jwt(token: str) -> dict[str, Any]:
     decoded_token: dict
     try:
-        decoded_token = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        decoded_token = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except Exception:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [1]"),
         )
-    if (
-            not decoded_token
-            or "data" not in decoded_token
-            or "expires" not in decoded_token
-    ):
+    if not decoded_token or "data" not in decoded_token or "expires" not in decoded_token:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [2]"),
@@ -37,10 +31,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
             api.Error(type="jwtauth", code=InternalErrorCode.EXPIRED_TOKEN, message="Expired Token"),
         )
 
-    if (
-            isinstance(decoded_token["data"], dict)
-            and decoded_token["data"].get("shortname") is not None
-    ):
+    if isinstance(decoded_token["data"], dict) and decoded_token["data"].get("shortname") is not None:
         return decoded_token["data"]
     else:
         raise api.Exception(
@@ -49,7 +40,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
         )
 
 
-class JWTBearer():
+class JWTBearer:
     is_required: bool = True
     http_bearer: HTTPBearer
 
@@ -84,20 +75,20 @@ class JWTBearer():
                 api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [2]"),
             )
 
-        if decoded["type"] != 'bot' and settings.session_inactivity_ttl:
+        if decoded["type"] != "bot" and settings.session_inactivity_ttl:
             _, user_session_token = await db.get_user_session(user_shortname, auth_token)
             if not isinstance(user_session_token, str):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
-                    api.Error(
-                        type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"
-                    ),
+                    api.Error(type="jwtauth", code=InternalErrorCode.NOT_AUTHENTICATED, message="Not authenticated [3]"),
                 )
 
-        return user_shortname 
+        return user_shortname
+
 
 class GetJWTToken:
     http_bearer: HTTPBearer
+
     def __init__(self, auto_error: bool = True):
         self.http_bearer = HTTPBearer(auto_error=auto_error)
 
@@ -121,4 +112,3 @@ async def sign_jwt(data: dict, expires: int = 86400) -> str:
     if data["type"] != "bot" and settings.session_inactivity_ttl:
         await db.set_user_session(data["shortname"], token)
     return token
-

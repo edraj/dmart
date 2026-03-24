@@ -27,10 +27,10 @@ TEST_DATA = [
                     "user_gender": "male",
                     "account_number": 100,
                     "rating": "5",
-                    "allowed_categories": ["analytics", "reviews"]
-                }
-            }
-        }
+                    "allowed_categories": ["analytics", "reviews"],
+                },
+            },
+        },
     },
     {
         "shortname": "user2",
@@ -51,11 +51,11 @@ TEST_DATA = [
                     "account_number": 200,
                     "rating": "4",
                     "allowed_categories": ["posts", "edits"],
-                    "x":{"y": {"z":5}}
-                }
-            }
-        }
-    }
+                    "x": {"y": {"z": 5}},
+                },
+            },
+        },
+    },
 ]
 
 
@@ -67,13 +67,15 @@ async def setup_teardown(client: AsyncClient):
             json={
                 "space_name": MANAGEMENT_SPACE,
                 "request_type": RequestType.create,
-                "records": [{
-                    "resource_type": ResourceType.user,
-                    "subpath": USERS_SUBPATH,
-                    "shortname": data["shortname"],
-                    "attributes": data["attributes"]
-                }]
-            }
+                "records": [
+                    {
+                        "resource_type": ResourceType.user,
+                        "subpath": USERS_SUBPATH,
+                        "shortname": data["shortname"],
+                        "attributes": data["attributes"],
+                    }
+                ],
+            },
         )
         assert_code_and_status_success(response)
 
@@ -85,13 +87,15 @@ async def setup_teardown(client: AsyncClient):
             json={
                 "space_name": MANAGEMENT_SPACE,
                 "request_type": RequestType.delete,
-                "records": [{
-                    "attributes": {},
-                    "resource_type": ResourceType.user,
-                    "subpath": USERS_SUBPATH,
-                    "shortname": data["shortname"]
-                }]
-            }
+                "records": [
+                    {
+                        "attributes": {},
+                        "resource_type": ResourceType.user,
+                        "subpath": USERS_SUBPATH,
+                        "shortname": data["shortname"],
+                    }
+                ],
+            },
         )
 
 
@@ -99,12 +103,7 @@ async def setup_teardown(client: AsyncClient):
 async def test_string_queries(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "@language:ku"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "@language:ku"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -117,8 +116,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@msisdn:1123456789"
-        }
+            "search": "@msisdn:1123456789",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -131,8 +130,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@email:user1@example.com"
-        }
+            "search": "@email:user1@example.com",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -141,12 +140,7 @@ async def test_string_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "-@language:ar"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "-@language:ar"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -159,8 +153,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@is_active:False @roles:moderator"
-        }
+            "search": "@is_active:False @roles:moderator",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -173,8 +167,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@is_active:True -@roles:world"
-        }
+            "search": "-@is_active:True -@roles:world",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -187,8 +181,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@language:en @msisdn:9876543210"
-        }
+            "search": "@language:en @msisdn:9876543210",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -201,8 +195,8 @@ async def test_string_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@roles:super_admin -@language:ar"
-        }
+            "search": "-@roles:super_admin -@language:ar",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -211,12 +205,7 @@ async def test_string_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "@language:ku|en"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "@language:ku|en"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -225,12 +214,7 @@ async def test_string_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "-@language:ar|fr"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "-@language:ar|fr"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -242,12 +226,7 @@ async def test_string_queries(client: AsyncClient) -> None:
 async def test_array_queries(client: AsyncClient) -> None:
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "@roles:manager"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "@roles:manager"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -256,12 +235,7 @@ async def test_array_queries(client: AsyncClient) -> None:
 
     response = await client.post(
         "/managed/query",
-        json={
-            "type": QueryType.search,
-            "space_name": MANAGEMENT_SPACE,
-            "subpath": USERS_SUBPATH,
-            "search": "-@roles:manager"
-        }
+        json={"type": QueryType.search, "space_name": MANAGEMENT_SPACE, "subpath": USERS_SUBPATH, "search": "-@roles:manager"},
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -274,8 +248,8 @@ async def test_array_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@roles:manager|moderator"
-        }
+            "search": "@roles:manager|moderator",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -288,8 +262,8 @@ async def test_array_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@roles:super_admin|world"
-        }
+            "search": "-@roles:super_admin|world",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -305,8 +279,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.allowed_categories:posts"
-        }
+            "search": "@payload.body.allowed_categories:posts",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -319,8 +293,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.allowed_categories:posts"
-        }
+            "search": "-@payload.body.allowed_categories:posts",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -333,8 +307,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.allowed_categories:posts @payload.body.allowed_categories:edits"
-        }
+            "search": "@payload.body.allowed_categories:posts @payload.body.allowed_categories:edits",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -347,8 +321,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.allowed_categories:posts -@payload.body.allowed_categories:edits"
-        }
+            "search": "-@payload.body.allowed_categories:posts -@payload.body.allowed_categories:edits",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -361,8 +335,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.allowed_categories:posts|reviews"
-        }
+            "search": "@payload.body.allowed_categories:posts|reviews",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -375,8 +349,8 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.allowed_categories:posts|reviews"
-        }
+            "search": "-@payload.body.allowed_categories:posts|reviews",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -392,8 +366,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.account_type:business"
-        }
+            "search": "@payload.body.account_type:business",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -406,8 +380,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.account_type:business"
-        }
+            "search": "-@payload.body.account_type:business",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -420,8 +394,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.account_type:personal @payload.body.user_gender:female"
-        }
+            "search": "@payload.body.account_type:personal @payload.body.user_gender:female",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -434,8 +408,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.account_type:business -@payload.body.user_gender:male"
-        }
+            "search": "-@payload.body.account_type:business -@payload.body.user_gender:male",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -448,8 +422,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.account_type:business|personal"
-        }
+            "search": "@payload.body.account_type:business|personal",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -462,8 +436,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.account_type:business|personal"
-        }
+            "search": "-@payload.body.account_type:business|personal",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -476,8 +450,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.account_number:100"
-        }
+            "search": "@payload.body.account_number:100",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -490,8 +464,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.account_number:100"
-        }
+            "search": "-@payload.body.account_number:100",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -504,8 +478,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.rating:5"
-        }
+            "search": "@payload.body.rating:5",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -518,8 +492,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.rating:5"
-        }
+            "search": "-@payload.body.rating:5",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -532,8 +506,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.rating:5|4"
-        }
+            "search": "@payload.body.rating:5|4",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -546,8 +520,8 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.rating:5|4"
-        }
+            "search": "-@payload.body.rating:5|4",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -565,8 +539,8 @@ async def test_date_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": f"@created_at:{formatted_time}"
-        }
+            "search": f"@created_at:{formatted_time}",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -581,8 +555,8 @@ async def test_date_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": f"@created_at:[{start_date},{end_date}]"
-        }
+            "search": f"@created_at:[{start_date},{end_date}]",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -598,8 +572,8 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@is_active:false @roles:manager"
-        }
+            "search": "@is_active:false @roles:manager",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -612,8 +586,8 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@is_active:false @roles:manager"
-        }
+            "search": "-@is_active:false @roles:manager",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -626,8 +600,8 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.is_subscribed:false"
-        }
+            "search": "@payload.body.is_subscribed:false",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -640,8 +614,8 @@ async def test_boolean_field_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "-@payload.body.is_subscribed:true"
-        }
+            "search": "-@payload.body.is_subscribed:true",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()
@@ -657,8 +631,8 @@ async def test_nested_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
-            "search": "@payload.body.x.y.z:5"
-        }
+            "search": "@payload.body.x.y.z:5",
+        },
     )
     assert_code_and_status_success(response)
     json_response = response.json()

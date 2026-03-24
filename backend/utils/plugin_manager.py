@@ -1,9 +1,11 @@
 import asyncio
 import os
 import sys
+import time
 from importlib.util import find_spec, module_from_spec
 from inspect import iscoroutine
 from pathlib import Path
+from typing import Any
 import aiofiles
 from fastapi import Depends, FastAPI
 from fastapi.logger import logger
@@ -27,13 +29,32 @@ CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 if CUSTOM_PLUGINS_PATH.parent.exists():
     sys.path.append(str(CUSTOM_PLUGINS_PATH.parent.resolve()))
 
-class PluginManager:
 
-    plugins_wrappers: dict[
-        ActionType, list[PluginWrapper]
-    ] = {}  # {action_type: list_of_plugins_wrappers]}
+class PluginManager:
+    plugins_wrappers: dict[ActionType, list[PluginWrapper]] = {}  # {action_type: list_of_plugins_wrappers]}
 
     active_plugins: list[str] = []
+
+    # Short-lived cache for space lookups to avoid redundant Redis calls
+    # within the same request (before_action + after_action both fetch the same space)
+    _space_cache: dict[str, tuple[float, Any]] = {}
+    _SPACE_CACHE_TTL: float = 2.0  # seconds
+
+    @classmethod
+    async def _get_space_cached(cls, space_name: str) -> Any:
+        """Fetch space with a short TTL cache to avoid double-loading within a single request."""
+        now = time.monotonic()
+        cached = cls._space_cache.get(space_name)
+        if cached is not None:
+            ts, space = cached
+            if now - ts < cls._SPACE_CACHE_TTL:
+                return space
+
+        from data_adapters.adapter import data_adapter as db
+
+        space = await db.fetch_space(space_name)
+        cls._space_cache[space_name] = (now, space)
+        return space
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
@@ -49,24 +70,18 @@ class PluginManager:
             await self.load_path_plugins(path, app, capture_body)
         self.sort_plugins()
 
-
     async def load_path_plugins(self, path: Path, app: FastAPI, capture_body):
 
         plugins_iterator = os.scandir(path)
         for plugin_path in plugins_iterator:
             config_file_path = Path(f"{plugin_path.path}/config.json")
             plugin_file_path = Path(f"{plugin_path.path}/plugin.py")
-            if(
-                not config_file_path.is_file() or
-                not plugin_file_path.is_file()
-            ):
+            if not config_file_path.is_file() or not plugin_file_path.is_file():
                 continue
 
             # Load plugin config file
             async with aiofiles.open(config_file_path, "r") as config_file:
-                plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(
-                    await config_file.read()
-                )
+                plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(await config_file.read())
             plugin_wrapper.shortname = plugin_path.name
             if not plugin_wrapper.is_active:
                 continue
@@ -100,9 +115,7 @@ class PluginManager:
                 print(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
                 logger.info(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
             except Exception as e:
-                logger.error(
-                    f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
-                )
+                logger.error(f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}")
 
         plugins_iterator.close()
 
@@ -115,9 +128,7 @@ class PluginManager:
         """Sort plugins based on plugin_wrapper.ordinal"""
 
         for action_type, plugins in self.plugins_wrappers.items():
-            self.plugins_wrappers[action_type] = sorted(
-                plugins, key=lambda x: x.ordinal
-            )
+            self.plugins_wrappers[action_type] = sorted(plugins, key=lambda x: x.ordinal)
 
     def matched_filters(self, plugin_filters: EventFilter, event: Event):
         formats_of_subpath = [event.subpath]
@@ -132,8 +143,7 @@ class PluginManager:
             return False
 
         if event.resource_type == ResourceType.content and (
-            "__ALL__" not in plugin_filters.schema_shortnames
-            and event.schema_shortname not in plugin_filters.schema_shortnames
+            "__ALL__" not in plugin_filters.schema_shortnames and event.schema_shortname not in plugin_filters.schema_shortnames
         ):
             return False
 
@@ -158,17 +168,21 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        from data_adapters.adapter import data_adapter as db
-        space = await db.fetch_space(event.space_name)
+        # Short-circuit: check if any plugin for this action listens to 'before'
+        plugins = self.plugins_wrappers[event.action_type]
+        before_plugins = [p for p in plugins if p.listen_time == EventListenTime.before and p.filters]
+        if not before_plugins:
+            return
+
+        space = await self._get_space_cached(event.space_name)
         if space is None:
             return
         space_plugins = space.active_plugins
 
-        for plugin_model in self.plugins_wrappers[event.action_type]:
+        for plugin_model in before_plugins:
             if (
                 plugin_model.shortname in space_plugins
-                and plugin_model.listen_time == EventListenTime.before
-                and plugin_model.filters
+                and plugin_model.filters is not None
                 and self.matched_filters(plugin_model.filters, event)
             ):
                 try:
@@ -186,35 +200,37 @@ class PluginManager:
         if event.action_type not in self.plugins_wrappers:
             return
 
-        from data_adapters.adapter import data_adapter as db
-        space = await db.fetch_space(event.space_name)
+        # Short-circuit: check if any plugin for this action listens to 'after'
+        plugins = self.plugins_wrappers[event.action_type]
+        after_plugins = [p for p in plugins if p.listen_time == EventListenTime.after and p.filters]
+        if not after_plugins:
+            return
+
+        space = await self._get_space_cached(event.space_name)
         if space is None:
             return
         space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
-        _plugin_model = None
-        try:
-            for plugin_model in self.plugins_wrappers[event.action_type]:
-                _plugin_model = plugin_model
-                if (
-                    plugin_model.shortname in space_plugins
-                    and plugin_model.listen_time == EventListenTime.after
-                    and plugin_model.filters
-                    and self.matched_filters(plugin_model.filters, event)
-                ):
-                    try:
-                        object = plugin_model.object
-                        if isinstance(object, PluginBase):
-                            plugin_execution = object.hook(event)
-                            if iscoroutine(plugin_execution):
+        for plugin_model in after_plugins:
+            if (
+                plugin_model.shortname in space_plugins
+                and plugin_model.filters is not None
+                and self.matched_filters(plugin_model.filters, event)
+            ):
+                try:
+                    object = plugin_model.object
+                    if isinstance(object, PluginBase):
+                        plugin_execution = object.hook(event)
+                        if iscoroutine(plugin_execution):
+                            if plugin_model.concurrent:
                                 loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
-                    except api.Exception as e:
-                        raise e
-                    except Exception as e:
-                        logger.error(f"Plugin:{plugin_model}:{str(e)}")
-        except Exception as e:
-            logger.error(f"Plugin:{_plugin_model}:{str(e)}")
+                            else:
+                                await plugin_execution
+                except api.Exception as e:
+                    raise e
+                except Exception as e:
+                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
 
 
 plugin_manager = PluginManager()

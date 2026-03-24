@@ -18,7 +18,7 @@ from models.enums import ContentType, RequestType, ResourceType
 from api.managed.router import serve_request
 
 
-duplicated_entries : dict= {}
+duplicated_entries: dict = {}
 
 key_entries: dict = {}
 MAX_INVALID_SIZE = 100
@@ -29,9 +29,7 @@ spaces_schemas: dict[str, dict[str, dict]] = {}
 
 async def main(health_type: str, space_param: str, schemas_param: list):
     async with SQLAdapter().get_session() as session:
-        session.execute(
-            delete(Entries).where(col(Entries.subpath) == "/health_check")
-        )
+        session.execute(delete(Entries).where(col(Entries.subpath) == "/health_check"))
         await session.commit()
 
     health_type = "hard" if health_type is None else health_type
@@ -42,7 +40,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
         return
 
     spaces = await db.get_spaces()
-    spaces_names : list = []
+    spaces_names: list = []
 
     if space_param != "all":
         if space_param not in spaces.keys():
@@ -71,45 +69,36 @@ async def hard_space_check(space):
         target_space: Spaces | None = session.exec(_sql_stm).first()
         if target_space:
             schema_data_space: Entries | None = session.exec(
-                select(Entries)
-                .where(Entries.shortname == 'metafile')
-                .where(Entries.subpath == "/schema")
+                select(Entries).where(Entries.shortname == "metafile").where(Entries.subpath == "/schema")
             ).first()
             if "/" not in folders_report:
-                folders_report["/" ] = {
+                folders_report["/"] = {
                     "valid_entries": 0,
                 }
 
             if schema_data_space and schema_data_space.payload:
                 try:
                     if isinstance(schema_data_space.payload, dict):
-                        Draft7Validator(
-                            schema_data_space.payload["body"]
-                        ).validate(
-                            json.loads(target_space.model_dump_json())
-                        )
-                    folders_report['/']["valid_entries"] += 1
+                        Draft7Validator(schema_data_space.payload["body"]).validate(json.loads(target_space.model_dump_json()))
+                    folders_report["/"]["valid_entries"] += 1
                 except ValidationError as e:
                     issue = {
                         "issues": ["payload"],
                         "uuid": str(target_space.uuid),
                         "shortname": target_space.shortname,
-                        "resource_type": 'space',
+                        "resource_type": "space",
                         "exception": str(e),
                     }
-                    if folders_report['/'].get("invalid_entries", None) is None:
-                        folders_report['/']["invalid_entries"] = []
-                    folders_report['/']["invalid_entries"] = [
-                        *folders_report['/']["invalid_entries"],
-                        issue
-                    ]
+                    if folders_report["/"].get("invalid_entries", None) is None:
+                        folders_report["/"]["invalid_entries"] = []
+                    folders_report["/"]["invalid_entries"] = [*folders_report["/"]["invalid_entries"], issue]
 
         for entry in entries:
             subpath = entry.subpath[1:]
             if subpath == "":
                 subpath = "/"
 
-            payload : core.Payload
+            payload: core.Payload
             if entry.payload and isinstance(entry.payload, dict):
                 try:
                     payload = core.Payload.model_validate(entry.payload)
@@ -118,15 +107,12 @@ async def hard_space_check(space):
                         "issues": ["payload"],
                         "uuid": str(entry.uuid),
                         "shortname": entry.shortname,
-                        "resource_type": 'space',
+                        "resource_type": "space",
                         "exception": str(e),
                     }
-                    if folders_report['/'].get("invalid_entries", None) is None:
-                        folders_report['/']["invalid_entries"] = []
-                    folders_report['/']["invalid_entries"] = [
-                        *folders_report['/']["invalid_entries"],
-                        issue
-                    ]
+                    if folders_report["/"].get("invalid_entries", None) is None:
+                        folders_report["/"]["invalid_entries"] = []
+                    folders_report["/"]["invalid_entries"] = [*folders_report["/"]["invalid_entries"], issue]
                     continue
             elif isinstance(entry.payload, core.Payload):
                 payload = entry.payload
@@ -138,15 +124,13 @@ async def hard_space_check(space):
 
             body = payload.body
             schema_data = session.exec(
-                select(Entries)
-                .where(Entries.shortname == payload.schema_shortname)
-                .where(Entries.subpath == "/schema")
+                select(Entries).where(Entries.shortname == payload.schema_shortname).where(Entries.subpath == "/schema")
             ).first()
 
             if not schema_data:
                 continue
 
-            schema_payload : core.Payload
+            schema_payload: core.Payload
             if schema_data.payload and isinstance(schema_data.payload, dict):
                 schema_payload = core.Payload.model_validate(schema_data.payload)
             elif schema_data.payload and isinstance(schema_data.payload, core.Payload):
@@ -166,9 +150,7 @@ async def hard_space_check(space):
                 }
 
             try:
-                Draft7Validator(
-                    schema_body
-                ).validate(body)
+                Draft7Validator(schema_body).validate(body)
                 folders_report[subpath]["valid_entries"] += 1
             except ValidationError as e:
                 issue = {
@@ -180,14 +162,9 @@ async def hard_space_check(space):
                 }
                 if folders_report[subpath].get("invalid_entries", None) is None:
                     folders_report[subpath]["invalid_entries"] = []
-                folders_report[subpath]["invalid_entries"] = [
-                    *folders_report[subpath]["invalid_entries"],
-                    issue
-                ]
+                folders_report[subpath]["invalid_entries"] = [*folders_report[subpath]["invalid_entries"], issue]
 
-        await save_health_check_entry(
-            {"folders_report": folders_report}, space
-        )
+        await save_health_check_entry({"folders_report": folders_report}, space)
 
 
 async def save_health_check_entry(health_check, space_name: str):
@@ -206,16 +183,17 @@ async def save_health_check_entry(health_check, space_name: str):
                             "payload": {
                                 "schema_shortname": "health_check",
                                 "content_type": ContentType.json,
-                                "body": health_check
-                            }
+                                "body": health_check,
+                            },
                         },
                     )
                 ],
             ),
-            owner_shortname='dmart',
+            owner_shortname="dmart",
         )
     except Exception as e:
         print(e)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -229,4 +207,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     before_time = time.time()
     asyncio.run(main(args.type, args.space or "all", args.schemas))
-    print(f'total time: {"{:.2f}".format(time.time() - before_time)} sec')
+    print(f"total time: {'{:.2f}'.format(time.time() - before_time)} sec")

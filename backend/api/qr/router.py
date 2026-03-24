@@ -11,9 +11,9 @@ import hmac
 import hashlib
 from utils.settings import settings
 from models.enums import ResourceType
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(default_response_class=JSONResponse)
 
 
 @router.get("/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}")
@@ -21,8 +21,7 @@ async def generate_qr_user_profile(
     resource_type: ResourceType = Path(...),
     space_name: str = Path(..., pattern=regex.SPACENAME, examples=["data"]),
     subpath: str = Path(..., pattern=regex.SUBPATH, examples=["/content"]),
-    shortname: str = Path(..., pattern=regex.SHORTNAME,
-                          examples=["unique_shortname"]),
+    shortname: str = Path(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
 ) -> StreamingResponse:
     data: str | dict = await retrieve_entry_meta(
@@ -36,13 +35,11 @@ async def generate_qr_user_profile(
     if (
         isinstance(data, dict)
         and data.get("owner_shortname") != logged_in_user
-        and f"management/{subpath}/{data['shortname']}"
-        != f"{space_name}/users/{logged_in_user}"
+        and f"management/{subpath}/{data['shortname']}" != f"{space_name}/users/{logged_in_user}"
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=InternalErrorCode.QR_ERROR,
-                      message="QR cannot be generated"),
+            api.Error(type="qr", code=InternalErrorCode.QR_ERROR, message="QR cannot be generated"),
         )
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.sha256)
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
@@ -73,8 +70,7 @@ async def validate_qr_user_profile(
     resource_type: ResourceType = Body(...),
     space_name: str = Body(..., pattern=regex.SPACENAME, examples=["data"]),
     subpath: str = Body(..., pattern=regex.SUBPATH, examples=["/content"]),
-    shortname: str = Body(..., pattern=regex.SHORTNAME,
-                          examples=["unique_shortname"]),
+    shortname: str = Body(..., pattern=regex.SHORTNAME, examples=["unique_shortname"]),
     logged_in_user=Depends(JWTBearer()),
     qr_data: str = Body(..., embed=True),
 ):
@@ -86,23 +82,26 @@ async def validate_qr_user_profile(
         logged_in_user=logged_in_user,
     )
     arr_data = qr_data.split(".")
+    if len(arr_data) < 2:
+        raise api.Exception(
+            status.HTTP_400_BAD_REQUEST,
+            api.Error(type="qr", code=InternalErrorCode.QR_INVALID, message="Invalid QR data format"),
+        )
     req_date, req_data = arr_data[0], arr_data[1]
     if int(req_date) + 60 < int(time()):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=InternalErrorCode.QR_EXPIRED,
-                      message="QR did expire"),
+            api.Error(type="qr", code=InternalErrorCode.QR_EXPIRED, message="QR did expire"),
         )
     data = f"{resource_type}/{space_name}/{subpath}/{shortname}"
     m = hmac.new(settings.jwt_secret.encode(), digestmod=hashlib.sha256)
     m.update(f"{req_date}.{data}".encode())
     hexed_data = m.hexdigest()
 
-    if hexed_data == req_data:
+    if hmac.compare_digest(hexed_data, req_data):
         return api.Response(status=api.Status.success)
     else:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
-            api.Error(type="qr", code=InternalErrorCode.QR_INVALID,
-                      message="Invalid data passed"),
+            api.Error(type="qr", code=InternalErrorCode.QR_INVALID, message="Invalid data passed"),
         )

@@ -10,6 +10,10 @@ interface WebsiteConfig {
   backend_timeout: number;
   websocket?: string;
   delay_total_count?: boolean;
+  theme?: {
+    type: "solid" | "gradient";
+    value: string;
+  };
 }
 
 const loadConfig = async (): Promise<WebsiteConfig> => {
@@ -33,7 +37,7 @@ const loadConfig = async (): Promise<WebsiteConfig> => {
       languages: { ar: "العربية", en: "English" },
       backend: "http://localhost:8282",
       websocket: "ws://0.0.0.0:8484/ws",
-      backend_timeout:30000,
+      backend_timeout: 30000,
       delay_total_count: false
     };
   }
@@ -50,7 +54,7 @@ export let website: WebsiteConfig = {
   backend: "http://localhost:8282",
   websocket: "ws://0.0.0.0:8484/ws",
   backend_timeout: 30000,
-  delay_total_count:false
+  delay_total_count: false
 };
 
 loadConfig().then(config => {

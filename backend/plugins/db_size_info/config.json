@@ -1,0 +1,5 @@
+{
+	"shortname": "db_size_info",
+	"is_active": true,
+	"type": "api"
+}

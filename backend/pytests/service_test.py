@@ -1,6 +1,7 @@
 from api.user.service import gen_alphanumeric
 import pytest
 
+
 @pytest.mark.run(order=9)
 def test_gen_alphanumeric_length():
     # Test default length

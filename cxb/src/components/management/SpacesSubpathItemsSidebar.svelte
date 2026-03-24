@@ -1,10 +1,14 @@
 <script lang="ts">
-    import {ListPlaceholder, SidebarItem} from "flowbite-svelte";
-    import {ChevronDownOutline, ChevronRightOutline, FolderOutline} from "flowbite-svelte-icons";
+    import { ListPlaceholder, SidebarItem } from "flowbite-svelte";
+    import {
+        ChevronDownOutline,
+        ChevronRightOutline,
+        FolderOutline,
+    } from "flowbite-svelte-icons";
     import SpacesSubpathItemsSidebar from "./SpacesSubpathItemsSidebar.svelte";
-    import {activeRoute} from "@roxi/routify";
-    import {untrack} from "svelte";
-    import {spaceChildren} from "@/stores/global";
+    import { activeRoute } from "@roxi/routify";
+    import { untrack } from "svelte";
+    import { spaceChildren } from "@/stores/global";
 
     let {
         spaceName,
@@ -19,19 +23,24 @@
     } = $props();
 
     $effect(() => {
-        if (`/-${$activeRoute.params.subpath}` === `${parentPath}-${item.shortname}`) {
-            untrack(()=>{
+        if (
+            `/-${$activeRoute.params.subpath}` ===
+            `${parentPath}-${item.shortname}`
+        ) {
+            untrack(() => {
                 toggleExpanded(spaceName, getCurrentPath(), true);
-            })
+            });
         }
     });
 
     function getCurrentPath() {
-        let urll = `${parentPath}-${item.shortname}`.replace('/', '-').replace('--', '-');
-        if (urll.startsWith('-')) {
+        let urll = `${parentPath}-${item.shortname}`
+            .replace("/", "-")
+            .replace("--", "-");
+        if (urll.startsWith("-")) {
             urll = urll.substring(1);
         }
-        if (urll.endsWith('-')) {
+        if (urll.endsWith("-")) {
             urll = urll.substring(0, urll.length - 1);
         }
         return `/${urll}`;
@@ -49,15 +58,15 @@
         const handleEvent = (event: Event) => {
             event.preventDefault();
             event.stopPropagation();
-            handleToggleExpanded()
+            handleToggleExpanded();
         };
 
-        node.addEventListener('click', handleEvent);
+        node.addEventListener("click", handleEvent);
 
         return {
             destroy() {
-                node.removeEventListener('click', handleEvent);
-            }
+                node.removeEventListener("click", handleEvent);
+            },
         };
     }
 
@@ -65,17 +74,20 @@
         return `/${$activeRoute.params.subpath}` === getCurrentPath();
     }
 
-    loadChildren(spaceName, getCurrentPath())
+    loadChildren(spaceName, getCurrentPath());
 </script>
 
 <SidebarItem
-        label={item.attributes?.displayname?.en || item.shortname}
-        href={`/management/content/${spaceName}${getCurrentPath()}`}
-        class="flex-1 whitespace-nowrap {isCurrentPath() ? 'bg-gray-300 text-white' : ''}"
-        style="margin-left: {depth * 20}px;">
+    label={item.attributes?.displayname?.en || item.shortname}
+    href={`/management/content/${spaceName}${getCurrentPath()}`}
+    class="flex-1 whitespace-nowrap {isCurrentPath()
+        ? 'bg-gray-300 text-white'
+        : ''}"
+    style="margin-left: {depth * 20}px;"
+>
     {#snippet icon()}
         <div class="flex items-center gap-2">
-            <button class="p-1  rounded" use:preventAndHandleToggleExpanded>
+            <button class="p-1 rounded" use:preventAndHandleToggleExpanded>
                 {#if getIsExpanded()}
                     <ChevronDownOutline size="sm" />
                 {:else}
@@ -95,7 +107,7 @@
 </SidebarItem>
 
 {#if getIsExpanded()}
-    {#each $spaceChildren.data.get(`${spaceName}:${getCurrentPath()}`) as child (child.shortname)}
+    {#each $spaceChildren.data.get(`${spaceName}:${getCurrentPath()}`) || [] as child (child.shortname)}
         <SpacesSubpathItemsSidebar
             {spaceName}
             parentPath={getCurrentPath()}

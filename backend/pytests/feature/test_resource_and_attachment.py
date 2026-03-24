@@ -21,8 +21,6 @@ from models.enums import QueryType, ResourceType, ContentType, RequestType
 from utils.settings import settings
 
 
-
-
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_retrieve_content_folder(client: AsyncClient):
@@ -90,10 +88,7 @@ async def test_create_text_content_resource(client: AsyncClient):
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_upload_schema_resource(client: AsyncClient) -> None:
-    await upload_resource_with_payload(
-        client,
-        DEMO_SPACE, schema_record_path, schema_payload_path, "application/json"
-    )
+    await upload_resource_with_payload(client, DEMO_SPACE, schema_record_path, schema_payload_path, "application/json")
 
 
 @pytest.mark.run(order=2)
@@ -268,7 +263,9 @@ async def test_create_comment_attachment(client: AsyncClient) -> None:
                 "resource_type": ResourceType.comment,
                 "subpath": f"{DEMO_SUBPATH}/{json_entry_shortname}",
                 "shortname": "my_comment",
-                "attributes": {"payload": {"content_type": ContentType.comment, "body": {"body": "A very speed car", "state": "on_road"}}},
+                "attributes": {
+                    "payload": {"content_type": ContentType.comment, "body": {"body": "A very speed car", "state": "on_road"}}
+                },
             }
         ],
     }
@@ -297,9 +294,7 @@ async def test_create_comment_attachment(client: AsyncClient) -> None:
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_get_entry_from_managed(client: AsyncClient):
-    response = await client.get(
-        f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
-    )
+    response = await client.get(f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["uuid"] == json_entry_uuid
 
@@ -323,9 +318,7 @@ async def test_get_entry_by_slug(client: AsyncClient):
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_get_not_found_entry(client: AsyncClient):
-    response = await client.get(
-        f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/json_entry_shortname"
-    )
+    response = await client.get(f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/json_entry_shortname")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -333,37 +326,27 @@ async def test_get_not_found_entry(client: AsyncClient):
 @pytest.mark.anyio
 async def test_get_unauthorized_resource_from_managed_api(client, mocker):
     mocker.patch("utils.access_control.access_control.check_access", return_value=None)
-    response = await client.get(
-        f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
-    )
+    response = await client.get(f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_get_unauthorized_entry_from_public_api(client: AsyncClient):
-    response = await client.get(
-        f"public/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}"
-    )
+    response = await client.get(f"public/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{json_entry_shortname}")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_upload_json_content_resource(client: AsyncClient) -> None:
-    await upload_resource_with_payload(
-        client,
-        DEMO_SPACE, content_record_path, content_payload_path, "application/json"
-    )
+    await upload_resource_with_payload(client, DEMO_SPACE, content_record_path, content_payload_path, "application/json")
 
 
 @pytest.mark.run(order=2)
 @pytest.mark.anyio
 async def test_upload_image_attachment(client: AsyncClient) -> None:
-    await upload_resource_with_payload(
-        client,
-        DEMO_SPACE, media_record_path, media_payload_path, "image/jpeg", True
-    )
+    await upload_resource_with_payload(client, DEMO_SPACE, media_record_path, media_payload_path, "image/jpeg", True)
 
 
 @pytest.mark.run(order=2)
@@ -408,7 +391,7 @@ async def test_delete_attachment(client: AsyncClient):
     )
 
     response = await client.get(f"managed/payload/media/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}/{media_shortname}")
-    assert (response.status_code == status.HTTP_404_NOT_FOUND)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.anyio
@@ -419,7 +402,7 @@ async def test_delete_content(client: AsyncClient):
 
     response = await client.get(f"managed/entry/content/{DEMO_SPACE}/{DEMO_SUBPATH}/{content_shortname}")
 
-    assert (response.status_code == status.HTTP_404_NOT_FOUND)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.run("last")
@@ -430,8 +413,7 @@ async def test_delete_folder(client: AsyncClient):
     await assert_resource_deleted(client, DEMO_SPACE, settings.root_subpath_mw, DEMO_SUBPATH)
 
     response = await client.get(f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}")
-    assert (response.status_code == status.HTTP_404_NOT_FOUND
-    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.run("last")

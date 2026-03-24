@@ -20,12 +20,13 @@ async def get_init_state_from_workflow(space_name: str, workflow_shortname: str)
             status.HTTP_400_BAD_REQUEST,
             api.Error(
                 type="request",
-                code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
+                code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
                 message="Workflow not found",
             ),
         )
 
-    return payload['initial_state'][0]['name']
+    return payload["initial_state"][0]["name"]
+
 
 async def set_init_state_for_record(record: core.Record, space_name: str, logged_in_user: str):
     workflow_attr = record.attributes
@@ -43,7 +44,7 @@ async def set_init_state_for_record(record: core.Record, space_name: str, logged
     )
 
     if workflows_data is not None and workflows_data.payload is not None:
-        workflows_payload: dict[str,Any]
+        workflows_payload: dict[str, Any]
         if isinstance(workflows_data.payload.body, dict):
             workflows_payload = workflows_data.payload.body
         else:
@@ -85,15 +86,13 @@ async def set_init_state_for_record(record: core.Record, space_name: str, logged
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
+            code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+            message="Workflow not found",
         ),
     )
 
 
-async def set_init_state_from_record(
-    ticket: core.Record, logged_in_user, space_name
-):
+async def set_init_state_from_record(ticket: core.Record, logged_in_user, space_name):
     workflow_attr = ticket.attributes
     workflow_shortname = workflow_attr["workflow_shortname"]
 
@@ -108,7 +107,7 @@ async def set_init_state_from_record(
     if workflows_data is not None and workflows_data.payload is not None:
         # file: fetch payload from file
         # sql: payload is already within the entry
-        workflows_payload : dict[str, Any] = {}
+        workflows_payload: dict[str, Any] = {}
         mypayload = workflows_data.payload.body
         if settings.active_data_db == "file" and isinstance(mypayload, str):
             payload = await db.load_resource_payload(
@@ -119,7 +118,7 @@ async def set_init_state_from_record(
             )
             workflows_payload = payload if payload else {}
         elif isinstance(mypayload, dict):
-                workflows_payload = mypayload
+            workflows_payload = mypayload
         else:
             raise api.Exception(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -129,8 +128,6 @@ async def set_init_state_from_record(
                     message=f"Invalid payload data {mypayload}",
                 ),
             )
-
-
 
         ticket.attributes = {
             **workflow_attr,
@@ -142,8 +139,8 @@ async def set_init_state_from_record(
         status.HTTP_400_BAD_REQUEST,
         api.Error(
             type="request",
-            code=InternalErrorCode.SHORTNAME_ALREADY_EXIST,
-            message="This shortname already exists",
+            code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST,
+            message="Workflow not found",
         ),
     )
 
@@ -182,7 +179,7 @@ def post_transite(states, next_state: str, resolution: str):
                         if resolution in available_resolutions:
                             return {"status": True, "message": resolution}
                     else:
-                        if resolution in [item['key'] for item in available_resolutions]:
+                        if resolution in [item["key"] for item in available_resolutions]:
                             return {"status": True, "message": resolution}
 
                 return {

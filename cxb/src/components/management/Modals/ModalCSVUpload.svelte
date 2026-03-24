@@ -1,18 +1,18 @@
 <script lang="ts">
-    import {Button, Label, Modal, Select, Spinner} from "flowbite-svelte";
-    import {Dmart, QueryType, ResourceType} from "@edraj/tsdmart";
-    import {Level, showToast} from "@/utils/toast";
-    import {currentListView} from "@/stores/global";
+    import { Button, Label, Modal, Select, Spinner } from "flowbite-svelte";
+    import { Dmart, QueryType, ResourceType } from "@edraj/tsdmart";
+    import { Level, showToast } from "@/utils/toast";
+    import { currentListView } from "@/stores/global";
     import Prism from "@/components/Prism.svelte";
 
     let {
         space_name,
         subpath,
-        isOpen=$bindable(false),
-    }:{
-        space_name:string,
-        subpath:string
-        isOpen:boolean,
+        isOpen = $bindable(false),
+    }: {
+        space_name: string;
+        subpath: string;
+        isOpen: boolean;
     } = $props();
 
     let selectedResourceType = $state(ResourceType.content);
@@ -24,19 +24,85 @@
     let responseError = $state(null);
     let isUpdate = $state(false);
 
-    function parseQuerySchemaResponse(schemas){
+    let resourceTypeItems = $derived(
+        (() => {
+            if (space_name === "management") {
+                if (subpath === "users" || subpath === "/users") {
+                    return [
+                        {
+                            name: ResourceType.user.toString(),
+                            value: ResourceType.user,
+                        },
+                    ];
+                }
+                if (subpath === "roles" || subpath === "/roles") {
+                    return [
+                        {
+                            name: ResourceType.role.toString(),
+                            value: ResourceType.role,
+                        },
+                    ];
+                }
+                if (subpath === "permissions" || subpath === "/permissions") {
+                    return [
+                        {
+                            name: ResourceType.permission.toString(),
+                            value: ResourceType.permission,
+                        },
+                    ];
+                }
+            }
+            return [
+                {
+                    name: ResourceType.content.toString(),
+                    value: ResourceType.content,
+                },
+                {
+                    name: ResourceType.folder.toString(),
+                    value: ResourceType.folder,
+                },
+                {
+                    name: ResourceType.ticket.toString(),
+                    value: ResourceType.ticket,
+                },
+            ];
+        })(),
+    );
+
+    $effect(() => {
+        if (isOpen) {
+            if (space_name === "management") {
+                if (subpath === "users" || subpath === "/users") {
+                    selectedResourceType = ResourceType.user;
+                } else if (subpath === "roles" || subpath === "/roles") {
+                    selectedResourceType = ResourceType.role;
+                } else if (
+                    subpath === "permissions" ||
+                    subpath === "/permissions"
+                ) {
+                    selectedResourceType = ResourceType.permission;
+                } else {
+                    selectedResourceType = ResourceType.content;
+                }
+            } else {
+                selectedResourceType = ResourceType.content;
+            }
+        }
+    });
+
+    function parseQuerySchemaResponse(schemas) {
         if (schemas === null) {
             return [];
         }
         let result = [];
         const _schemas = schemas.records.map((e) => e.shortname);
         result = _schemas.filter(
-            (e: any) => !["meta_schema", "folder_rendering"].includes(e)
+            (e: any) => !["meta_schema", "folder_rendering"].includes(e),
         );
 
         let r = result.map((e: any) => ({
             name: e,
-            value: e
+            value: e,
         }));
         return r;
     }
@@ -77,21 +143,21 @@
 
         try {
             isUploading = true;
-            const response = await Dmart.resourcesFromCsv(
-                {
-                    space_name,
-                    subpath,
-                    resourceType: selectedResourceType,
-                    schema: selectedSchema,
-                    payload: payloadFiles[0],
-                    isUpdate: isUpdate
-                }
-            );
+            const response = await Dmart.resourcesFromCsv({
+                space_name,
+                subpath,
+                resourceType: selectedResourceType,
+                schema: selectedSchema,
+                payload: payloadFiles[0],
+                isUpdate: isUpdate,
+            });
 
             if (response.status === "success") {
-                if((response?.attributes?.failed_shortnames ?? []).length !== 0){
+                if (
+                    (response?.attributes?.failed_shortnames ?? []).length !== 0
+                ) {
                     showToast(Level.warn, "Some entries failed to upload");
-                    responseError = response.attributes.failed_shortnames
+                    responseError = response.attributes.failed_shortnames;
                 } else {
                     showToast(Level.info, "CSV uploaded successfully");
                     await $currentListView.fetchPageRecords();
@@ -108,51 +174,41 @@
     }
 </script>
 
-<Modal
-    bodyClass="h-auto justify-center"
-    bind:open={isOpen}
-    size="md"
->
+<Modal bodyClass="h-auto justify-center" bind:open={isOpen} size="md">
     {#snippet header()}
         <h3>Upload CSV</h3>
     {/snippet}
     <div>
         <Label>
             Resource Type
-            <Select 
-                class="my-2 {resourceTypeError ? 'border-red-500' : ''}" 
-                items={[
-                    { name: ResourceType.content.toString(), value: ResourceType.content },
-                    { name: ResourceType.folder.toString(), value: ResourceType.folder },
-                    { name: ResourceType.ticket.toString(), value: ResourceType.ticket }
-                ]} 
-                bind:value={selectedResourceType} 
-                on:change={() => resourceTypeError = false}
+            <Select
+                class="my-2 {resourceTypeError ? 'border-red-500' : ''}"
+                items={resourceTypeItems}
+                bind:value={selectedResourceType}
+                on:change={() => (resourceTypeError = false)}
+                disabled={resourceTypeItems.length === 1}
             />
             {#if resourceTypeError}
-                <p class="text-red-500 text-xs mt-1">Resource type is required</p>
+                <p class="text-red-500 text-xs mt-1">
+                    Resource type is required
+                </p>
             {/if}
         </Label>
 
         <Label class="mt-3">
             Schema
-            {#await Dmart.query({
-                space_name,
-                type: QueryType.search,
-                subpath: "/schema",
-                search: "",
-                retrieve_json_payload: true,
-                limit: 100
-            })}
+            {#await Dmart.query( { space_name, type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 100 }, )}
                 <div role="status" class="max-w-sm animate-pulse">
-                    <div class="h-3 bg-gray-200 rounded-full dark:bg-gray-700 mx-2 my-2.5"></div>
+                    <div
+                        class="h-3 bg-gray-200 rounded-full dark:bg-gray-700 mx-2 my-2.5"
+                    ></div>
                 </div>
             {:then schemas}
-                <Select 
-                    class="mt-2 {schemaError ? 'border-red-500' : ''}" 
-                    items={parseQuerySchemaResponse(schemas)} 
-                    bind:value={selectedSchema} 
-                    on:change={() => schemaError = false}
+                <Select
+                    class="mt-2 {schemaError ? 'border-red-500' : ''}"
+                    items={parseQuerySchemaResponse(schemas)}
+                    bind:value={selectedSchema}
+                    on:change={() => (schemaError = false)}
                 />
                 {#if schemaError}
                     <p class="text-red-500 text-xs mt-1">Schema is required</p>
@@ -162,17 +218,25 @@
 
         <Label class="mt-3">
             CSV File
-            <input type="file" accept=".csv" on:change={handleFileChange} class="mt-2 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
+            <input
+                type="file"
+                accept=".csv"
+                on:change={handleFileChange}
+                class="mt-2 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+            />
         </Label>
 
         <Label class="mt-3 flex items-start">
             <input
-                    type="checkbox"
-                    bind:checked={isUpdate}
-                    class="mt-1 mr-3 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                type="checkbox"
+                bind:checked={isUpdate}
+                class="mt-1 mr-3 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
             />
             <div class="flex-1">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-300">Update entries</span>
+                <span
+                    class="text-sm font-medium text-gray-900 dark:text-gray-300"
+                    >Update entries</span
+                >
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {#if isUpdate}
                         • Will update existing entries with matching shortname
@@ -185,15 +249,23 @@
 
         {#if responseError}
             <div class="mt-4 p-4 border border-red-300 bg-red-50 rounded">
-                <h4 class="text-red-800 font-semibold mb-2">Some entries failed to upload:</h4>
+                <h4 class="text-red-800 font-semibold mb-2">
+                    Some entries failed to upload:
+                </h4>
                 <Prism code={responseError} />
             </div>
         {/if}
     </div>
 
     {#snippet footer()}
-        <Button color="alternative" onclick={() => isOpen = false}>Cancel</Button>
-        <Button class="bg-primary" onclick={handleCSVUpload} disabled={isUploading}>
+        <Button color="alternative" onclick={() => (isOpen = false)}
+            >Cancel</Button
+        >
+        <Button
+            class="bg-primary"
+            onclick={handleCSVUpload}
+            disabled={isUploading}
+        >
             {#if isUploading}
                 <Spinner size="sm" class="mr-2" />
                 Uploading...

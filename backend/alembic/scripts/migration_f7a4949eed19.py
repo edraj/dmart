@@ -16,11 +16,11 @@ with SQLAdapter().get_session() as session:
             if not record.query_policies:
                 record.query_policies = generate_query_policies(
                     space_name=record.space_name,
-                    subpath=f"{record.subpath}/{record.shortname}" if record.resource_type == 'folder' else record.subpath,
+                    subpath=f"{record.subpath}/{record.shortname}" if record.resource_type == "folder" else record.subpath,
                     resource_type=record.resource_type,
                     is_active=record.is_active,
                     owner_shortname=record.owner_shortname,
-                    owner_group_shortname= record.owner_group_shortname if  hasattr(record, 'owner_group_shortname') else "",
+                    owner_group_shortname=record.owner_group_shortname if hasattr(record, "owner_group_shortname") else "",
                 )
                 session.add(record)
                 print(".", end="\r")

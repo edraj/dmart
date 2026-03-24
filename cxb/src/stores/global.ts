@@ -19,6 +19,7 @@ export const subpathInManagementNoAction = [
 ];
 
 export const resourcesWithFormAndJson = [
+    ResourceType.space,
     ResourceType.user,
     ResourceType.content,
     ResourceType.folder,

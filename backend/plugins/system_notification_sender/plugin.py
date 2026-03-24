@@ -29,9 +29,7 @@ class Plugin(PluginBase):
         """
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.warning(
-                "data.shortname is None and str is required at system_notification_sender"
-            )
+            logger.warning("data.shortname is None and str is required at system_notification_sender")
             return
 
         if data.action_type == ActionType.delete and data.attributes.get("entry"):
@@ -52,61 +50,57 @@ class Plugin(PluginBase):
                         space_name=data.space_name,
                         subpath=data.subpath,
                         filename=entry["payload"]["body"],
-                        class_type=getattr(
-                            sys_modules["models.core"], camel_case(data.resource_type)
-                        ),
+                        class_type=getattr(sys_modules["models.core"], camel_case(data.resource_type)),
                     )
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to load payload for entry {data.space_name}/{data.subpath}/{data.shortname}: {e}"
-                    )
+                    logger.warning(f"Failed to load payload for entry {data.space_name}/{data.subpath}/{data.shortname}: {e}")
         entry["space_name"] = data.space_name
         entry["resource_type"] = str(data.resource_type)
         entry["subpath"] = data.subpath
         # 1- get the matching SystemNotificationRequests
-        total, matching_notification_requests = await db.query(api.Query(
-            type=QueryType.search,
-            retrieve_json_payload=True,
-            space_name="management",
-            subpath="notifications/system",
-            search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip('/')} @payload.body.on_action:{data.action_type}",
-            limit=30,
-            offset=0
-        ), "dmart")
+        total, matching_notification_requests = await db.query(
+            api.Query(
+                type=QueryType.search,
+                retrieve_json_payload=True,
+                space_name="management",
+                subpath="notifications/system",
+                search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip('/')} @payload.body.on_action:{data.action_type}",
+                limit=30,
+                offset=0,
+            ),
+            "dmart",
+        )
         if total == 0:
             return
 
         sub_matching_notification_requests = matching_notification_requests[0].model_dump()
         notification_dict = sub_matching_notification_requests
-        if (
-            "state" in entry
-            and notification_dict.get("on_state", "") != ""
-            and notification_dict["on_state"] != entry["state"]
-        ):
+        if "state" in entry and notification_dict.get("on_state", "") != "" and notification_dict["on_state"] != entry["state"]:
             return
 
-
         # 2- get list of subscribed users
-        notification_subscribers =[]
+        notification_subscribers = []
         # if entry.get("collaborators", None):
         #     notification_subscribers.extend(entry["collaborators"].values())
 
         data_owner_shortname = entry["owner_shortname"]
         if entry.get("owner_group_shortname", None):
             group_users = await db.get_group_users(entry["owner_group_shortname"])
-            notification_subscribers.extend(group_users)        
+            notification_subscribers.extend(group_users)
         if data_owner_shortname in notification_subscribers:
             notification_subscribers.remove(data_owner_shortname)
         users_objects: dict[str, dict] = {}
 
         for subscriber in notification_subscribers:
-            users_objects[subscriber] = (await db.load(
-                settings.management_space,
-                settings.users_subpath,
-                subscriber,
-                getattr(sys_modules["models.core"], camel_case("user")),
-                data.user_shortname,
-            )).model_dump()
+            users_objects[subscriber] = (
+                await db.load(
+                    settings.management_space,
+                    settings.users_subpath,
+                    subscriber,
+                    getattr(sys_modules["models.core"], camel_case("user")),
+                    data.user_shortname,
+                )
+            ).model_dump()
         # 3- send the notification
         notification_manager = NotificationManager()
 
@@ -130,14 +124,12 @@ class Plugin(PluginBase):
                             "entry_shortname": entry["shortname"],
                             "resource_type": entry["resource_type"],
                             "created_by": data.user_shortname,
-                            "action_type": str(data.action_type)
-                        }
-                    )
+                            "action_type": str(data.action_type),
+                        },
+                    ),
                 )
                 await db.internal_save_model(
-                    space_name="personal",
-                    subpath=f"people/{receiver}/notifications",
-                    meta=notification_content
+                    space_name="personal", subpath=f"people/{receiver}/notifications", meta=notification_content
                 )
 
             for platform in formatted_req["platforms"]:
@@ -163,11 +155,10 @@ class Plugin(PluginBase):
                 notification_dict["description"][locale] = replace_message_vars(
                     notification_dict["description"][locale], entry, locale
                 )
-            
+
         # Get Notification Request Images
         attachments_path = (
-            settings.spaces_folder
-            / f"{settings.management_space}"
+            settings.spaces_folder / f"{settings.management_space}"
             f"/{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await db.get_entry_attachments(

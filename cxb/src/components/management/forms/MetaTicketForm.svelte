@@ -1,7 +1,15 @@
 <script lang="ts">
-    import {Alert, Button, Card, Input, Label, Select, TextPlaceholder} from "flowbite-svelte";
-    import {Dmart, ResourceType} from "@edraj/tsdmart";
-    import {Level, showToast} from "@/utils/toast";
+    import {
+        Alert,
+        Button,
+        Card,
+        Input,
+        Label,
+        Select,
+        TextPlaceholder,
+    } from "flowbite-svelte";
+    import { Dmart, ResourceType } from "@edraj/tsdmart";
+    import { Level, showToast } from "@/utils/toast";
 
     let {
         space_name,
@@ -23,30 +31,45 @@
     let ticketPayload = $state(null);
     let ticketStates = $state([]);
     let ticketResolutions = $state([]);
-
+    let errorMessage = $state("");
 
     async function get_ticket_payload() {
-        ticketPayload = await Dmart.retrieveEntry(
-            {resource_type: ResourceType.content, space_name, subpath: "workflows", shortname: meta.workflow_shortname, retrieve_json_payload: true,retrieve_attachments:false,validate_schema:true}
-        );
+        ticketPayload = await Dmart.retrieveEntry({
+            resource_type: ResourceType.content,
+            space_name,
+            subpath: "workflows",
+            shortname: meta.workflow_shortname,
+            retrieve_json_payload: true,
+            retrieve_attachments: false,
+            validate_schema: true,
+        });
         ticketPayload = ticketPayload.payload.body;
 
         if (ticketPayload) {
-            ticketStates = ticketPayload.states.filter((e) => e.state === meta.state)[0]?.next || [];
+            ticketStates =
+                ticketPayload.states.filter((e) => e.state === meta.state)[0]
+                    ?.next || [];
 
             if ((ticketStates || []).length) {
-                ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions || [];
+                ticketResolutions =
+                    ticketPayload.states.filter(
+                        (e) => e.state === ticket_status,
+                    )[0]?.resolutions || [];
             }
         }
     }
 
     $effect(() => {
-        ticket_action = ticketStates?.filter((e) => e.state === ticket_status)[0]?.action || null;
+        ticket_action =
+            ticketStates?.filter((e) => e.state === ticket_status)[0]?.action ||
+            null;
     });
 
     $effect(() => {
         if ((ticketStates || []).length) {
-            ticketResolutions = ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.resolutions || [];
+            ticketResolutions =
+                ticketPayload.states.filter((e) => e.state === ticket_status)[0]
+                    ?.resolutions || [];
         }
     });
 
@@ -65,8 +88,11 @@
     /**
      * Progresses a ticket with the given data
      */
-    async function progressTicket(e): Promise<{ success: boolean; errorMessage?: string }> {
+    async function progressTicket(
+        e,
+    ): Promise<{ success: boolean; errorMessage?: string }> {
         e.preventDefault();
+        errorMessage = "";
         try {
             await Dmart.progressTicket({
                 space_name,
@@ -80,6 +106,12 @@
             return { success: true };
         } catch (error: any) {
             showToast(Level.warn, `Failed to update the ticket!`);
+            if(error?.response?.data?.error?.message){
+                errorMessage = error?.response?.data?.error?.message
+            } else {
+                errorMessage = error.message;
+            }
+
             return { success: false, errorMessage: error.message };
         }
     }
@@ -91,8 +123,8 @@
     {#if meta.is_open}
         <form class="flex flex-col space-y-4" onsubmit={progressTicket}>
             {#await get_ticket_payload()}
-                <TextPlaceholder class="m-5" size="lg" style="width: 100%"/>
-                <TextPlaceholder class="m-5" size="lg" style="width: 100%"/>
+                <TextPlaceholder class="m-5" size="lg" style="width: 100%" />
+                <TextPlaceholder class="m-5" size="lg" style="width: 100%" />
             {:then _}
                 {#if ticketStates.length}
                     <div class="mb-4">
@@ -102,9 +134,17 @@
                             {#each ticketStates as e}
                                 <option
                                     value={e.state}
-                                    disabled={!e.roles.some((el) => userRoles.includes(el))}
+                                    disabled={!e.roles.some((el) =>
+                                        userRoles.includes(el),
+                                    )}
                                 >
-                                    {e.state} {e.roles && !e.roles.some((el) => userRoles.includes(el)) ? `(${e.roles})` : ""}
+                                    {e.state}
+                                    {e.roles &&
+                                    !e.roles.some((el) =>
+                                        userRoles.includes(el),
+                                    )
+                                        ? `(${e.roles})`
+                                        : ""}
                                 </option>
                             {/each}
                         </Select>
@@ -114,14 +154,18 @@
                 {#key ticket_status}
                     {#if ticketResolutions.length !== 0}
                         <div class="mb-4">
-                            <Label for="resolution" class="block mb-2">Resolution</Label>
+                            <Label for="resolution" class="block mb-2"
+                                >Resolution</Label
+                            >
                             <Select id="resolution" bind:value={resolution}>
                                 <option value={null}>Select resolution</option>
                                 {#each ticketResolutions as res}
-                                    {#if typeof(res) === "string"}
+                                    {#if typeof res === "string"}
                                         <option value={res}>{res}</option>
                                     {:else}
-                                        <option value={res.key}>{res?.en}</option>
+                                        <option value={res.key}
+                                            >{res?.en}</option
+                                        >
                                     {/if}
                                 {/each}
                             </Select>
@@ -132,20 +176,33 @@
                 {#if ticket_status && !!ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.next === false}
                     <div class="mb-4">
                         <Label for="comment" class="block mb-2">Comment</Label>
-                        <Input id="comment" type="text" placeholder="Comment..." bind:value={comment} />
+                        <Input
+                            id="comment"
+                            type="text"
+                            placeholder="Comment..."
+                            bind:value={comment}
+                        />
                     </div>
                 {/if}
 
-                <div class="mb-4 justify-end flex">
-                    <Button type="submit" class="bg-primary text-white hover:bg-primary-700">
+                <div class="mb-4 flex flex-col items-end">
+                    <Button
+                        type="submit"
+                        class="bg-primary text-white hover:bg-primary-700"
+                    >
                         Submit
                     </Button>
+                    {#if errorMessage}
+                        <div class="text-red-500 text-sm mt-2 font-medium">
+                            {errorMessage}
+                        </div>
+                    {/if}
                 </div>
 
-    <!--            <div class="mb-4">-->
-    <!--                <Label for="transfer" class="block mb-2">Transfer</Label>-->
-    <!--                <Input id="transfer" type="text" placeholder="Transfer to..." bind:value={to_shortname} />-->
-    <!--            </div>-->
+                <!--            <div class="mb-4">-->
+                <!--                <Label for="transfer" class="block mb-2">Transfer</Label>-->
+                <!--                <Input id="transfer" type="text" placeholder="Transfer to..." bind:value={to_shortname} />-->
+                <!--            </div>-->
             {/await}
         </form>
     {:else}

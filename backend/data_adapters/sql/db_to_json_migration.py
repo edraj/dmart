@@ -18,11 +18,13 @@ from utils.settings import settings
 from models import core
 import base64
 
+
 def get_engine():
     if "sqlite" in settings.database_driver:
         return create_engine(f"sqlite:///{settings.database_name}", echo=False)
-    postgresql_url = f"{settings.database_driver.replace('+asyncpg','+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
+    postgresql_url = f"{settings.database_driver.replace('+asyncpg', '+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}/{settings.database_name}"
     return create_engine(postgresql_url, echo=False)
+
 
 def subpath_checker(subpath: str):
     if subpath.endswith("/"):
@@ -31,8 +33,10 @@ def subpath_checker(subpath: str):
         subpath = "/" + subpath
     return subpath
 
+
 def ensure_directory_exists(path: str):
     os.makedirs(path, exist_ok=True)
+
 
 def clean_json(data: dict):
     if not isinstance(data, dict):
@@ -50,6 +54,7 @@ def clean_json(data: dict):
 
     return data
 
+
 def write_json_file(path, data):
     with open(path, "w") as f:
         if data.get("query_policies", False):
@@ -57,22 +62,25 @@ def write_json_file(path, data):
         clean = clean_json(data)
         json.dump(clean, f, indent=2, default=str)
 
+
 def write_file(path, data):
     with open(path, "w") as f:
         f.write(data)
 
+
 def write_binary_file(path, data):
     with open(path, "wb") as f:
         f.write(data)
+
 
 def process_attachments(session, space_folder):
     attachments = session.exec(select(Attachments)).all()
     for attachment in attachments:
         subpath = subpath_checker(attachment.subpath)
 
-        parts = subpath.split('/')
-        parts.insert(-1, '.dm')
-        new_path = '/'.join(parts)
+        parts = subpath.split("/")
+        parts.insert(-1, ".dm")
+        new_path = "/".join(parts)
 
         dir_path = f"{space_folder}/{attachment.space_name}{new_path}"
         ensure_directory_exists(dir_path)
@@ -80,7 +88,7 @@ def process_attachments(session, space_folder):
         media_path = f"{dir_path}/attachments.{attachment.resource_type}"
         ensure_directory_exists(media_path)
         if attachment.payload.get("body", None) is not None:
-            if attachment.payload["content_type"] == 'json':
+            if attachment.payload["content_type"] == "json":
                 write_json_file(f"{media_path}/{attachment.shortname}.json", attachment.payload.get("body", {}))
                 attachment.payload["body"] = f"{attachment.shortname}.json"
             else:
@@ -93,6 +101,7 @@ def process_attachments(session, space_folder):
         del _attachment["media"]
         del _attachment["resource_type"]
         write_json_file(f"{media_path}/meta.{attachment.shortname}.json", _attachment)
+
 
 def process_entries(session, space_folder):
     entries = session.exec(select(Entries)).all()
@@ -131,59 +140,64 @@ def process_entries(session, space_folder):
             if "content_type" not in entry.payload:
                 print(f"Warning : empty content type for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
             elif entry.payload["content_type"] == core.ContentType.json:
-
                 if _entry["payload"].get("body", None) is not None:
                     if isinstance(_entry["payload"].get("body", None), dict):
                         write_json_file(f"{dir_path}/{entry.shortname}.json", _entry["payload"].get("body", None))
 
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
-                    
+
             elif entry.payload["content_type"] == core.ContentType.html:
                 if _entry["payload"].get("body", None) is not None:
                     with open(f"{dir_path}/{entry.shortname}.html", "w", encoding="utf-8") as f:
                         f.write(_entry["payload"]["body"])
                     _entry["payload"]["body"] = f"{entry.shortname}.html"
-                    
+
             elif core.ContentType(entry.payload["content_type"]) in core.ContentType.image_types():
                 if _entry["payload"].get("body", None) is not None:
                     body_data = _entry["payload"]["body"]
-                    
+
                     if isinstance(body_data, str):
-                        if "." in body_data and any(body_data.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']):
+                        if "." in body_data and any(
+                            body_data.lower().endswith(ext)
+                            for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]
+                        ):
                             _entry["payload"]["body"] = body_data
                             print(f"Image reference: @{entry.space_name}:{entry.subpath}/{entry.shortname} -> {body_data}")
                         else:
                             try:
                                 if len(body_data) % 4 == 0:
                                     decoded_data = base64.b64decode(body_data, validate=True)
-                                    
+
                                     extension = "png"
                                     if "content_sub_type" in entry.payload:
                                         extension = entry.payload["content_sub_type"].lower()
-                                    
+
                                     filename = f"{entry.shortname}.{extension}"
                                     with open(f"{dir_path}/{filename}", "wb") as f:
                                         f.write(decoded_data)
                                     _entry["payload"]["body"] = filename
                                 else:
-                                    print(f"Warning: Invalid image data for @{entry.space_name}:{entry.subpath}/{entry.shortname}")
+                                    print(
+                                        f"Warning: Invalid image data for @{entry.space_name}:{entry.subpath}/{entry.shortname}"
+                                    )
                                     _entry["payload"]["body"] = body_data
                             except Exception as e:
                                 print(f"Error processing image @{entry.space_name}:{entry.subpath}/{entry.shortname}: {e}")
                                 _entry["payload"]["body"] = body_data
                     else:
-                        extension = "png" 
+                        extension = "png"
                         if "content_sub_type" in entry.payload:
                             extension = entry.payload["content_sub_type"].lower()
-                        
+
                         filename = f"{entry.shortname}.{extension}"
                         with open(f"{dir_path}/{filename}", "wb") as f:
                             f.write(body_data)
                         _entry["payload"]["body"] = filename
 
-
             else:
-                print(f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}")
+                print(
+                    f"Unprocessed content type({entry.payload['content_type']}): @{entry.space_name}:{entry.subpath}/{entry.shortname}"
+                )
 
         if entry.resource_type != "ticket":
             del _entry["state"]
@@ -195,9 +209,10 @@ def process_entries(session, space_folder):
 
         write_json_file(f"{dir_meta_path}/meta.{entry.resource_type}.json", _entry)
 
+
 def process_users(session, space_folder):
     users = session.exec(select(Users)).all()
-    dir_path = f"{space_folder}/management/users" # Ensure absolute path
+    dir_path = f"{space_folder}/management/users"  # Ensure absolute path
     for user in users:
         dir_meta_path = f"{dir_path}/.dm/{user.shortname}"
         ensure_directory_exists(dir_meta_path)
@@ -205,14 +220,12 @@ def process_users(session, space_folder):
         _user = user.model_dump()
         del _user["space_name"]
         del _user["resource_type"]
-        if _user.get("payload", None) and _user["payload"].get("body" , None):
-            write_json_file(
-                f"{dir_path}/{user.shortname}.json",
-                _user["payload"]["body"]
-            )
+        if _user.get("payload", None) and _user["payload"].get("body", None):
+            write_json_file(f"{dir_path}/{user.shortname}.json", _user["payload"]["body"])
             _user["payload"]["body"] = f"{user.shortname}.json"
 
         write_json_file(f"{dir_meta_path}/meta.user.json", _user)
+
 
 def process_roles(session, space_folder):
     roles = session.exec(select(Roles)).all()
@@ -227,6 +240,7 @@ def process_roles(session, space_folder):
 
         write_json_file(f"{dir_path}/{role.shortname}/meta.role.json", _role)
 
+
 def process_permissions(session, space_folder):
     permissions = session.exec(select(Permissions)).all()
     dir_path = f"{space_folder}/management/permissions/.dm"
@@ -239,6 +253,7 @@ def process_permissions(session, space_folder):
         del _permission["resource_type"]
 
         write_json_file(f"{dir_path}/{permission.shortname}/meta.permission.json", _permission)
+
 
 def process_histories(session, space_folder):
     histories = session.exec(select(Histories)).all()
@@ -260,6 +275,7 @@ def process_histories(session, space_folder):
         with open(f"{file_path}/history.jsonl", "a+") as f:
             f.write(json.dumps(_history) + "\n")
 
+
 def process_spaces(session, space_folder):
     spaces = session.exec(select(Spaces)).all()
     for space in spaces:
@@ -272,6 +288,7 @@ def process_spaces(session, space_folder):
 
         write_json_file(f"{dir_path}/meta.space.json", _space)
 
+
 async def export_data_with_query(query, user_shortname):
     from utils.repository import serve_query
 
@@ -280,6 +297,15 @@ async def export_data_with_query(query, user_shortname):
     total, records = await serve_query(query, user_shortname)
 
     with Session(get_engine()) as session:
+        if query.space_name == "management":
+            subpath = (query.subpath or "/").strip("/")
+            if subpath in ("", "users"):
+                process_users(session, space_folder)
+            if subpath in ("", "roles"):
+                process_roles(session, space_folder)
+            if subpath in ("", "permissions"):
+                process_permissions(session, space_folder)
+
         space = session.exec(select(Spaces).where(col(Spaces.space_name) == query.space_name)).first()
         if space:
             dir_path = f"{space_folder}/{space.space_name}/.dm/"
@@ -297,12 +323,14 @@ async def export_data_with_query(query, user_shortname):
             for part in path_parts:
                 current_path += f"/{part}"
 
-                folder = session.exec(select(Entries).where(
-                    (Entries.space_name == query.space_name) &
-                    (Entries.subpath == str(current_path.rsplit("/", 1)[0] or "/")) &
-                    (Entries.shortname == part) &
-                    (Entries.resource_type == "folder")
-                )).first()
+                folder = session.exec(
+                    select(Entries).where(
+                        (Entries.space_name == query.space_name)
+                        & (Entries.subpath == str(current_path.rsplit("/", 1)[0] or "/"))
+                        & (Entries.shortname == part)
+                        & (Entries.resource_type == "folder")
+                    )
+                ).first()
 
                 if folder:
                     folder_subpath = subpath_checker(folder.subpath)
@@ -313,10 +341,7 @@ async def export_data_with_query(query, user_shortname):
                     ensure_directory_exists(dir_meta_path)
 
                     _folder = folder.model_dump()
-                    _folder = {
-                        **_folder,
-                        **_folder.get("attributes", {})
-                    }
+                    _folder = {**_folder, **_folder.get("attributes", {})}
                     if "attributes" in _folder:
                         del _folder["attributes"]
                     body = None
@@ -345,16 +370,13 @@ async def export_data_with_query(query, user_shortname):
                 body = None
                 if _entry.get("payload", None) is not None:
                     if _entry.get("payload", {}).get("body", None) is not None:
-                        body = _entry.get("payload",{}).get("body", None)
+                        body = _entry.get("payload", {}).get("body", None)
                     _entry["payload"]["body"] = f"{entry.shortname}.json"
 
                 del _entry["subpath"]
                 del _entry["resource_type"]
 
-                _entry = {
-                    **_entry,
-                    **_entry.get("attributes", {})
-                }
+                _entry = {**_entry, **_entry.get("attributes", {})}
                 if "attributes" in _entry:
                     del _entry["attributes"]
 
@@ -372,15 +394,15 @@ async def export_data_with_query(query, user_shortname):
 
             if entry.attributes.get("payload"):
                 if entry.attributes.get("payload", {}).get("content_type") == core.ContentType.json:
-                    if _entry.get("attributes",{}).get("payload",{}).get("body", None) is not None:
-                        if isinstance( _entry.get("attributes",{}).get("payload").get("body", None), dict):
-                            write_json_file(f"{dir_path}/{entry.shortname}.json",  _entry.get("attributes",{}).get("payload").get("body", None))
-                        _entry.get("attributes",{}).get("payload")["body"] = f"{entry.shortname}.json"
+                    if _entry.get("attributes", {}).get("payload", {}).get("body", None) is not None:
+                        if isinstance(_entry.get("attributes", {}).get("payload").get("body", None), dict):
+                            write_json_file(
+                                f"{dir_path}/{entry.shortname}.json",
+                                _entry.get("attributes", {}).get("payload").get("body", None),
+                            )
+                        _entry.get("attributes", {}).get("payload")["body"] = f"{entry.shortname}.json"
 
-            _entry = {
-                **_entry,
-                **_entry.get("attributes",{})
-            }
+            _entry = {**_entry, **_entry.get("attributes", {})}
             if "attributes" in _entry:
                 del _entry["attributes"]
             if "attachments" in _entry:
@@ -388,11 +410,13 @@ async def export_data_with_query(query, user_shortname):
 
             write_json_file(f"{dir_meta_path}/meta.{entry.resource_type}.json", _entry)
 
-            histories = session.exec(select(Histories).where(
-                (Histories.space_name == query.space_name) &
-                (Histories.subpath == entry.subpath) &
-                (Histories.shortname == entry.shortname)
-            )).all()
+            histories = session.exec(
+                select(Histories).where(
+                    (Histories.space_name == query.space_name)
+                    & (Histories.subpath == entry.subpath)
+                    & (Histories.shortname == entry.shortname)
+                )
+            ).all()
 
             for history in histories:
                 file_path = f"{dir_path}/.dm/{entry.shortname}"
@@ -409,19 +433,21 @@ async def export_data_with_query(query, user_shortname):
                 with open(f"{file_path}/history.jsonl", "a+") as f:
                     f.write(json.dumps(_history) + "\n")
 
-            attachments = session.exec(select(Attachments).where(
-                (Attachments.space_name == query.space_name) &
-                (Attachments.subpath == f"/{entry.subpath}/{entry.shortname}")
-            )).all()
+            attachments = session.exec(
+                select(Attachments).where(
+                    (Attachments.space_name == query.space_name)
+                    & (Attachments.subpath == f"/{entry.subpath}/{entry.shortname}")
+                )
+            ).all()
 
             __attachment = None
             for attachment in attachments:
                 __attachment = attachment
                 subpath = subpath_checker(attachment.subpath)
 
-                parts = subpath.split('/')
-                parts.insert(-1, '.dm')
-                new_path = '/'.join(parts)
+                parts = subpath.split("/")
+                parts.insert(-1, ".dm")
+                new_path = "/".join(parts)
 
                 dir_path = f"{space_folder}/{query.space_name}{new_path}"
                 ensure_directory_exists(dir_path)
@@ -437,10 +463,10 @@ async def export_data_with_query(query, user_shortname):
                         attachment_body = attachment.payload["body"]
 
                 if attachment_body is not None:
-                    if isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'json':
+                    if isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "json":
                         write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
                         attachment.payload["body"] = f"{attachment.shortname}.json"
-                    elif isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == 'comment':
+                    elif isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "comment":
                         write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
                         attachment.payload["body"] = f"{attachment.shortname}.json"
                     else:
@@ -460,6 +486,7 @@ async def export_data_with_query(query, user_shortname):
                             entry_data["payload"] = __attachment.payload
 
     return space_folder
+
 
 def main():
     space_folder = os.path.relpath(str(settings.spaces_folder))

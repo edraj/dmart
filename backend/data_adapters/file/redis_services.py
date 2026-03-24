@@ -25,99 +25,99 @@ import redis
 
 
 class RedisServices(Redis):
-    META_SCHEMA : list[Field] = [
-        TextField("$.uuid", no_stem=True, as_name="uuid"), # type: ignore
-        TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"), # type: ignore
-        TextField("$.slug", sortable=True, no_stem=True, as_name="slug"), # type: ignore
-        TextField("$.subpath", sortable=True, no_stem=True, as_name="subpath"), # type: ignore
-        TagField("$.subpath", as_name="exact_subpath"), # type: ignore
+    META_SCHEMA: list[Field] = [
+        TextField("$.uuid", no_stem=True, as_name="uuid"),  # type: ignore
+        TextField("$.shortname", sortable=True, no_stem=True, as_name="shortname"),  # type: ignore
+        TextField("$.slug", sortable=True, no_stem=True, as_name="slug"),  # type: ignore
+        TextField("$.subpath", sortable=True, no_stem=True, as_name="subpath"),  # type: ignore
+        TagField("$.subpath", as_name="exact_subpath"),  # type: ignore
         TextField(
             "$.resource_type",
             sortable=True,
             no_stem=True,
             as_name="resource_type",
-        ), # type: ignore
-        TextField("$.displayname.en", sortable=True, as_name="displayname_en"), # type: ignore
-        TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"), # type: ignore
-        TextField("$.displayname.ku", sortable=True, as_name="displayname_kd"), # type: ignore
-        TextField("$.description.en", sortable=True, as_name="description_en"), # type: ignore
-        TextField("$.description.ar", sortable=True, as_name="description_ar"), # type: ignore
-        TextField("$.description.ku", sortable=True, as_name="description_kd"), # type: ignore
-        TagField("$.is_active", as_name="is_active"), # type: ignore
+        ),  # type: ignore
+        TextField("$.displayname.en", sortable=True, as_name="displayname_en"),  # type: ignore
+        TextField("$.displayname.ar", sortable=True, as_name="displayname_ar"),  # type: ignore
+        TextField("$.displayname.ku", sortable=True, as_name="displayname_kd"),  # type: ignore
+        TextField("$.description.en", sortable=True, as_name="description_en"),  # type: ignore
+        TextField("$.description.ar", sortable=True, as_name="description_ar"),  # type: ignore
+        TextField("$.description.ku", sortable=True, as_name="description_kd"),  # type: ignore
+        TagField("$.is_active", as_name="is_active"),  # type: ignore
         TextField(
             "$.payload.content_type",
             no_stem=True,
             as_name="payload_content_type",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.payload.schema_shortname",
             no_stem=True,
             as_name="schema_shortname",
-        ), # type: ignore
-        NumericField("$.created_at", sortable=True, as_name="created_at"), # type: ignore
-        NumericField("$.updated_at", sortable=True, as_name="updated_at"), # type: ignore
-        TagField("$.view_acl.*", as_name="view_acl"), # type: ignore
-        TagField("$.tags.*", as_name="tags"), # type: ignore
+        ),  # type: ignore
+        NumericField("$.created_at", sortable=True, as_name="created_at"),  # type: ignore
+        NumericField("$.updated_at", sortable=True, as_name="updated_at"),  # type: ignore
+        TagField("$.view_acl.*", as_name="view_acl"),  # type: ignore
+        TagField("$.tags.*", as_name="tags"),  # type: ignore
         TextField(
             "$.owner_shortname",
             sortable=True,
             no_stem=True,
             as_name="owner_shortname",
-        ), # type: ignore
-        TagField("$.query_policies.*", as_name="query_policies"), # type: ignore
+        ),  # type: ignore
+        TagField("$.query_policies.*", as_name="query_policies"),  # type: ignore
         # User fields
-        TextField("$.msisdn", sortable=True, as_name="msisdn"), # type: ignore
-        TextField("$.email", sortable=True, as_name="email"), # type: ignore
-        TagField("$.email", as_name="email_unescaped"), # type: ignore
+        TextField("$.msisdn", sortable=True, as_name="msisdn"),  # type: ignore
+        TextField("$.email", sortable=True, as_name="email"),  # type: ignore
+        TagField("$.email", as_name="email_unescaped"),  # type: ignore
         # Ticket fields
-        TextField("$.state", sortable=True, no_stem=True, as_name="state"), # type: ignore
-        TagField("$.is_open", as_name="is_open"), # type: ignore
+        TextField("$.state", sortable=True, no_stem=True, as_name="state"),  # type: ignore
+        TagField("$.is_open", as_name="is_open"),  # type: ignore
         TextField(
             "$.workflow_shortname",
             sortable=True,
             no_stem=True,
             as_name="workflow_shortname",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.collaborators.delivered_by",
             sortable=True,
             no_stem=True,
             as_name="collaborators_delivered_by",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.collaborators.processed_by",
             sortable=True,
             no_stem=True,
             as_name="collaborators_processed_by",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.resolution_reason",
             sortable=True,
             no_stem=True,
             as_name="resolution_reason",
-        ), # type: ignore
+        ),  # type: ignore
         # Notification fields
-        TextField("$.type", sortable=True, no_stem=True, as_name="type"), # type: ignore
-        TagField("$.is_read", as_name="is_read"), # type: ignore
-        TextField("$.priority", sortable=True, no_stem=True, as_name="priority"), # type: ignore
-        TextField("$.reporter.type", sortable=True, as_name="reporter_type"), # type: ignore
-        TextField("$.reporter.name", sortable=True, as_name="reporter_name"), # type: ignore
-        TextField("$.reporter.channel", sortable=True, as_name="reporter_channel"), # type: ignore
+        TextField("$.type", sortable=True, no_stem=True, as_name="type"),  # type: ignore
+        TagField("$.is_read", as_name="is_read"),  # type: ignore
+        TextField("$.priority", sortable=True, no_stem=True, as_name="priority"),  # type: ignore
+        TextField("$.reporter.type", sortable=True, as_name="reporter_type"),  # type: ignore
+        TextField("$.reporter.name", sortable=True, as_name="reporter_name"),  # type: ignore
+        TextField("$.reporter.channel", sortable=True, as_name="reporter_channel"),  # type: ignore
         TextField(
             "$.reporter.distributor",
             sortable=True,
             as_name="reporter_distributor",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.reporter.governorate",
             sortable=True,
             as_name="reporter_governorate",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.reporter.msisdn",
             sortable=True,
             as_name="reporter_msisdn",
-        ), # type: ignore
+        ),  # type: ignore
         TextField(
             "$.payload_string",
             sortable=False,
@@ -206,21 +206,21 @@ class RedisServices(Redis):
         "resource_type",
         "meta_doc_id",
         "payload_doc_id",
-        "payload_string",
         "view_acl",
     ]
     redis_indices: dict[str, dict[str, Search]] = {}
     POOL: BlockingConnectionPool = BlockingConnectionPool(
-                            timeout=10,
-                            host=settings.redis_host,
-                            port=settings.redis_port,
-                            password=settings.redis_password,
-                            protocol=3,
-                            max_connections=settings.redis_pool_max_connections,
-                            decode_responses=True)
-    
+        timeout=10,
+        host=settings.redis_host,
+        port=settings.redis_port,
+        password=settings.redis_password,
+        protocol=3,
+        max_connections=settings.redis_pool_max_connections,
+        decode_responses=True,
+    )
+
     def __new__(cls):
-        if not hasattr(cls, 'instance'):
+        if not hasattr(cls, "instance"):
             cls.instance = super(RedisServices, cls).__new__(cls)
         return cls.instance
 
@@ -248,9 +248,7 @@ class RedisServices(Redis):
         create redis schema index, drop it if exist first
         """
         try:
-            await self.redis_indices[space_name][schema_name].dropindex(
-                delete_documents=del_docs
-            )
+            await self.redis_indices[space_name][schema_name].dropindex(delete_documents=del_docs)
         except Exception as _:
             pass
             # logger.error(f"Error at redis_services.create_index: {e}")
@@ -282,9 +280,7 @@ class RedisServices(Redis):
             return redis_schema_definition
 
         if "type" in property and property["type"] != "object":
-            if property["type"] == "null" or not isinstance(
-                property["type"], str
-            ):
+            if property["type"] == "null" or not isinstance(property["type"], str):
                 return redis_schema_definition
 
             property_name = key_chain.replace(".", "_")
@@ -296,9 +292,7 @@ class RedisServices(Redis):
                 and "items" in property
                 and "properties" in property["items"]
             ):
-                for property_key, property_value in property["items"][
-                    "properties"
-                ].items():
+                for property_key, property_value in property["items"]["properties"].items():
                     if property_value["type"] != "string":
                         continue
                     redis_schema_definition.append(
@@ -314,17 +308,13 @@ class RedisServices(Redis):
                 sortable = False
 
             redis_schema_definition.append(
-                REDIS_SCHEMA_DATA_TYPES_MAPPER[property["type"]](
-                    f"$.{key_chain}", sortable=sortable, as_name=property_name
-                )
+                REDIS_SCHEMA_DATA_TYPES_MAPPER[property["type"]](f"$.{key_chain}", sortable=sortable, as_name=property_name)
             )
             return redis_schema_definition
 
         if "oneOf" in property:
             for item in property["oneOf"]:
-                redis_schema_definition = self.get_redis_index_fields(
-                    key_chain, item, redis_schema_definition
-                )
+                redis_schema_definition = self.get_redis_index_fields(key_chain, item, redis_schema_definition)
             return redis_schema_definition
 
         if "properties" not in property:
@@ -337,9 +327,7 @@ class RedisServices(Redis):
 
         return redis_schema_definition
 
-    def generate_redis_index_from_class(
-        self, class_ref: type[core.Meta], exclude_from_index: list
-    ) -> list[Field]:
+    def generate_redis_index_from_class(self, class_ref: type[core.Meta], exclude_from_index: list) -> list[Field]:
         class_types_to_redis_fields_mapper = {
             "str": TextField,
             "bool": TextField,
@@ -350,7 +338,7 @@ class RedisServices(Redis):
             "dict": TextField,
         }
 
-        redis_schema : list[Field] = []
+        redis_schema: list[Field] = []
         for field_name, model_field in class_ref.model_fields.items():
             if field_name in exclude_from_index:
                 continue
@@ -365,11 +353,7 @@ class RedisServices(Redis):
 
             redis_index_column_type = class_types_to_redis_fields_mapper[mapper_key]
 
-            redis_key = (
-                f"$.{field_name}"
-                if redis_index_column_type != TagField
-                else f"$.{field_name}.*"
-            )
+            redis_key = f"$.{field_name}" if redis_index_column_type != TagField else f"$.{field_name}.*"
             redis_schema.append(redis_index_column_type(redis_key, as_name=field_name))
 
         return redis_schema
@@ -377,29 +361,21 @@ class RedisServices(Redis):
     async def create_custom_indices(self, for_space: str | None = None):
         redis_schemas: dict[str, list] = {}
         for i, index in enumerate(self.CUSTOM_INDICES):
-            if (
-                for_space
-                and index["space"] != for_space
-                or not isinstance(index["exclude_from_index"], list)
-            ):
+            if for_space and index["space"] != for_space or not isinstance(index["exclude_from_index"], list):
                 continue
 
             exclude_from_index: list = index["exclude_from_index"]
 
             redis_schemas.setdefault(f"{index['space']}", [])
-            self.redis_indices.setdefault(
-                f"{index['space']}:meta", {}
-            )
+            self.redis_indices.setdefault(f"{index['space']}:meta", {})
 
-            generated_schema_fields : list[Field] = self.generate_redis_index_from_class(
+            generated_schema_fields: list[Field] = self.generate_redis_index_from_class(
                 self.CUSTOM_CLASSES[i], exclude_from_index
             )
 
-            redis_schemas[f"{index['space']}"] = (
-                self.append_unique_index_fields(
-                    generated_schema_fields,
-                    redis_schemas[f"{index['space']}"],
-                )
+            redis_schemas[f"{index['space']}"] = self.append_unique_index_fields(
+                generated_schema_fields,
+                redis_schemas[f"{index['space']}"],
             )
 
         for space_name, redis_schema in redis_schemas.items():
@@ -428,29 +404,19 @@ class RedisServices(Redis):
         spaces = await self.get_doc_by_id("spaces")
         for space_name in spaces:
             space_obj = core.Space.model_validate_json(spaces[space_name])
-            if (
-                for_space and for_space != space_name
-            ) or not space_obj.indexing_enabled:
+            if (for_space and for_space != space_name) or not space_obj.indexing_enabled:
                 continue
 
             # CREATE REDIS INDEX FOR THE META FILES INSIDE THE SPACE
             self.redis_indices[f"{space_name}"] = {}
-            self.redis_indices[f"{space_name}"]["meta"] = self.ft(
-                f"{space_name}:meta"
-            )
+            self.redis_indices[f"{space_name}"]["meta"] = self.ft(f"{space_name}:meta")
 
-            await self.create_index(
-                f"{space_name}", "meta", self.META_SCHEMA, del_docs
-            )
+            await self.create_index(f"{space_name}", "meta", self.META_SCHEMA, del_docs)
 
             # CREATE REDIS INDEX FOR EACH SCHEMA DEFINITION INSIDE THE SPACE
             schemas_file_pattern = re.compile(r"(\w*).json")
             schemas_glob = "*.json"
-            path = (
-                settings.spaces_folder
-                / space_name
-                / "schema"
-            )
+            path = settings.spaces_folder / space_name / "schema"
 
             for schema_path in path.glob(schemas_glob):
                 # GET SCHEMA SHORTNAME
@@ -469,12 +435,10 @@ class RedisServices(Redis):
                 # GENERATE REDIS INDEX DEFINITION BY MAPPIN SCHEMA PROPERTIES TO REDIS INDEX FIELDS
                 schema_content = json.loads(schema_path.read_text())
                 schema_content = resolve_schema_references(schema_content)
-                redis_schema_definition : list[Field] = self.META_SCHEMA
+                redis_schema_definition: list[Field] = self.META_SCHEMA
                 if "properties" in schema_content:
                     for key, property in schema_content["properties"].items():
-                        generated_schema_fields = self.get_redis_index_fields(
-                            key, property, []
-                        )
+                        generated_schema_fields = self.get_redis_index_fields(key, property, [])
                         redis_schema_definition = self.append_unique_index_fields(
                             generated_schema_fields, redis_schema_definition
                         )
@@ -482,22 +446,16 @@ class RedisServices(Redis):
                 elif "oneOf" in schema_content:
                     for item in schema_content["oneOf"]:
                         for key, property in item["properties"].items():
-                            generated_schema_fields = self.get_redis_index_fields(
-                                key, property, []
-                            )
-                            redis_schema_definition = (
-                                self.append_unique_index_fields(
-                                    generated_schema_fields, redis_schema_definition
-                                )
+                            generated_schema_fields = self.get_redis_index_fields(key, property, [])
+                            redis_schema_definition = self.append_unique_index_fields(
+                                generated_schema_fields, redis_schema_definition
                             )
 
                 if redis_schema_definition:
-                    self.redis_indices[f"{space_name}"][
-                        schema_shortname
-                    ] = self.ft(f"{space_name}:{schema_shortname}")
+                    self.redis_indices[f"{space_name}"][schema_shortname] = self.ft(f"{space_name}:{schema_shortname}")
                     field_names = [f.as_name for f in redis_schema_definition]
                     if "meta_doc_id" not in field_names:
-                        redis_schema_definition.append(TextField("$.meta_doc_id", no_stem=True, as_name="meta_doc_id")) # type: ignore
+                        redis_schema_definition.append(TextField("$.meta_doc_id", no_stem=True, as_name="meta_doc_id"))  # type: ignore
 
                     await self.create_index(
                         f"{space_name}",
@@ -539,13 +497,9 @@ class RedisServices(Redis):
         subpath = subpath.strip("/")
         return f"{space_name}:{schema_shortname}:{subpath}/{shortname}"
 
-    def prepare_meta_doc(
-        self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    def prepare_meta_doc(self, space_name: str, subpath: str, meta: core.Meta):
         resource_type = ResourceType(meta.__class__.__name__.lower())
-        meta_doc_id = self.generate_doc_id(
-            space_name, "meta", meta.shortname, subpath
-        )
+        meta_doc_id = self.generate_doc_id(space_name, "meta", meta.shortname, subpath)
         payload_doc_id = None
         if meta.payload and meta.payload.schema_shortname:
             payload_doc_id = self.generate_doc_id(
@@ -555,7 +509,7 @@ class RedisServices(Redis):
                 subpath,
             )
         meta.model_rebuild()
-        meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True,warnings="error"))
+        meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True, warnings="error"))
         meta_json["query_policies"] = generate_query_policies(
             space_name,
             subpath,
@@ -573,25 +527,21 @@ class RedisServices(Redis):
         meta_json["payload_doc_id"] = payload_doc_id
 
         return meta_doc_id, meta_json
-    
+
     def generate_view_acl(self, acl: list[dict[str, Any]] | None) -> list[str] | None:
         if not acl:
             return None
-        
+
         view_acl: list[str] = []
-        
+
         for access in acl:
             if ActionType.view in access.get("allowed_actions", []) or ActionType.query in access.get("allowed_actions", []):
                 view_acl.append(access["user_shortname"])
-                
+
         return view_acl
 
-    async def save_meta_doc(
-        self, space_name: str, subpath: str, meta: core.Meta
-    ):
-        meta_doc_id, meta_json = self.prepare_meta_doc(
-            space_name, subpath, meta
-        )
+    async def save_meta_doc(self, space_name: str, subpath: str, meta: core.Meta):
+        meta_doc_id, meta_json = self.prepare_meta_doc(space_name, subpath, meta)
         await self.save_doc(meta_doc_id, meta_json)
         return meta_doc_id, meta_json
 
@@ -604,22 +554,16 @@ class RedisServices(Redis):
         resource_type: ResourceType = ResourceType.content,
     ):
         if meta.payload is None:
-            print(
-                f"Missing payload for {space_name}/{subpath} of type {resource_type}"
-            )
+            print(f"Missing payload for {space_name}/{subpath} of type {resource_type}")
             return "", {}
         if meta.payload.body is None:
-            print(
-                f"Missing body for {space_name}/{subpath} of type {resource_type}"
-            )
+            print(f"Missing body for {space_name}/{subpath} of type {resource_type}")
             return "", {}
         if not isinstance(meta.payload.body, str):
             print("body should be type of string")
             return "", {}
         payload_shortname = meta.payload.body.split(".")[0]
-        meta_doc_id = self.generate_doc_id(
-            space_name, "meta", payload_shortname, subpath
-        )
+        meta_doc_id = self.generate_doc_id(space_name, "meta", payload_shortname, subpath)
         docid = self.generate_doc_id(
             space_name,
             meta.payload.schema_shortname or "",
@@ -637,9 +581,7 @@ class RedisServices(Redis):
             meta.shortname,
         )
         if not payload["query_policies"]:
-            print(
-                f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed"
-            )
+            print(f"Warning: this entry `{space_name}/{subpath}/{meta.shortname}` can't be accessed")
         payload["subpath"] = subpath
         payload["resource_type"] = resource_type
         payload["shortname"] = payload_shortname
@@ -655,9 +597,7 @@ class RedisServices(Redis):
         payload: dict,
         resource_type: ResourceType = ResourceType.content,
     ):
-        docid, payload = self.prepare_payload_doc(
-            space_name, subpath, meta, payload, resource_type
-        )
+        docid, payload = self.prepare_payload_doc(space_name, subpath, meta, payload, resource_type)
         if docid == "":
             return
         await self.save_doc(docid, payload)
@@ -672,9 +612,7 @@ class RedisServices(Redis):
         if not payload_redis_doc:
             return payload_doc_content
 
-        not_payload_attr = RedisServices.SYS_ATTRIBUTES + list(
-            resource_class.model_fields.keys()
-        )
+        not_payload_attr = RedisServices.SYS_ATTRIBUTES + list(resource_class.model_fields.keys())
         for key, value in payload_redis_doc.items():
             if key not in not_payload_attr:
                 payload_doc_content[key] = value
@@ -688,12 +626,8 @@ class RedisServices(Redis):
         owner_shortname: str,
         ttl: int,
     ) -> LockAction:
-        lock_doc_id = self.generate_doc_id(
-            space_name, "lock", payload_shortname, subpath
-        )
-        lock_data = await self.get_lock_doc(
-            space_name, subpath, payload_shortname
-        )
+        lock_doc_id = self.generate_doc_id(space_name, "lock", payload_shortname, subpath)
+        lock_data = await self.get_lock_doc(space_name, subpath, payload_shortname)
         if not lock_data:
             payload = {
                 "owner_shortname": owner_shortname,
@@ -701,9 +635,7 @@ class RedisServices(Redis):
             }
             result = await self.save_doc(lock_doc_id, payload, nx=True)
             if result is None:
-                lock_payload = await self.get_lock_doc(
-                    space_name, subpath, payload_shortname
-                )
+                lock_payload = await self.get_lock_doc(space_name, subpath, payload_shortname)
                 if lock_payload["owner_shortname"] != owner_shortname:
                     raise api.Exception(
                         status_code=status.HTTP_403_FORBIDDEN,
@@ -725,9 +657,7 @@ class RedisServices(Redis):
         subpath: str,
         payload_shortname: str,
     ):
-        lock_doc_id = self.generate_doc_id(
-            space_name, "lock", payload_shortname, subpath
-        )
+        lock_doc_id = self.generate_doc_id(space_name, "lock", payload_shortname, subpath)
         return await self.get_doc_by_id(lock_doc_id)
 
     async def delete_lock_doc(
@@ -736,9 +666,7 @@ class RedisServices(Redis):
         subpath: str,
         payload_shortname: str,
     ):
-        await self.delete_doc(
-            space_name, "lock", payload_shortname, subpath
-        )
+        await self.delete_doc(space_name, "lock", payload_shortname, subpath)
 
     async def is_entry_locked(
         self,
@@ -747,9 +675,7 @@ class RedisServices(Redis):
         shortname: str,
         user_shortname: str,
     ):
-        lock_payload = await self.get_lock_doc(
-            space_name, subpath, shortname
-        )
+        lock_payload = await self.get_lock_doc(space_name, subpath, shortname)
         if lock_payload:
             if user_shortname:
                 return lock_payload["owner_shortname"] != user_shortname
@@ -757,9 +683,7 @@ class RedisServices(Redis):
                 return True
         return False
 
-    async def save_doc(
-        self, doc_id: str, payload: dict, path: str = Path.root_path(), nx: bool = False
-    ):
+    async def save_doc(self, doc_id: str, payload: dict, path: str = Path.root_path(), nx: bool = False):
         x = self.json().set(doc_id, path, payload, nx=nx)
         if x and isinstance(x, Awaitable):
             await x
@@ -803,14 +727,10 @@ class RedisServices(Redis):
             ft_index = self.ft(f"{space_name}:{schema_name}")
             await ft_index.info()
         except Exception as e:
-            logger.error(
-                f"Error accessing index: {space_name}:{schema_name}, at redis_services.search: {e}"
-            )
+            logger.error(f"Error accessing index: {space_name}:{schema_name}, at redis_services.search: {e}")
             return {"data": [], "total": 0}
 
-        search_query = Query(
-            query_string=self.prepare_query_string(search, filters, exact_subpath)
-        )
+        search_query = Query(query_string=self.prepare_query_string(search, filters, exact_subpath))
 
         if highlight_fields:
             search_query.highlight(highlight_fields, ["", ""])
@@ -825,19 +745,10 @@ class RedisServices(Redis):
 
         try:
             # print(f"ARGS {search_query.get_args()} O {search_query.query_string()}")
-            search_res = await ft_index.search(query=search_query) # type: ignore
-            if (
-                isinstance(search_res, dict)
-                and "results" in search_res
-                and "total_results" in search_res
-            ):
-
+            search_res = await ft_index.search(query=search_query)  # type: ignore
+            if isinstance(search_res, dict) and "results" in search_res and "total_results" in search_res:
                 return {
-                    "data": [
-                        one["extra_attributes"]["$"]
-                        for one in search_res["results"]
-                        if "extra_attributes" in one
-                    ],
+                    "data": [one["extra_attributes"]["$"] for one in search_res["results"] if "extra_attributes" in one],
                     "total": search_res["total_results"],
                 }
             else:
@@ -866,26 +777,17 @@ class RedisServices(Redis):
         except Exception:
             return []
 
-        aggr_request = aggregation.AggregateRequest(
-            self.prepare_query_string(search, filters, exact_subpath)
-        )
+        aggr_request = aggregation.AggregateRequest(self.prepare_query_string(search, filters, exact_subpath))
         if group_by:
             reducers_functions = [
-                RedisReducerName.mapper(reducer.reducer_name)(*reducer.args).alias(
-                    reducer.alias
-                )
-                for reducer in reducers
+                RedisReducerName.mapper(reducer.reducer_name)(*reducer.args).alias(reducer.alias) for reducer in reducers
             ]
             aggr_request.group_by(group_by, *reducers_functions)
 
         if sort_by:
             aggr_request.sort_by(
-                [# type: ignore
-                    str(
-                        aggregation.Desc(f"@{sort_by}")
-                        if sort_type == SortType.ascending
-                        else aggregation.Asc(f"@{sort_by}")
-                    )
+                [  # type: ignore
+                    str(aggregation.Asc(f"@{sort_by}") if sort_type == SortType.ascending else aggregation.Desc(f"@{sort_by}"))
                 ],
                 max=max,
             )
@@ -901,34 +803,20 @@ class RedisServices(Redis):
             pass
         return []
 
-    def prepare_query_string(
-        self, search: str, filters: dict[str, str | list], exact_subpath: bool
-    ):
+    def prepare_query_string(self, search: str, filters: dict[str, str | list], exact_subpath: bool):
         query_string = search
 
-        redis_escape_chars = str.maketrans(
-            {":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
-        )
+        redis_escape_chars = str.maketrans({":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})
         if filters.get("query_policies", None) == []:
             filters["query_policies"] = ["__NONE__"]
-            
+
         for item in filters.items():
             if item[0] == "tags" and item[1]:
-                query_string += (
-                    " @"
-                    + item[0]
-                    + ":{"
-                    + "|".join(item[1]).translate(redis_escape_chars)
-                    + "}"
-                )
+                query_string += " @" + item[0] + ":{" + "|".join(item[1]).translate(redis_escape_chars) + "}"
             elif item[0] == "query_policies" and item[1] is not None:
-                query_string += (
-                    f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
-                )
+                query_string += f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
                 if filters.get("user_shortname", None) is not None:
-                    query_string += (
-                        f" | (@view_acl:{{{filters['user_shortname']}}}) )"
-                    )
+                    query_string += f" | (@view_acl:{{{filters['user_shortname']}}}) )"
                 else:
                     query_string += ")"
             elif item[0] == "created_at" and item[1]:
@@ -939,9 +827,7 @@ class RedisServices(Redis):
                     search_value += "|" + subpath.strip("/")
                     search_value += "|" + f"/{subpath}".replace("//", "/")
 
-                exact_subpath_value = search_value.strip("|").translate(
-                    redis_escape_chars
-                )
+                exact_subpath_value = search_value.strip("|").translate(redis_escape_chars)
                 query_string += f" @exact_subpath:{{{exact_subpath_value}}}"
             elif item[0] == "subpath" and item[1][0] == "/":
                 pass
@@ -949,6 +835,17 @@ class RedisServices(Redis):
                 query_string += " @" + item[0] + ":(" + "|".join(item[1]) + ")"
 
         return query_string or "*"
+
+    async def get_space_by_name(self, space_name: str) -> Any:
+        """Fetch a single space entry from the 'spaces' Redis JSON doc by name,
+        avoiding loading the entire spaces document."""
+        try:
+            x = self.json().get("spaces", f".{space_name}")
+            if x and isinstance(x, Awaitable):
+                return await x
+        except Exception as e:
+            logger.warning(f"Error at redis_services.get_space_by_name: {space_name=} {e}")
+        return None
 
     async def get_doc_by_id(self, doc_id: str) -> Any:
         try:
@@ -960,7 +857,7 @@ class RedisServices(Redis):
                 if isinstance(value, str):
                     return json.loads(value)
                 else:
-                   raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
+                    raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:
                 raise Exception(f"Not awaitable {x=}")
         except Exception as e:
@@ -985,12 +882,8 @@ class RedisServices(Redis):
             logger.warning(f"Error at redis_services.get_content_by_id: {e}")
             return ""
 
-    async def delete_doc(
-        self, space_name, schema_shortname, shortname, subpath
-    ):
-        docid = self.generate_doc_id(
-            space_name, schema_shortname, shortname, subpath
-        )
+    async def delete_doc(self, space_name, schema_shortname, shortname, subpath):
+        docid = self.generate_doc_id(space_name, schema_shortname, shortname, subpath)
         try:
             x = self.json().delete(key=docid)
             if x and isinstance(x, Awaitable):
@@ -1007,31 +900,21 @@ class RedisServices(Redis):
         dest_shortname,
         dest_subpath,
     ):
-        docid = self.generate_doc_id(
-            space_name, schema_shortname, src_shortname, src_subpath
-        )
+        docid = self.generate_doc_id(space_name, schema_shortname, src_shortname, src_subpath)
 
         try:
             doc_content = await self.get_doc_by_id(docid)
-            await self.delete_doc(
-                space_name, schema_shortname, src_shortname, src_subpath
-            )
+            await self.delete_doc(space_name, schema_shortname, src_shortname, src_subpath)
 
-            new_docid = self.generate_doc_id(
-                space_name, schema_shortname, dest_shortname, dest_subpath
-            )
+            new_docid = self.generate_doc_id(space_name, schema_shortname, dest_shortname, dest_subpath)
             await self.save_doc(new_docid, doc_content)
 
         except Exception as e:
             logger.warning(f"Error at redis_services.move_payload_doc: {e}")
 
-    async def move_meta_doc(
-        self, space_name, src_shortname, src_subpath, dest_subpath, meta
-    ):
+    async def move_meta_doc(self, space_name, src_shortname, src_subpath, dest_subpath, meta):
         try:
-            await self.delete_doc(
-                space_name, "meta", src_shortname, src_subpath
-            )
+            await self.delete_doc(space_name, "meta", src_shortname, src_subpath)
             await self.save_meta_doc(space_name, dest_subpath, meta)
         except Exception as e:
             logger.warning(f"Error at redis_services.move_meta_doc: {e}")
@@ -1084,27 +967,25 @@ class RedisServices(Redis):
         x = self.ft().execute_command("FT._LIST")
         if x and isinstance(x, Awaitable):
             return await x
-        
-    
-    
-    async def get_all_document_ids(self, index: str, search_str: str = "*") -> list[str]:        
+
+    async def get_all_document_ids(self, index: str, search_str: str = "*") -> list[str]:
         # Initialize the list to hold document IDs
         document_ids = []
-        
+
         # Fetch all document IDs
         ft_index = self.ft(index)
-        total_docs = int((await ft_index.info())['num_docs'])  # type: ignore
-        
+        total_docs = int((await ft_index.info())["num_docs"])  # type: ignore
+
         batch_size = 10000  # You can adjust the batch size based on your needs
-        
+
         for offset in range(0, total_docs, batch_size):
             query = Query(search_str).paging(offset, batch_size)
             results = ft_index.search(query)  # type: ignore
             if results and isinstance(results, Awaitable):
                 results = await results
-            
-            if 'results' not in results or not isinstance(results['results'], list):  # type: ignore
+
+            if "results" not in results or not isinstance(results["results"], list):  # type: ignore
                 break
-            document_ids.extend([doc['id'] for doc in results['results']]) #type: ignore
-        
+            document_ids.extend([doc["id"] for doc in results["results"]])  # type: ignore
+
         return document_ids

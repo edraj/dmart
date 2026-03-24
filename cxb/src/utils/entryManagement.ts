@@ -1,7 +1,7 @@
-import {Dmart, RequestType, ResourceType, type ResponseEntry} from "@edraj/tsdmart";
-import {removeEmpty} from "@/utils/renderer/schemaEntryRenderer";
-import {Level, showToast} from "@/utils/toast";
-import {jsonEditorContentParser} from "@/utils/jsonEditor";
+import { Dmart, RequestType, ResourceType, type ResponseEntry } from "@edraj/tsdmart";
+import { removeEmpty } from "@/utils/renderer/schemaEntryRenderer";
+import { Level, showToast } from "@/utils/toast";
+import { jsonEditorContentParser } from "@/utils/jsonEditor";
 
 /**
  * Gets the parent subpath from a given path
@@ -27,7 +27,12 @@ export async function saveEntry(
     resource_type: ResourceType,
     originalJeContent?: any
 ): Promise<{ success: boolean; errorMessage?: string }> {
-    const content = jsonEditorContentParser(jeContent);
+    let content;
+    try {
+        content = jsonEditorContentParser(jeContent);
+    } catch (error) {
+        return { success: false, errorMessage: "Invalid JSON format" };
+    }
 
     const shortname = content.shortname;
     delete content.uuid;
@@ -43,19 +48,19 @@ export async function saveEntry(
         };
     }
 
-    if (resource_type === ResourceType.user && content.password===null || (content.password && content.password.startsWith("$argon2id")||content.password==='')) {
+    if (resource_type === ResourceType.user && content.password === null || (content.password && content.password.startsWith("$argon2id") || content.password === '')) {
         delete content.password;
     }
 
-    if (content.password && content.password !== ''){
-        if(!content.old_password){
+    if (content.password && content.password !== '') {
+        if (!content.old_password) {
             showToast(Level.warn, `Old password is required for password change`);
             return
         }
     }
 
     if (originalJeContent) {
-        if(originalJeContent?.payload?.content_type === 'json'){
+        if (originalJeContent?.payload?.content_type === 'json') {
             const originalContent = jsonEditorContentParser(originalJeContent);
             if (originalContent.payload && originalContent.payload.body && content.payload && content.payload.body) {
                 const originalKeys = Object.keys(originalContent.payload.body);
@@ -187,7 +192,52 @@ export function getExactSubpathValue(space_name: string, subpath: string): boole
  */
 export async function getPayloadSchema(schemaShortname: string, space_name: string): Promise<any> {
     if (schemaShortname === "folder_rendering") {
-        return await Dmart.retrieveEntry({resource_type: ResourceType.schema, space_name: "management", subpath: "schema", shortname: schemaShortname, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true});
+        return await Dmart.retrieveEntry({ resource_type: ResourceType.schema, space_name: "management", subpath: "schema", shortname: schemaShortname, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true });
     }
-    return await Dmart.retrieveEntry({resource_type: ResourceType.schema, space_name, subpath: "schema", shortname: schemaShortname, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true});
+    return await Dmart.retrieveEntry({ resource_type: ResourceType.schema, space_name, subpath: "schema", shortname: schemaShortname, retrieve_json_payload: true, retrieve_attachments: false, validate_schema: true });
+}
+
+/**
+ * Moves multiple entries to trash
+ */
+export async function bulkMoveEntryToTrash(
+    entries: any[],
+    space_name: string,
+    userShortname: string
+): Promise<{ success: boolean; errorMessage?: string }> {
+    try {
+        const records = entries.map((entry) => {
+            const moveResourceType = entry.resource_type;
+            const moveNewSubpath = moveResourceType === ResourceType.folder
+                ? (entry.subpath.split("/").slice(0, -1).join("-") || '/')
+                : entry.subpath;
+
+            const moveAttrb = {
+                src_space_name: space_name,
+                src_subpath: moveNewSubpath,
+                src_shortname: entry.shortname,
+                dest_space_name: 'personal',
+                dest_subpath: `/people/${userShortname}/trash/${space_name}/${moveNewSubpath}`.replaceAll('//', '/'),
+                dest_shortname: entry.shortname,
+            };
+
+            return {
+                resource_type: moveResourceType,
+                shortname: entry.shortname,
+                subpath: moveNewSubpath,
+                attributes: moveAttrb,
+            };
+        });
+
+        await Dmart.request({
+            space_name: space_name,
+            request_type: RequestType.move,
+            records: records,
+        });
+        showToast(Level.info, `Entries moved to trash successfully`);
+        return { success: true };
+    } catch (error: any) {
+        showToast(Level.warn, `Failed to move entries to trash!`);
+        return { success: false, errorMessage: error.message };
+    }
 }
