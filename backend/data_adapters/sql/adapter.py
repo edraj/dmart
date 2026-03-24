@@ -743,7 +743,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " AND "
                                     else:
                                         join_operator = " AND " if operation == "AND" else " OR "
-                                    # statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                                    statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
 
                             if conditions:
                                 if negative:
