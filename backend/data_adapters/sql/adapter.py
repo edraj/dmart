@@ -16,7 +16,7 @@ from fastapi.logger import logger
 from sqlalchemy import literal_column, or_
 from sqlalchemy.orm import sessionmaker, defer
 from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
-from sqlalchemy import String, cast, bindparam
+from sqlalchemy import String, cast, bindparam, Text
 import io
 import shutil
 from sys import modules as sys_modules
@@ -277,9 +277,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             param_counter = 0
 
             try:
-                table_columns = set(c.name for c in table.__table__.columns)  # type: ignore[attr-defined]
+                table_columns = {c.name: c for c in table.__table__.columns}  # type: ignore[attr-defined]
             except Exception:
-                table_columns = set()
+                table_columns = {}
 
             def _field_exists_in_table(_field: str) -> bool:
                 if _field in table_columns:
@@ -296,6 +296,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 negative = field_data.get("negative", False)
                 value_type = field_data.get("value_type", "string")
                 format_strings = field_data.get("format_strings", {})
+
+                if field in table_columns:
+                    col_type = table_columns[field].type
+                    if isinstance(col_type, (String, Text)) or (
+                        hasattr(col_type, "impl") and isinstance(col_type.impl, (String, Text))
+                    ):
+                        value_type = "string"
 
                 if not values:
                     continue
