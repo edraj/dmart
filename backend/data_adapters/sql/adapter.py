@@ -310,6 +310,19 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith("payload."):
                     payload_field = field.replace("payload.", "", 1)
                     parts = payload_field.split(".")
+
+                    is_array_query = False
+                    array_prefix_path = ""
+                    remaining_path_parts = []
+                    array_idx = -1
+                    for idx, part in enumerate(parts):
+                        if part.endswith("[]"):
+                            is_array_query = True
+                            array_idx = idx
+                            array_prefix_path = "->".join([f"'{p}'" for p in parts[:idx]] + [f"'{part[:-2]}'"])
+                            remaining_path_parts = parts[idx + 1 :]
+                            break
+
                     payload_path = "->".join([f"'{part}'" for part in parts])
 
                     payload_path_splited = payload_path.split("->")
@@ -321,7 +334,44 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         _payload_text_extract = f"payload::jsonb->>{payload_path}"
                     conditions = []
 
-                    if (
+                    if is_array_query:
+                        for value in values:
+                            p_val = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p_val] = value
+
+                            if not remaining_path_parts:
+                                p_text_val = f"s_p_{param_counter}"
+                                param_counter += 1
+                                bind_params[p_text_val] = str(value)
+                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e = :{p_text_val})"
+                                base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
+                                cond = f"({base})" if not negative else f"(NOT ({base}))"
+                            else:
+                                if len(remaining_path_parts) > 1:
+                                    _rem_nested = "->".join([f"'{p}'" for p in remaining_path_parts[:-1]])
+                                    _rem_last = remaining_path_parts[-1]
+                                    sub_extract = f"x->{_rem_nested}->>'{_rem_last}'"
+                                else:
+                                    sub_extract = f"x->>'{remaining_path_parts[0]}'"
+                                p_text_val = f"s_p_{param_counter}"
+                                param_counter += 1
+                                bind_params[p_text_val] = str(value)
+                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
+                                base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
+                                cond = f"({base})" if not negative else f"(NOT ({base}))"
+                            conditions.append(cond)
+                    if is_array_query:
+                        if conditions:
+                            if negative:
+                                join_operator = " OR " if operation == "AND" else " AND "
+                            else:
+                                join_operator = " AND " if operation == "AND" else " OR "
+                            combined_cond = "(" + join_operator.join(conditions) + ")"
+                            print('[DEBUG] applying payload WHERE:', combined_cond, 'with params:', bind_params)
+                            statement = statement.where(text(combined_cond))
+                        continue
+                    elif (
                         value_type == "numeric"
                         and field_data.get("is_range", False)
                         and len(field_data.get("range_values", [])) == 2
@@ -504,7 +554,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             join_operator = " OR " if operation == "AND" else " AND "
                         else:
                             join_operator = " AND " if operation == "AND" else " OR "
-                        statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
+                        combined_cond = "(" + join_operator.join(conditions) + ")"
+                        statement = statement.where(text(combined_cond))
                 else:
                     try:
                         if hasattr(table, field):
