@@ -246,6 +246,9 @@ def parse_search_string(string):
     result = {}
     terms = string.split()
 
+    # Match comparison operators at the start of value: !, >, >=, <, <=
+    comparison_pattern = re.compile(r"^(>=|<=|>|<|!)(.+)$")
+
     for term in terms:
         negative = term.startswith("-@")
 
@@ -258,6 +261,18 @@ def parse_search_string(string):
 
         field, value = parts
         field = field[2:] if negative else field[1:]
+
+        comparison_operator = None
+        match = comparison_pattern.match(value)
+        if match:
+            potential_op = match.group(1)
+            potential_val = match.group(2)
+            if potential_op == "!":
+                comparison_operator = potential_op
+                value = potential_val
+            elif re.match(r"^-?\d+(?:\.\d+)?$", potential_val):
+                comparison_operator = potential_op
+                value = potential_val
 
         is_range, range_values = validate_search_range(value)
 
@@ -326,6 +341,9 @@ def parse_search_string(string):
                 "value_type": value_type,
             }
 
+            if comparison_operator:
+                field_data["comparison_operator"] = comparison_operator
+
             if value_type == "datetime":
                 field_data["format_strings"] = format_strings
 
@@ -333,6 +351,9 @@ def parse_search_string(string):
         else:
             if result[field]["negative"] != negative:
                 field_data = {"values": values, "operation": operation, "negative": negative}
+
+                if comparison_operator:
+                    field_data["comparison_operator"] = comparison_operator
 
                 if value_type == "datetime":
                     field_data["value_type"] = value_type
