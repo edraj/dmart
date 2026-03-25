@@ -301,6 +301,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 negative = field_data.get("negative", False)
                 value_type = field_data.get("value_type", "string")
                 format_strings = field_data.get("format_strings", {})
+                comparison_operator = field_data.get("comparison_operator", None)
 
                 if field in table_columns:
                     col_type = table_columns[field].type
@@ -372,11 +373,32 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             param_counter += 1
                             bind_params[p_val] = value
 
+                            is_numeric = False
+                            num_val = None
+                            try:
+                                num_val = float(value)
+                                is_numeric = True
+                            except ValueError:
+                                pass
+
+                            op_map = {"!": "!=", ">": ">", "<": "<", ">=": ">=", "<=": "<=", "=": "="}
+                            sql_op = op_map.get(comparison_operator, "=") if comparison_operator else "="
+
                             if not remaining_path_parts:
                                 p_text_val = f"s_p_{param_counter}"
                                 param_counter += 1
                                 bind_params[p_text_val] = str(value)
-                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e = :{p_text_val})"
+
+                                if comparison_operator and is_numeric:
+                                    p_num_val = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_num_val] = num_val
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e::float {sql_op} CAST(:{p_num_val} AS float))"
+                                elif comparison_operator == "!":
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e != :{p_text_val})"
+                                else:
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e = :{p_text_val})"
+
                                 base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
                                 cond = f"({base})" if not negative else f"(NOT ({base}))"
                             else:
@@ -386,10 +408,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     sub_extract = f"x->{_rem_nested}->>'{_rem_last}'"
                                 else:
                                     sub_extract = f"x->>'{remaining_path_parts[0]}'"
+
                                 p_text_val = f"s_p_{param_counter}"
                                 param_counter += 1
                                 bind_params[p_text_val] = str(value)
-                                membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
+
+                                if comparison_operator and is_numeric:
+                                    p_num_val = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_num_val] = num_val
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE (x->'{remaining_path_parts[0]}')::float {sql_op} CAST(:{p_num_val} AS float))"
+                                elif comparison_operator == "!":
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE x->>'{remaining_path_parts[0]}' != :{p_text_val})"
+                                else:
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
+
                                 base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
                                 cond = f"({base})" if not negative else f"(NOT ({base}))"
                             conditions.append(cond)
@@ -400,7 +433,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             else:
                                 join_operator = " AND " if operation == "AND" else " OR "
                             combined_cond = "(" + join_operator.join(conditions) + ")"
-                            print('[DEBUG] applying payload WHERE:', combined_cond, 'with params:', bind_params)
                             statement = statement.where(text(combined_cond))
                         continue
                     elif (
@@ -525,7 +557,9 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                 param_counter += 1
                                 bind_params[p_bool] = bool_value == "true"
 
-                                if negative:
+                                use_not_equal = negative or comparison_operator == "!"
+
+                                if use_not_equal:
                                     bool_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'boolean' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
                                     string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND ({_payload_text_extract})::boolean != CAST(:{p_bool} AS boolean))"
                                     conditions.append(f"({bool_condition} OR {string_condition})")
@@ -549,7 +583,17 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             param_counter += 1
                             bind_params[p_json_val] = json.dumps([value])
 
-                            if negative:
+                            if is_numeric and comparison_operator:
+                                p_val_num = f"s_p_{param_counter}"
+                                param_counter += 1
+                                bind_params[p_val_num] = num_val  # type: ignore
+
+                                op_map = {"!": "!=", ">": ">", "<": "<", ">=": ">=", "<=": "<="}
+                                sql_op = op_map.get(comparison_operator, "=")
+
+                                number_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND ({_payload_text_extract})::float {sql_op} CAST(:{p_val_num} AS float))"
+                                conditions.append(number_condition)
+                            elif negative or comparison_operator == "!":
                                 array_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'array' AND NOT (payload::jsonb->{payload_path} @> CAST(:{p_json_val} AS jsonb)))"
                                 string_condition = f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'string' AND {_payload_text_extract} != :{p_val})"
 
@@ -754,7 +798,12 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         p_val = f"s_p_{param_counter}"
                                         param_counter += 1
                                         bind_params[p_val] = num_val
-                                        if negative:
+
+                                        if comparison_operator:
+                                            op_map = {"!": "!=", ">": ">", "<": "<", ">=": ">=", "<=": "<="}
+                                            sql_op = op_map.get(comparison_operator, "=")
+                                            conditions.append(f"(CAST({field} AS FLOAT) {sql_op} CAST(:{p_val} AS float))")
+                                        elif negative:
                                             conditions.append(f"(CAST({field} AS FLOAT) != CAST(:{p_val} AS float))")
                                         else:
                                             conditions.append(f"(CAST({field} AS FLOAT) = CAST(:{p_val} AS float))")
@@ -773,7 +822,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     p_bool = f"s_p_{param_counter}"
                                     param_counter += 1
                                     bind_params[p_bool] = bool_value == "true"
-                                    if negative:
+                                    use_not_equal = negative or comparison_operator == "!"
+                                    if use_not_equal:
                                         conditions.append(f"(CAST({field} AS BOOLEAN) != CAST(:{p_bool} AS boolean))")
                                     else:
                                         conditions.append(f"(CAST({field} AS BOOLEAN) = CAST(:{p_bool} AS boolean))")
@@ -796,7 +846,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         p_val = f"s_p_{param_counter}"
                                         param_counter += 1
                                         bind_params[p_val] = value
-                                        if negative:
+                                        use_not_equal = negative or comparison_operator == "!"
+                                        if use_not_equal:
                                             conditions.append(f"{field}::text != :{p_val}")
                                         else:
                                             conditions.append(f"{field}::text = :{p_val}")
@@ -811,7 +862,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             p_pat = f"s_p_{param_counter}"
                                             param_counter += 1
                                             bind_params[p_pat] = pattern
-                                            if negative:
+                                            use_not_equal = negative or comparison_operator == "!"
+                                            if use_not_equal:
                                                 conditions.append(f"{field} NOT ILIKE :{p_pat}")
                                             else:
                                                 conditions.append(f"{field} ILIKE :{p_pat}")
@@ -819,7 +871,8 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                             p_val = f"s_p_{param_counter}"
                                             param_counter += 1
                                             bind_params[p_val] = value
-                                            if negative:
+                                            use_not_equal = negative or comparison_operator == "!"
+                                            if use_not_equal:
                                                 conditions.append(f"{field} != :{p_val}")
                                             else:
                                                 conditions.append(f"{field} = :{p_val}")
