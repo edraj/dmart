@@ -396,6 +396,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e::float {sql_op} CAST(:{p_num_val} AS float))"
                                 elif comparison_operator == "!":
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e != :{p_text_val})"
+                                elif is_numeric:
+                                    p_num_val = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_num_val] = num_val
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e::float = CAST(:{p_num_val} AS float))"
                                 else:
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e = :{p_text_val})"
 
@@ -420,6 +425,11 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE (x->'{remaining_path_parts[0]}')::float {sql_op} CAST(:{p_num_val} AS float))"
                                 elif comparison_operator == "!":
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE x->>'{remaining_path_parts[0]}' != :{p_text_val})"
+                                elif is_numeric:
+                                    p_num_val = f"s_p_{param_counter}"
+                                    param_counter += 1
+                                    bind_params[p_num_val] = num_val
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE (x->'{remaining_path_parts[0]}')::float = CAST(:{p_num_val} AS float))"
                                 else:
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
 
@@ -1096,7 +1106,6 @@ class SQLAdapter(BaseDataAdapter):
     def get_table(
         self, class_type: Type[MetaChild]
     ) -> Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]:
-
         match class_type:
             case core.Role:
                 return Roles
@@ -1818,7 +1827,6 @@ class SQLAdapter(BaseDataAdapter):
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild | None:
-
         result = await self.db_load_or_none(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
         if not result:
             return None
