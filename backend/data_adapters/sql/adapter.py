@@ -411,8 +411,10 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     _rem_nested = "->".join([f"'{p}'" for p in remaining_path_parts[:-1]])
                                     _rem_last = remaining_path_parts[-1]
                                     sub_extract = f"x->{_rem_nested}->>'{_rem_last}'"
+                                    nested_path_for_comparison = f"x->{_rem_nested}->'{_rem_last}'"
                                 else:
                                     sub_extract = f"x->>'{remaining_path_parts[0]}'"
+                                    nested_path_for_comparison = f"x->'{remaining_path_parts[0]}'"
 
                                 p_text_val = f"s_p_{param_counter}"
                                 param_counter += 1
@@ -422,14 +424,14 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     p_num_val = f"s_p_{param_counter}"
                                     param_counter += 1
                                     bind_params[p_num_val] = num_val
-                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE (x->'{remaining_path_parts[0]}')::float {sql_op} CAST(:{p_num_val} AS float))"
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE ({nested_path_for_comparison})::float {sql_op} CAST(:{p_num_val} AS float))"
                                 elif comparison_operator == "!":
-                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE x->>'{remaining_path_parts[0]}' != :{p_text_val})"
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} != :{p_text_val})"
                                 elif is_numeric:
                                     p_num_val = f"s_p_{param_counter}"
                                     param_counter += 1
                                     bind_params[p_num_val] = num_val
-                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE (x->'{remaining_path_parts[0]}')::float = CAST(:{p_num_val} AS float))"
+                                    membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE ({nested_path_for_comparison})::float = CAST(:{p_num_val} AS float))"
                                 else:
                                     membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} = :{p_text_val})"
 
