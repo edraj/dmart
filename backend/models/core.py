@@ -63,20 +63,28 @@ class Payload(Resource):
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
 
-        if not self.checksum and self.body:
-            sha256 = hashlib_sha256()
+        if not self.checksum:
+            self._calculate_checksum()
 
-            if isinstance(self.body, dict):
-                sha256.update(json.dumps(self.body).encode("utf-8"))
-            else:
-                sha256.update(self.body.encode("utf-8"))
+    def _calculate_checksum(self) -> None:
+        """Calculate SHA256 checksum of the body content."""
+        sha256 = hashlib_sha256()
 
-            self.checksum = sha256.hexdigest()
+        if self.body is None:
+            sha256.update(b"")
+        elif isinstance(self.body, dict):
+            sha256.update(json.dumps(self.body).encode("utf-8"))
+        else:
+            sha256.update(str(self.body).encode("utf-8"))
+
+        self.checksum = sha256.hexdigest()
 
     def update(self, payload: dict, old_body: dict | None = None, replace: bool = False) -> dict | None:
-
         if payload.get("body", None) is None:
             return None
+
+        if "content_type" in payload:
+            self.content_type = ContentType(payload["content_type"])
 
         if isinstance(payload["body"], dict):
             if old_body and not replace:
@@ -94,10 +102,13 @@ class Payload(Resource):
             if "schema_shortname" in payload:
                 self.schema_shortname = payload["schema_shortname"]
 
+            self._calculate_checksum()
+
             return separate_payload_body
 
         else:
             self.body = payload["body"]
+            self._calculate_checksum()
             return None
 
 

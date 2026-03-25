@@ -521,7 +521,7 @@ async def serve_request_update(request, owner_shortname: str):
                 )
 
                 new_version_flattend = resource_obj.model_dump()
-                if new_resource_payload_data:
+                if new_resource_payload_data is not None:
                     new_version_flattend["payload"] = {**new_version_flattend["payload"], "body": new_resource_payload_data}
                 new_version_flattend = flatten_dict(new_version_flattend)
 
@@ -693,7 +693,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     old_body=old_resource_payload_body,
                 )
                 new_version_flattend = resource_obj.model_dump()
-                if new_resource_payload_data:
+                if new_resource_payload_data is not None:
                     new_version_flattend["payload"] = {**new_version_flattend["payload"], "body": new_resource_payload_data}
                 new_version_flattend = flatten_dict(new_version_flattend)
 
@@ -749,7 +749,7 @@ async def serve_request_patch(request, owner_shortname: str):
 
             if isinstance(resource_obj, core.User) and record.attributes.get("is_active") is False:
                 await db.remove_user_session(record.shortname)
-            if resource_obj.payload and new_resource_payload_data:
+            if resource_obj.payload and new_resource_payload_data is not None:
                 resource_obj.payload.body = new_resource_payload_data
             rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
 
