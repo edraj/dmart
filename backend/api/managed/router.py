@@ -997,7 +997,7 @@ async def retrieve_entry_meta(
             ),
         )
 
-    if resource_type is ResourceType.user and hasattr(meta, "password"):
+    if isinstance(meta, core.User) and hasattr(meta, "password"):
         meta.password = None
 
     attachments = {}
