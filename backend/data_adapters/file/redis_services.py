@@ -1,27 +1,29 @@
-import re
 import json
+import re
 import sys
-from typing import Any, Awaitable
+from collections.abc import Awaitable
+from datetime import datetime
+from typing import Any
+
+import redis
+from fastapi import status
+from fastapi.logger import logger
 from redis.asyncio import Redis
 from redis.asyncio.connection import BlockingConnectionPool
-from models.api import RedisReducer, SortType
-import models.core as core
-from models.enums import ActionType, RedisReducerName, ResourceType, LockAction
 from redis.commands.json.path import Path
-from redis.commands.search.field import TextField, NumericField, TagField, Field
-from redis.commands.search.index_definition import IndexDefinition, IndexType
-from datetime import datetime
-
 from redis.commands.search import Search, aggregation
+from redis.commands.search.field import Field, NumericField, TagField, TextField
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
+
+import models.api as api
+import models.core as core
+from models.api import RedisReducer, SortType
+from models.enums import ActionType, LockAction, RedisReducerName, ResourceType
 from utils.helpers import camel_case, resolve_schema_references
 from utils.internal_error_code import InternalErrorCode
 from utils.query_policies_helper import generate_query_policies
 from utils.settings import settings
-import models.api as api
-from fastapi import status
-from fastapi.logger import logger
-import redis
 
 
 class RedisServices(Redis):
@@ -221,7 +223,7 @@ class RedisServices(Redis):
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
-            cls.instance = super(RedisServices, cls).__new__(cls)
+            cls.instance = super().__new__(cls)
         return cls.instance
 
     def __init__(self):
@@ -361,7 +363,7 @@ class RedisServices(Redis):
     async def create_custom_indices(self, for_space: str | None = None):
         redis_schemas: dict[str, list] = {}
         for i, index in enumerate(self.CUSTOM_INDICES):
-            if for_space and index["space"] != for_space or not isinstance(index["exclude_from_index"], list):
+            if (for_space and index["space"] != for_space) or not isinstance(index["exclude_from_index"], list):
                 continue
 
             exclude_from_index: list = index["exclude_from_index"]
@@ -807,7 +809,7 @@ class RedisServices(Redis):
         query_string = search
 
         redis_escape_chars = str.maketrans({":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})
-        if filters.get("query_policies", None) == []:
+        if filters.get("query_policies") == []:
             filters["query_policies"] = ["__NONE__"]
 
         for item in filters.items():
@@ -815,7 +817,7 @@ class RedisServices(Redis):
                 query_string += " @" + item[0] + ":{" + "|".join(item[1]).translate(redis_escape_chars) + "}"
             elif item[0] == "query_policies" and item[1] is not None:
                 query_string += f" ((@{item[0]}:{{" + "|".join(item[1]).translate(redis_escape_chars) + "})"
-                if filters.get("user_shortname", None) is not None:
+                if filters.get("user_shortname") is not None:
                     query_string += f" | (@view_acl:{{{filters['user_shortname']}}}) )"
                 else:
                     query_string += ")"

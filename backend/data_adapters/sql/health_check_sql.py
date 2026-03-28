@@ -2,21 +2,20 @@
 
 import argparse
 import asyncio
-
-from jsonschema import ValidationError
-from jsonschema.validators import Draft7Validator
 import json
 import time
-from sqlmodel import select, col, delete
-from adapter import SQLAdapter
-from data_adapters.adapter import data_adapter as db
-from data_adapters.sql.create_tables import Entries, Spaces
 from typing import Any
 
-from models import core, api
-from models.enums import ContentType, RequestType, ResourceType
-from api.managed.router import serve_request
+from adapter import SQLAdapter
+from jsonschema import ValidationError
+from jsonschema.validators import Draft7Validator
+from sqlmodel import col, delete, select
 
+from api.managed.router import serve_request
+from data_adapters.adapter import data_adapter as db
+from data_adapters.sql.create_tables import Entries, Spaces
+from models import api, core
+from models.enums import ContentType, RequestType, ResourceType
 
 duplicated_entries: dict = {}
 
@@ -207,4 +206,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     before_time = time.time()
     asyncio.run(main(args.type, args.space or "all", args.schemas))
-    print(f"total time: {'{:.2f}'.format(time.time() - before_time)} sec")
+    print(f"total time: {f'{time.time() - before_time:.2f}'} sec")

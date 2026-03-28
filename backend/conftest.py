@@ -1,6 +1,7 @@
-from main import app
-from httpx import AsyncClient, ASGITransport
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from main import app
 
 
 @pytest.fixture(scope="session")

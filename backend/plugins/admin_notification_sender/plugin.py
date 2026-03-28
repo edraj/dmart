@@ -1,13 +1,14 @@
 import json
 from sys import modules as sys_modules
 
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
 from models import api
-from models.core import Notification, NotificationData, PluginBase, Event, Translation
+from models.core import Event, Notification, NotificationData, PluginBase, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
 from utils.settings import settings
-from fastapi.logger import logger
-from data_adapters.adapter import data_adapter as db
 
 
 class Plugin(PluginBase):

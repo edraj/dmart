@@ -1,15 +1,15 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import argparse
 import asyncio
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import update
-from typing import Any
-from data_adapters.sql.adapter import SQLAdapter
-from data_adapters.sql.create_tables import Users, Roles, Permissions, Entries, Spaces, Attachments
-from utils.settings import settings
-import argparse
-from sqlmodel import select, col
+from sqlmodel import col, select
 
+from data_adapters.sql.adapter import SQLAdapter
+from data_adapters.sql.create_tables import Attachments, Entries, Permissions, Roles, Spaces, Users
+from utils.settings import settings
 
 """
 --space and --subpath are optional
@@ -47,9 +47,7 @@ async def handle_sql_modulation(args):
                     spaces = [Users]
                 elif args.subpath == "roles":
                     spaces = [Roles]
-                elif args.subpath == "permissions":
-                    spaces = [Permissions]
-                elif args.subpath == "~spaces":
+                elif args.subpath == "permissions" or args.subpath == "~spaces":
                     spaces = [Permissions]
                 else:
                     spaces = [Entries]

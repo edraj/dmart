@@ -2,40 +2,39 @@
 
 import json
 import re
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 import aiofiles
-from utils.async_request import AsyncRequest
-from utils.generate_email import generate_subject
-from utils.generate_email import generate_email_from_template
-from fastapi import APIRouter, Body, Query, Request, status, Depends, Response, Header
+import jwt as pyjwt
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, status
+from fastapi.logger import logger
+from fastapi.responses import JSONResponse
+from fastapi_sso.sso.base import OpenID, SSOBase
+from fastapi_sso.sso.facebook import FacebookSSO
+from fastapi_sso.sso.google import GoogleSSO
+from jwt import PyJWKClient
+
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType, UserType
+import utils.password_hashing as password_hashing
+import utils.regex as rgx
+import utils.repository as repository
 from data_adapters.adapter import data_adapter as db
+from languages.loader import languages
+from models.api import Status
+from models.enums import ActionType, ContentType, RequestType, ResourceType, UserType
 from utils.access_control import access_control
+from utils.async_request import AsyncRequest
+from utils.generate_email import generate_email_from_template, generate_subject
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any
-from utils.settings import settings
-import utils.repository as repository
+from utils.jwt import JWTBearer, decode_jwt, sign_jwt
 from utils.plugin_manager import plugin_manager
-import utils.password_hashing as password_hashing
-from models.api import Status
+from utils.settings import settings
 from utils.social_sso import get_apple_sso, get_facebook_sso, get_google_sso
-from .service import (
-    gen_alphanumeric,
-    get_otp_key,
-    send_email,
-    send_sms,
-    send_otp,
-    email_send_otp,
-    get_shortname_from_identifier,
-    check_user_validation,
-    set_user_profile,
-    update_user_payload,
-    get_otp_confirmation_email_or_msisdn,
-)
+
 from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
@@ -43,16 +42,19 @@ from .model.requests import (
     SocialMobileLoginRequest,
     UserLoginRequest,
 )
-import utils.regex as rgx
-from languages.loader import languages
-from fastapi_sso.sso.google import GoogleSSO
-from fastapi_sso.sso.facebook import FacebookSSO
-from fastapi_sso.sso.base import OpenID, SSOBase
-from fastapi.logger import logger
-from fastapi.responses import JSONResponse
-from datetime import datetime
-import jwt as pyjwt
-from jwt import PyJWKClient
+from .service import (
+    check_user_validation,
+    email_send_otp,
+    gen_alphanumeric,
+    get_otp_confirmation_email_or_msisdn,
+    get_otp_key,
+    get_shortname_from_identifier,
+    send_email,
+    send_otp,
+    send_sms,
+    set_user_profile,
+    update_user_payload,
+)
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -567,7 +569,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
                 and user.payload.content_type == ContentType.json
                 and (path / str(user.payload.body)).is_file()
             ):
-                async with aiofiles.open(path / str(user.payload.body), "r") as payload_file_content:
+                async with aiofiles.open(path / str(user.payload.body)) as payload_file_content:
                     attributes["payload"].body = json.loads(await payload_file_content.read())
 
     attributes["type"] = user.type
@@ -1393,7 +1395,7 @@ if settings.social_login_allowed:
                 )
 
             token_info = await res.json()
-        if token_info.get("aud") != settings.google_client_id: 
+        if token_info.get("aud") != settings.google_client_id:
             raise api.Exception(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 error=api.Error(
@@ -1518,7 +1520,7 @@ if settings.social_login_allowed:
                 error=api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_DATA,
-                    message=f"Invalid Apple ID token: {str(e)}",
+                    message=f"Invalid Apple ID token: {e!s}",
                 ),
             )
 

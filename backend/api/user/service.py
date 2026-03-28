@@ -1,13 +1,16 @@
 import asyncio
+import json
 import os
 import secrets
 import string
 import time
-import json
-import aiofiles
 from email.message import EmailMessage
 
+import aiofiles
 import aiosmtplib
+from fastapi import status
+from fastapi.logger import logger
+
 from data_adapters.adapter import data_adapter as db
 from models import core
 from models.api import Error, Exception
@@ -16,9 +19,6 @@ from utils import password_hashing
 from utils.async_request import AsyncRequest
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
-from fastapi.logger import logger
-from fastapi import status
-
 
 MANAGEMENT_SPACE: str = settings.management_space
 USERS_SUBPATH: str = "users"
@@ -283,7 +283,7 @@ async def update_user_payload(profile, user):
                 path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
                 file_path = path / str(user.payload.body)
                 if file_path.is_file():
-                    async with aiofiles.open(file_path, "r") as f:
+                    async with aiofiles.open(file_path) as f:
                         content = await f.read()
                         if content:
                             existing_body = json.loads(content)

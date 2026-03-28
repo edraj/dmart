@@ -1,1 +1,26 @@
 line-length = 128
+target-version = "py311"
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort (import ordering)
+    "UP",     # pyupgrade (modernize syntax)
+    "B",      # flake8-bugbear (common bugs)
+    "C4",     # flake8-comprehensions (unnecessary list/dict calls)
+    "SIM",    # flake8-simplify (simplifiable conditions)
+    "RUF",    # ruff-specific rules
+    "ASYNC",  # flake8-async (async anti-patterns)
+]
+ignore = [
+    "E501",   # line too long (handled by line-length)
+    "UP007",  # use X | Y for union types (keep Optional for compatibility)
+    "B008",   # function call in default argument (needed for FastAPI Depends)
+    "RUF012", # mutable class variable (Pydantic handles this)
+]
+
+[lint.per-file-ignores]
+"pytests/*" = ["S101"]
+"loadtest/*" = ["S101"]

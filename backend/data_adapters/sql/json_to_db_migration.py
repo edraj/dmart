@@ -1,17 +1,18 @@
-from datetime import datetime
-from data_adapters.sql.adapter import SQLAdapter
-from utils.settings import settings
 import asyncio
 import hashlib
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from data_adapters.sql.adapter import SQLAdapter
+from data_adapters.sql.create_tables import Attachments, Entries, Histories, Permissions, Roles, Spaces, Users, generate_tables
+from models.enums import ContentType, ResourceType
 from utils.query_policies_helper import generate_query_policies
-from models.enums import ResourceType, ContentType
-from data_adapters.sql.create_tables import Entries, Users, Attachments, Roles, Permissions, Spaces, generate_tables, Histories
+from utils.settings import settings
 
 
 async def save_health_check_entry():
@@ -123,7 +124,7 @@ async def process_directory(root, dirs, space_name, subpath):
         for file in os.listdir(os.path.join(root, dir)):
             if not file.startswith("meta"):
                 if file == "history.jsonl":
-                    lines = open(os.path.join(root, dir, file), "r").readlines()
+                    lines = open(os.path.join(root, dir, file)).readlines()
                     for line in lines:
                         history = None
                         try:

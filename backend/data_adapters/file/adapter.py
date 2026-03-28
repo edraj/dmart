@@ -1,62 +1,64 @@
 import io
-import shutil
-from copy import copy
-from shutil import copy2 as copy_file
-from typing import Type, Any, Tuple
+import json
 import os
+import shutil
 import sys
+from copy import copy
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from pathlib import Path as FSPath
+from shutil import copy2 as copy_file
 from sys import modules as sys_modules
+from typing import Any
+
+import aiofiles
+from fastapi import status
 from fastapi.logger import logger
+from jsonschema import Draft7Validator
 from redis.commands.search.field import TextField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-from datetime import datetime
-import aiofiles
-from pathlib import Path
-from data_adapters.file.adapter_helpers import (
-    serve_query_space,
-    serve_query_search,
-    serve_query_subpath,
-    serve_query_counters,
-    serve_query_tags,
-    serve_query_random,
-    serve_query_history,
-    serve_query_events,
-    serve_query_aggregation,
-    get_record_from_redis_doc,
-)
-from data_adapters.helpers import trans_magic_words
-from models.api import Exception as API_Exception, Error as API_Error
-import models.core as core
-from utils import regex
-from data_adapters.file.custom_validations import get_schema_path
-from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
-from models.enums import ContentType, ResourceType, LockAction
+from starlette.datastructures import UploadFile
 
+import models.api as api
+import models.core as core
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.file.adapter_helpers import (
+    get_record_from_redis_doc,
+    serve_query_aggregation,
+    serve_query_counters,
+    serve_query_events,
+    serve_query_history,
+    serve_query_random,
+    serve_query_search,
+    serve_query_space,
+    serve_query_subpath,
+    serve_query_tags,
+)
+from data_adapters.file.custom_validations import get_schema_path
+from data_adapters.file.redis_services import RedisServices
+from data_adapters.helpers import trans_magic_words
+from models.api import Error as API_Error
+from models.api import Exception as API_Exception
+from models.enums import ContentType, LockAction, ResourceType
+from utils import regex
 from utils.helpers import (
     arr_remove_common,
-    read_jsonl_file,
-    snake_case,
     camel_case,
-    flatten_list_of_dicts_in_dict,
     flatten_dict,
-    resolve_schema_references,
+    flatten_list_of_dicts_in_dict,
     process_jsonl_file,
+    read_jsonl_file,
+    resolve_schema_references,
+    snake_case,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from data_adapters.file.redis_services import RedisServices
 from utils.password_hashing import hash_password
 from utils.plugin_manager import plugin_manager
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN, SPACES_PATTERN
 from utils.settings import settings
-from functools import lru_cache
-from jsonschema import Draft7Validator
-from starlette.datastructures import UploadFile
-from pathlib import Path as FSPath
-import models.api as api
-from fastapi import status
-import json
 
 
 @lru_cache(maxsize=128)
@@ -178,17 +180,17 @@ class FileAdapter(BaseDataAdapter):
         if not meta_path.is_dir():
             return total, locators
 
-        path_iterator = os.scandir(meta_path)
-        for entry in path_iterator:
-            if not entry.is_dir():
-                continue
+        with os.scandir(meta_path) as path_iterator:
+            for entry in path_iterator:
+                if not entry.is_dir():
+                    continue
 
-            subpath_iterator = os.scandir(entry)
-            locators, total = locator_query_path_sub_folder(locators, query, subpath_iterator, total)
+                with os.scandir(entry) as subpath_iterator:
+                    locators, total = locator_query_path_sub_folder(locators, query, subpath_iterator, total)
 
         # Get all matching sub folders
-        subfolders_iterator = os.scandir(path)
-        locators, total = locator_query_sub_folder(locators, query, subfolders_iterator, total)
+        with os.scandir(path) as subfolders_iterator:
+            locators, total = locator_query_sub_folder(locators, query, subfolders_iterator, total)
 
         return total, locators
 
@@ -200,7 +202,7 @@ class FileAdapter(BaseDataAdapter):
     ):
         result = (settings.spaces_folder / space_name / subpath / shortname).resolve()
         spaces_root = settings.spaces_folder.resolve()
-        if not str(result).startswith(str(spaces_root)):
+        if not result.is_relative_to(spaces_root):
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
@@ -243,7 +245,7 @@ class FileAdapter(BaseDataAdapter):
         """Ensure the resolved path stays within the spaces folder to prevent directory traversal."""
         resolved = path.resolve()
         spaces_root = settings.spaces_folder.resolve()
-        if not str(resolved).startswith(str(spaces_root) + os.sep) and resolved != spaces_root:
+        if not resolved.is_relative_to(spaces_root):
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=api.Error(
@@ -258,7 +260,7 @@ class FileAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
@@ -293,7 +295,7 @@ class FileAdapter(BaseDataAdapter):
         self,
         space_name: str,
         subpath: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -316,7 +318,7 @@ class FileAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild | None:  # type: ignore
@@ -326,7 +328,7 @@ class FileAdapter(BaseDataAdapter):
         except Exception as _:
             return None
 
-    async def query(self, query: api.Query, user_shortname: str | None = None) -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
         records: list[core.Record] = []
         total: int = 0
 
@@ -549,7 +551,7 @@ class FileAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild:
@@ -574,7 +576,7 @@ class FileAdapter(BaseDataAdapter):
         path /= filename
         content = ""
         try:
-            async with aiofiles.open(path, "r") as file:
+            async with aiofiles.open(path) as file:
                 content = await file.read()
                 return class_type.model_validate_json(content)
         except Exception as e:
@@ -585,7 +587,7 @@ class FileAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         filename: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ):
         """Load a Meta class payload file"""
@@ -938,7 +940,7 @@ class FileAdapter(BaseDataAdapter):
         src_shortname: str,
         dest_subpath: str,
         dest_shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
     ):
 
         meta_obj = await self.load(
@@ -1091,7 +1093,7 @@ class FileAdapter(BaseDataAdapter):
             case LockAction.fetch:
                 async with RedisServices() as redis_services:
                     lock_payload = await redis_services.get_lock_doc(space_name, subpath, shortname)
-                    return dict(lock_payload)
+                    return dict(lock_payload) if lock_payload else None
             case LockAction.unlock:
                 async with RedisServices() as redis_services:
                     await redis_services.delete_lock_doc(space_name, subpath, shortname)
@@ -1147,7 +1149,7 @@ class FileAdapter(BaseDataAdapter):
 
                     resource_class = getattr(sys.modules["models.core"], camel_case(attach_resource_name))
                     resource_obj = None
-                    async with aiofiles.open(attachments_file, "r") as meta_file:
+                    async with aiofiles.open(attachments_file) as meta_file:
                         try:
                             resource_obj = resource_class.model_validate_json(await meta_file.read())
                         except Exception as e:
@@ -1156,7 +1158,7 @@ class FileAdapter(BaseDataAdapter):
                     resource_record_obj = resource_obj.to_record(subpath, attach_shortname, include_fields)
                     if is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
                         async with aiofiles.open(
-                            f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
+                            f"{attachment_entry.path}/{resource_obj.payload.body}"
                         ) as payload_file_content:
                             resource_record_obj.attributes["payload"].body = json.loads(await payload_file_content.read())
 
@@ -1172,7 +1174,7 @@ class FileAdapter(BaseDataAdapter):
 
             return attachments_dict
         except Exception as e:
-            print(e)
+            logger.error(f"Failed to get entry attachments: {e}")
             return {}
 
     async def get_spaces(self) -> dict:
@@ -1196,7 +1198,7 @@ class FileAdapter(BaseDataAdapter):
         if not folder_meta_path.is_file():
             return True
 
-        async with aiofiles.open(folder_meta_path, "r") as file:
+        async with aiofiles.open(folder_meta_path) as file:
             content = await file.read()
         folder_meta = json.loads(content)
 
@@ -1217,7 +1219,7 @@ class FileAdapter(BaseDataAdapter):
                     unique_key = unique_key.replace("_unescaped", "")
                 if unique_key.endswith("_replace_specials"):
                     unique_key = unique_key.replace("_replace_specials", "")
-                if not entry_dict_flattened.get(unique_key, None):
+                if not entry_dict_flattened.get(unique_key):
                     continue
 
                 redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
@@ -1446,7 +1448,7 @@ class FileAdapter(BaseDataAdapter):
     async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
-    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         async with RedisServices() as redis:
             return 1, await redis.get_key(f"user_session:{user_shortname}")
 
@@ -1544,7 +1546,7 @@ class FileAdapter(BaseDataAdapter):
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
         user_meta: core.User = await self.load_user_meta(user_shortname)
-        user_associated_roles = user_meta.roles
+        user_associated_roles = list(user_meta.roles)
         user_associated_roles.append("logged_in")
         async with RedisServices() as redis_services:
             roles_search = await redis_services.search(
@@ -1604,11 +1606,11 @@ class FileAdapter(BaseDataAdapter):
             user_permissions: dict = {}
 
             user_roles = await self.get_user_roles(user_shortname)
+            permission_world_record = await self.load_or_none(
+                settings.management_space, "permissions", "world", core.Permission
+            )
             for _, role in user_roles.items():
                 role_permissions = await self.get_role_permissions(role)
-                permission_world_record = await self.load_or_none(
-                    settings.management_space, "permissions", "world", core.Permission
-                )
                 if permission_world_record:
                     role_permissions.append(permission_world_record)
 

@@ -3,18 +3,19 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from typing import Sequence
+from collections.abc import Sequence
 
-from sqlalchemy import URL, select, update as sa_update
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import URL, select
+from sqlalchemy import update as sa_update
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 # AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import col
 
-from utils.settings import settings
-from utils.query_policies_helper import generate_query_policies
 from data_adapters.sql.create_tables import Entries
+from utils.query_policies_helper import generate_query_policies
+from utils.settings import settings
 
 
 async def update_all_entries(batch_size: int = 1000) -> int:

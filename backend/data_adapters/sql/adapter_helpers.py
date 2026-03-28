@@ -4,11 +4,11 @@ from pathlib import Path
 
 import models.api as api
 import models.core as core
+from data_adapters.sql.create_tables import Aggregated, Entries, Histories, Permissions, Roles, Spaces, Users
 from models.enums import QueryType
-from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Users, Spaces, Aggregated
 from utils.helpers import (
-    str_to_datetime,
     process_jsonl_file,
+    str_to_datetime,
 )
 from utils.settings import settings
 
@@ -267,10 +267,7 @@ def parse_search_string(string):
         if match:
             potential_op = match.group(1)
             potential_val = match.group(2)
-            if potential_op == "!":
-                comparison_operator = potential_op
-                value = potential_val
-            elif re.match(r"^-?\d+(?:\.\d+)?$", potential_val):
+            if potential_op == "!" or re.match(r"^-?\d+(?:\.\d+)?$", potential_val):
                 comparison_operator = potential_op
                 value = potential_val
 
@@ -391,7 +388,7 @@ async def events_query(query: api.Query, user_shortname: str | None = None) -> t
             continue
 
         if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-            break
+            continue
 
         if not await access_control.check_access(
             user_shortname=str(user_shortname),
@@ -422,7 +419,7 @@ def set_results_from_aggregation(query, item, results, idx):
 
     results[idx] = Aggregated.model_validate(item).to_record(
         query.subpath,
-        (str(getattr(item, "shortname")) if hasattr(item, "shortname") and isinstance(item.shortname, str) else "/"),
+        (str(item.shortname) if hasattr(item, "shortname") and isinstance(item.shortname, str) else "/"),
         extra=extra,
     )
 

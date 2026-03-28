@@ -1,42 +1,41 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-import json
 import asyncio
-import logging
 import base64
 import datetime
 import ipaddress
-from typing import Any, Dict, List, cast, Optional
+import json
+import logging
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
-from fastapi import FastAPI, Body, status, WebSocket, WebSocketDisconnect
-from fastapi.logger import logger
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pywebtransport import ServerApp, WebTransportSession, ServerConfig  # type: ignore
-from pywebtransport.server.middleware import create_logging_middleware  # type: ignore
-from pywebtransport.events import Event  # type: ignore
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
 from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
+from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi.logger import logger
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+from pywebtransport import ServerApp, ServerConfig, WebTransportSession  # type: ignore
+from pywebtransport.events import Event  # type: ignore
+from pywebtransport.server.middleware import create_logging_middleware  # type: ignore
 
-from utils.jwt import decode_jwt
-from utils.settings import settings
+from models.enums import ActionType, ResourceType
+from models.enums import Status as ResponseStatus
 from utils.access_control import access_control
-from models.enums import ActionType, ResourceType, Status as ResponseStatus
+from utils.jwt import decode_jwt
 from utils.logger import logging_schema
-
+from utils.settings import settings
 
 all_MKW = "__ALL__"
 
 class WebTransportConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: Dict[str, List[Any]] = {}
-        self.channels: Dict[str, List[str]] = {}
+        self.active_connections: dict[str, list[Any]] = {}
+        self.channels: dict[str, list[str]] = {}
 
     async def connect(self, stream, user_shortname: str):
         if user_shortname not in self.active_connections:
@@ -53,7 +52,7 @@ class WebTransportConnectionManager:
                     self.active_connections[user_shortname].remove(stream_to_remove)
                 if not self.active_connections[user_shortname]:
                     del self.active_connections[user_shortname]
-        
+
         if user_shortname not in self.active_connections:
             self.remove_all_subscriptions(user_shortname)
 
@@ -79,7 +78,7 @@ class WebTransportConnectionManager:
     async def broadcast_message(self, message: str, channel_name: str):
         if channel_name not in self.channels:
             return False
-            
+
         results = []
         for user_shortname in self.channels[channel_name]:
             results.append(await self.send_message(message, user_shortname))
@@ -120,7 +119,7 @@ class WebTransportConnectionManager:
     async def channel_subscribe(self, user_shortname: str, msg_json: dict):
         space_name = msg_json.get("space_name")
         subpath = msg_json.get("subpath")
-        
+
         if not space_name or not subpath:
             return False, "space_name and subpath are required"
 
@@ -135,7 +134,7 @@ class WebTransportConnectionManager:
         self.channels.setdefault(channel_name, [])
         if user_shortname not in self.channels[channel_name]:
             self.channels[channel_name].append(user_shortname)
-        
+
         subscribed_message = json.dumps({
             "type": "notification_subscription",
             "message": {
@@ -146,7 +145,7 @@ class WebTransportConnectionManager:
         await self.send_message(subscribed_message, user_shortname)
         return True, "Subscribed successfully"
 
-    async def channel_unsubscribe(self, user_shortname: str, msg_json: Optional[dict] = None):
+    async def channel_unsubscribe(self, user_shortname: str, msg_json: dict | None = None):
         if msg_json and {"space_name", "subpath"}.issubset(msg_json):
             channel_name = self.generate_channel_name(msg_json)
             if channel_name in self.channels and user_shortname in self.channels[channel_name]:
@@ -155,7 +154,7 @@ class WebTransportConnectionManager:
                     del self.channels[channel_name]
         else:
             self.remove_all_subscriptions(user_shortname)
-            
+
         unsubscribed_message = json.dumps({
             "type": "notification_unsubscribe",
             "message": {
@@ -188,18 +187,18 @@ def generate_wt_cert(certfile, keyfile, hostname="localhost"):
         ec.SECP256R1(),
         backend=default_backend()
     )
-    
+
     subject = issuer = x509.Name([
         x509.NameAttribute(NameOID.COMMON_NAME, hostname),
     ])
-    
+
     san = [
         x509.DNSName(hostname),
         x509.DNSName("localhost"),
         x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
         x509.IPAddress(ipaddress.IPv6Address("::1")),
     ]
-    
+
     cert = x509.CertificateBuilder().subject_name(
         subject
     ).issuer_name(
@@ -209,22 +208,22 @@ def generate_wt_cert(certfile, keyfile, hostname="localhost"):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+        datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)
     ).not_valid_after(
         # WebTransport requires validity period < 14 days for self-signed certs
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=12)
+        datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=12)
     ).add_extension(
         x509.SubjectAlternativeName(san),
         critical=False,
     ).sign(key, hashes.SHA256(), default_backend())
-    
+
     with open(keyfile, "wb") as f:
         f.write(key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption(),
         ))
-        
+
     with open(certfile, "wb") as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
@@ -238,7 +237,7 @@ async def handle_session(session: WebTransportSession, token: str):
         error_msg = str(e)
         err_obj = getattr(e, 'error', None)
         if err_obj is not None and hasattr(err_obj, 'message'):
-            error_msg = getattr(err_obj, 'message')
+            error_msg = err_obj.message
         print(f"WebTransport authentication failed for token {token[:10]}...: {error_msg}")
         await session.reject(status_code=401)
         return
@@ -253,34 +252,34 @@ async def handle_session(session: WebTransportSession, token: str):
     except Exception as e:
         print(f"Error getting stream for {user_shortname}: {e}")
         return
-        
+
     if not main_stream:
         print(f"No bidirectional stream established for {user_shortname} before session end/timeout")
         return
 
     await manager.connect(main_stream, user_shortname)
-    
+
     try:
         buffer = bytearray()
         while True:
             data = await main_stream.read()
             if not data:
                 break
-            
+
             buffer.extend(data)
             if len(buffer) > 1024 * 1024:
                 print(f"Buffer overflow for {user_shortname}")
                 break
-                
+
             while b'\n' in buffer:
                 line, buffer = buffer.split(b'\n', 1)
                 if not line.strip():
                     continue
-                
+
                 try:
                     msg_json = json.loads(line.decode())
                     msg_type = msg_json.get("type")
-                    
+
                     if msg_type == "notification_subscription":
                         await manager.channel_subscribe(user_shortname, msg_json)
                     elif msg_type == "notification_unsubscribe":
@@ -301,7 +300,7 @@ async def handle_session(session: WebTransportSession, token: str):
                         if channel_name:
                             is_eligible = await manager.check_eligibility(user_shortname, msg_json.get("space_name"), msg_json.get("subpath"))
                             is_subscribed = channel_name in manager.channels and user_shortname in manager.channels[channel_name]
-                            
+
                             if is_eligible and is_subscribed:
                                 chat_message = json.dumps({
                                     "type": "chat_message",
@@ -314,7 +313,7 @@ async def handle_session(session: WebTransportSession, token: str):
                                 logger.error(f"Unauthorized chat message from {user_shortname} to {channel_name} (eligible={is_eligible}, subscribed={is_subscribed})")
                 except Exception as e:
                     logger.error(f"Error processing message from {user_shortname}: {e}")
-                
+
     except Exception as e:
         logger.error(f"Connection error for {user_shortname}: {e}")
     finally:
@@ -330,7 +329,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         error_msg = str(e)
         err_obj = getattr(e, 'error', None)
         if err_obj is not None and hasattr(err_obj, 'message'):
-            error_msg = getattr(err_obj, 'message')
+            error_msg = err_obj.message
         logger.error(f"WebSocket authentication failed for token {token[:10]}...: {error_msg}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -346,7 +345,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     continue
                 msg_json = json.loads(line)
                 msg_type = msg_json.get("type")
-                
+
                 if msg_type == "notification_subscription":
                     await manager.channel_subscribe(user_shortname, msg_json)
                 elif msg_type == "notification_unsubscribe":
@@ -428,11 +427,11 @@ async def service_info():
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "status": ResponseStatus.success, 
+            "status": ResponseStatus.success,
             "data": {
                 "connected_clients": list(manager.active_connections.keys()),
                 "channels": manager.channels
-            } 
+            }
         }
     )
 
@@ -458,7 +457,7 @@ async def main():
 
     if "loggers" not in logging_schema:
         logging_schema["loggers"] = {}
-        
+
     logging_schema["loggers"]["pywebtransport"] = {
         "handlers": settings.log_handlers,
         "level": "DEBUG",

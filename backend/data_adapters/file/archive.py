@@ -1,17 +1,18 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 
+import argparse
 import asyncio
-from datetime import datetime
 import json
-from time import time
 import os
 import shutil
 import sys
-import argparse
-from utils.helpers import camel_case
+from collections.abc import Awaitable
+from datetime import datetime
+from time import time
+
 from data_adapters.file.redis_services import RedisServices
+from utils.helpers import camel_case
 from utils.settings import settings
-from typing import Awaitable
 
 
 def redis_doc_to_meta(doc: dict):

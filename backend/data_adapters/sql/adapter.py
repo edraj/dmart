@@ -1,75 +1,76 @@
+import ast
 import asyncio
+import hashlib
+import io
 import json
 import os
+import shutil
 import sys
 import time
-import hashlib
 from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Type, Tuple
+from sys import modules as sys_modules
+from typing import Any
 from uuid import uuid4
-import ast
+
 from fastapi import status
 from fastapi.logger import logger
-from sqlalchemy import literal_column, or_
-from sqlalchemy.orm import sessionmaker, defer
-from sqlmodel import Session, select, col, delete, update, Integer, Float, Boolean, func, text
-from sqlalchemy import String, cast, bindparam, Text
-import io
-import shutil
-from sys import modules as sys_modules
+from jsonschema import Draft7Validator
+from sqlalchemy import URL, String, Text, bindparam, cast, literal_column, or_
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import defer, sessionmaker
+from sqlmodel import Boolean, Float, Integer, Session, col, delete, func, select, text, update
+from starlette.datastructures import UploadFile
+
 import models.api as api
-from models.api import Exception as API_Exception, Error as API_Error
 import models.core as core
-from models.enums import QueryType, LockAction, ResourceType, SortType
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.helpers import get_nested_value, trans_magic_words
+from data_adapters.sql.adapter_helpers import (
+    events_query,
+    get_next_date_value,
+    is_date_time_value,
+    # build_query_filter_for_allowed_field_values
+    mysql_aggregate_functions,
+    parse_search_string,
+    postgres_aggregate_functions,
+    set_results_from_aggregation,
+    set_table_for_query,
+    sqlite_aggregate_functions,
+    subpath_checker,
+    transform_keys_to_sql,
+)
 from data_adapters.sql.create_tables import (
+    OTP,
+    Attachments,
     Entries,
     Histories,
+    Invitations,
+    Locks,
     Permissions,
     Roles,
-    Users,
-    Spaces,
-    Attachments,
-    Locks,
     Sessions,
-    Invitations,
+    Spaces,
     URLShorts,
-    OTP,
     UserPermissionsCache,
+    Users,
 )
+from models.api import Error as API_Error
+from models.api import Exception as API_Exception
+from models.enums import LockAction, QueryType, ResourceType, SortType
 from utils.helpers import (
     arr_remove_common,
-    get_removed_items,
     camel_case,
+    get_removed_items,
     resolve_schema_references,
 )
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
 from utils.password_hashing import hash_password, verify_password
-from utils.query_policies_helper import get_user_query_policies, generate_query_policies
+from utils.query_policies_helper import generate_query_policies, get_user_query_policies
 from utils.settings import settings
-from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
-from data_adapters.sql.adapter_helpers import (
-    set_results_from_aggregation,
-    set_table_for_query,
-    events_query,
-    subpath_checker,
-    parse_search_string,
-    sqlite_aggregate_functions,
-    mysql_aggregate_functions,
-    postgres_aggregate_functions,
-    transform_keys_to_sql,
-    get_next_date_value,
-    is_date_time_value,
-    # build_query_filter_for_allowed_field_values
-)
-from data_adapters.helpers import get_nested_value, trans_magic_words
-from jsonschema import Draft7Validator
-from starlette.datastructures import UploadFile
-from sqlalchemy import URL
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
 def query_attachment_aggregation(subpath):
@@ -266,7 +267,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         if not query.search.startswith("@") and not query.search.startswith("-"):
             try:
                 table_columns = {c.name: c for c in table.__table__.columns}  # type: ignore[attr-defined]
-                p_parts = [f"COALESCE({col_name}::text, '')" for col_name in table_columns.keys()]
+                p_parts = [f"COALESCE({col_name}::text, '')" for col_name in table_columns]
                 p = " || ' ' || ".join(p_parts) if p_parts else "''"
             except Exception:
                 p = "shortname || ' ' || tags || ' ' || displayname || ' ' || description || ' ' || payload"
@@ -1048,7 +1049,7 @@ class SQLAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         return (Path(), "")
@@ -1102,12 +1103,15 @@ class SQLAdapter(BaseDataAdapter):
         try:
             yield async_session
             await async_session.commit()
+        except Exception:
+            await async_session.rollback()
+            raise
         finally:
             await async_session.close()  # type: ignore
 
     def get_table(
-        self, class_type: Type[MetaChild]
-    ) -> Type[Roles] | Type[Permissions] | Type[Users] | Type[Spaces] | Type[Locks] | Type[Attachments] | Type[Entries]:
+        self, class_type: type[MetaChild]
+    ) -> type[Roles] | type[Permissions] | type[Users] | type[Spaces] | type[Locks] | type[Attachments] | type[Entries]:
         match class_type:
             case core.Role:
                 return Roles
@@ -1133,7 +1137,7 @@ class SQLAdapter(BaseDataAdapter):
         return Entries
 
     def get_base_model(
-        self, class_type: Type[MetaChild], data, update=None
+        self, class_type: type[MetaChild], data, update=None
     ) -> Roles | Permissions | Users | Spaces | Locks | Attachments | Entries:
         match class_type:
             case core.User:
@@ -1218,7 +1222,7 @@ class SQLAdapter(BaseDataAdapter):
         self,
         space_name: str,
         subpath: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -1244,7 +1248,7 @@ class SQLAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> Attachments | Entries | Locks | Permissions | Roles | Spaces | Users | None:
@@ -1357,7 +1361,7 @@ class SQLAdapter(BaseDataAdapter):
             except Exception as _:  # type: ignore
                 return None
 
-    async def query(self, query: api.Query, user_shortname: str | None = None) -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
         total: int
         results: list
 
@@ -1745,6 +1749,7 @@ class SQLAdapter(BaseDataAdapter):
             if getattr(sub_query, "jq_filter", None):
                 try:
                     import subprocess
+
                     from utils.helpers import jq_dict_parser
 
                     def _run_jq_subprocess() -> list:
@@ -1825,7 +1830,7 @@ class SQLAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild | None:
@@ -1848,7 +1853,7 @@ class SQLAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild:
@@ -1872,7 +1877,7 @@ class SQLAdapter(BaseDataAdapter):
         space_name: str,
         subpath: str,
         filename: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         """Load a Meta class payload file"""
@@ -2015,7 +2020,7 @@ class SQLAdapter(BaseDataAdapter):
                         resource_type=entity["resource_type"],
                         is_active=entity["is_active"],
                         owner_shortname=entity.get("owner_shortname", "dmart"),
-                        owner_group_shortname=entity.get("owner_group_shortname", None),
+                        owner_group_shortname=entity.get("owner_group_shortname"),
                     )
                 session.add(data)
                 try:
@@ -2159,7 +2164,7 @@ class SQLAdapter(BaseDataAdapter):
                     resource_type=result.resource_type,  # type: ignore
                     is_active=result.is_active,  # type: ignore
                     owner_shortname=result.owner_shortname,
-                    owner_group_shortname=result.owner_shortname,
+                    owner_group_shortname=getattr(result, "owner_group_shortname", None),
                 )
 
             if meta.__class__ is not core.Lock or not isinstance(result, Locks):
@@ -2422,7 +2427,7 @@ class SQLAdapter(BaseDataAdapter):
         src_shortname: str,
         dest_subpath: str,
         dest_shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
     ):
         pass
 
@@ -2525,6 +2530,15 @@ class SQLAdapter(BaseDataAdapter):
                     except Exception as _e:
                         logger.warning(f"Failed to reassign ownership to anonymous for user {meta.shortname}: {_e}")
 
+                if result is None:
+                    raise api.Exception(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        error=api.Error(
+                            type="db",
+                            code=InternalErrorCode.OBJECT_NOT_FOUND,
+                            message=f"Entry not found: {space_name}/{subpath}/{meta.shortname}",
+                        ),
+                    )
                 await session.delete(result)
                 if meta.__class__ == core.Space:
                     statement2 = delete(Attachments).where(col(Attachments.space_name) == space_name)
@@ -2673,7 +2687,7 @@ class SQLAdapter(BaseDataAdapter):
             print("[!set_sql_user_session]", e)
             return False
 
-    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         async with self.get_session() as session:
             statement = select(Sessions).where(col(Sessions.shortname) == user_shortname)
 

@@ -1,33 +1,34 @@
 import hashlib
+import os
+import re
+import sys
 from re import sub as res_sub
+from typing import Any, Union
 from uuid import uuid4
+
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from models.enums import AttachmentType, ContentType, ResourceType, TaskType, PublicSubmitResourceType, QueryType
-from data_adapters.adapter import data_adapter as db
+from fastapi.responses import JSONResponse
+from starlette.responses import FileResponse, StreamingResponse
+
 import models.api as api
-from utils.helpers import camel_case
-from utils.internal_error_code import InternalErrorCode
-import utils.regex as regex
 import models.core as core
+import utils.regex as regex
+import utils.repository as repository
 from api.managed.utils import (
+    create_or_update_resource_with_payload_handler,
     get_mime_type,
     get_resource_content_type_from_payload_content_type,
-    create_or_update_resource_with_payload_handler,
     iter_bytesio,
 )
-from typing import Any, Union, Optional
-import sys
-import re
-import os
+from data_adapters.adapter import data_adapter as db
+from models.enums import AttachmentType, ContentType, PublicSubmitResourceType, QueryType, ResourceType, TaskType
 from utils.access_control import access_control
-import utils.repository as repository
+from utils.helpers import camel_case
+from utils.internal_error_code import InternalErrorCode
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
-from starlette.responses import FileResponse, StreamingResponse
-
 from utils.ticket_sys_utils import set_init_state_for_record
-from fastapi.responses import JSONResponse
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -128,7 +129,7 @@ async def retrieve_entry_meta(
 
     if resource_type is ResourceType.user:
         if hasattr(meta, "password"):
-            setattr(meta, "password", None)
+            meta.password = None
 
     attachments = {}
     entry_path = settings.spaces_folder / f"{space_name}/{subpath}/.dm/{shortname}"
@@ -461,7 +462,7 @@ async def create_entry(
         )
     )
 
-    content_obj: Optional[Union[core.Content, core.Ticket]] = None
+    content_obj: Union[core.Content, core.Ticket] | None = None
     if entry_resource_type == ResourceType.ticket:
         if workflow_shortname is None:
             raise api.Exception(
@@ -654,7 +655,6 @@ async def create_attachment(space_name: str, record: str = Form(...), payload_fi
 
 @router.post("/excute/{task_type}/{space_name}")
 async def excute(space_name: str, task_type: TaskType, record: core.Record):
-    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,

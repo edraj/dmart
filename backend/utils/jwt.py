@@ -1,14 +1,14 @@
 from time import time
-from typing import Optional, Any
-
-from fastapi import Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Any
 
 import jwt
+from fastapi import Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 import models.api as api
+from data_adapters.adapter import data_adapter as db
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
-from data_adapters.adapter import data_adapter as db
 
 
 def decode_jwt(token: str) -> dict[str, Any]:
@@ -53,7 +53,7 @@ class JWTBearer:
         auth_token: str | None = None
         try:
             # Handle token received in Auth header
-            credentials: Optional[HTTPAuthorizationCredentials] = await self.http_bearer.__call__(request)
+            credentials: HTTPAuthorizationCredentials | None = await self.http_bearer.__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 auth_token = credentials.credentials
 
@@ -94,7 +94,7 @@ class GetJWTToken:
 
     async def __call__(self, request: Request) -> str | None:
         try:
-            credentials: Optional[HTTPAuthorizationCredentials] = await self.http_bearer.__call__(request)
+            credentials: HTTPAuthorizationCredentials | None = await self.http_bearer.__call__(request)
             if credentials and credentials.scheme == "Bearer":
                 return credentials.credentials
         except Exception:

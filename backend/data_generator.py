@@ -2,10 +2,12 @@ import argparse
 import asyncio
 from pathlib import Path
 from uuid import uuid4
+
+from jsf import JSF  # type: ignore
+
+from data_adapters.adapter import data_adapter as db
 from models.core import Content, Payload
 from models.enums import ContentType
-from jsf import JSF  # type: ignore
-from data_adapters.adapter import data_adapter as db
 
 
 async def main(space: str, subpath: str, schema_path: str, num: int):

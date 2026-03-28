@@ -1,9 +1,10 @@
-import time
-from locust import HttpUser, between, task
 import os
+import subprocess
+import time
 from glob import glob
 from shutil import rmtree
-import subprocess
+
+from locust import HttpUser, between, task
 
 SPACE_NAME = "applications"
 BASE_PATH = os.path.dirname(os.getcwd())

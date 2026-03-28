@@ -1,8 +1,9 @@
 import asyncio
 import os
+
+from data_adapters.adapter import data_adapter as db
 from models.core import Folder
 from utils.settings import settings
-from data_adapters.adapter import data_adapter as db
 
 
 async def main() -> None:

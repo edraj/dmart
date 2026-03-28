@@ -1,4 +1,4 @@
-from models.core import PluginBase, Event
+from models.core import Event, PluginBase
 from utils.async_request import AsyncRequest
 from utils.settings import settings
 

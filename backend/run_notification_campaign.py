@@ -1,11 +1,11 @@
 import argparse
 import asyncio
-from importlib.util import find_spec, module_from_spec
 import sys
+from importlib.util import find_spec, module_from_spec
 
+from data_adapters.adapter import data_adapter as db
 from models.core import Content, Event
 from models.enums import ActionType
-from data_adapters.adapter import data_adapter as db
 from utils.settings import settings
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
@@ -31,7 +31,7 @@ def load_notification_plugin():
         return None
     module = module_from_spec(spec)
     sys.modules[module_name] = module
-    return getattr(module, "Plugin")()
+    return module.Plugin()
 
 
 async def main(space, subpath, shortname):

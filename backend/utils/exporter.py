@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
-from hashlib import blake2b, md5
+import copy
 import json
 import os
 import shutil
 import sys
-import copy
+from hashlib import blake2b, md5
+from pathlib import Path
+
 import jsonschema
 from aiofiles import open as aopen
-from pathlib import Path
 
 # from pydantic import config
 
@@ -53,7 +54,7 @@ def meta_path(space_path: Path, subpath: str, file_path: str, resource_type: str
 
 async def get_meta(*, space_path: Path, subpath: str, file_path: str, resource_type: str):
     meta_content = meta_path(space_path, subpath, file_path, resource_type)
-    async with aopen(meta_content, "r") as f:
+    async with aopen(meta_content) as f:
         return json.loads(await f.read())
 
 
@@ -144,7 +145,7 @@ async def extract(
 
     space_path = Path(f"{spaces_path}/{space}")
     subpath_schema_obj = None
-    with open(space_path / f"schema/{schema_shortname}.json", "r") as f:
+    with open(space_path / f"schema/{schema_shortname}.json") as f:
         subpath_schema_obj = json.load(f)
     input_subpath_schema_obj = copy.deepcopy(subpath_schema_obj)
 
@@ -189,7 +190,7 @@ async def extract(
             if payload_ts <= entries_since and meta_ts <= entries_since:
                 continue
 
-        async with aopen(os.path.join(path, file_name), "r") as f:
+        async with aopen(os.path.join(path, file_name)) as f:
             content = await f.read()
         try:
             payload = json.loads(content)
@@ -257,7 +258,7 @@ if __name__ == "__main__":
     # print(con)
 
     tasks = []
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         config_objs = json.load(f)
 
     for config_obj in config_objs:

@@ -1,8 +1,9 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 import json
-import subprocess
-import PyInstaller.__main__
 import os
+import subprocess
+
+import PyInstaller.__main__
 
 result, _ = subprocess.Popen(
     ["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE

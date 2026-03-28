@@ -1,25 +1,26 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 
 import argparse
-from copy import copy
+import asyncio
 import json
 import re
+import sys
 import traceback
+from copy import copy
+from multiprocessing import Pool
+
+from jsonschema.exceptions import ValidationError as SchemaValidationError
 
 import models.api as api
-from data_adapters.adapter import data_adapter as db
 import models.core as core
-import sys
-from models.enums import ContentType, ResourceType
-from utils.helpers import camel_case, divide_chunks
-from jsonschema.exceptions import ValidationError as SchemaValidationError
-from data_adapters.file.redis_services import RedisServices
-from data_adapters.file.adapter_helpers import generate_payload_string
-from utils.settings import settings
 import utils.regex as regex
-import asyncio
+from data_adapters.adapter import data_adapter as db
+from data_adapters.file.adapter_helpers import generate_payload_string
+from data_adapters.file.redis_services import RedisServices
+from models.enums import ContentType, ResourceType
 from utils.access_control import access_control
-from multiprocessing import Pool
+from utils.helpers import camel_case, divide_chunks
+from utils.settings import settings
 
 
 async def load_data_to_redis(space_name, subpath, allowed_resource_types) -> dict:

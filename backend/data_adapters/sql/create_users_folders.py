@@ -2,10 +2,10 @@ import asyncio
 
 from sqlmodel import select
 
+from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.sql.create_tables import Users
 from models.core import Folder
-from data_adapters.adapter import data_adapter as db
 
 
 async def main() -> None:

@@ -3,14 +3,15 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+import aiofiles
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
-import aiofiles
-from data_adapters.file.redis_services import RedisServices
-from models import core, api
-from utils import regex
 
-from utils.helpers import camel_case, alter_dict_keys, str_to_datetime, flatten_all, process_jsonl_file
+from data_adapters.file.redis_services import RedisServices
+from models import api, core
+from utils import regex
+from utils.helpers import alter_dict_keys, camel_case, flatten_all, process_jsonl_file, str_to_datetime
 from utils.internal_error_code import InternalErrorCode
 from utils.query_policies_helper import get_user_query_policies
 from utils.settings import settings
@@ -99,24 +100,24 @@ async def get_record_from_redis_doc(
         if not payload_doc_content and retrieve_json_payload and "payload_doc_id" in doc:
             payload_doc_content = await redis_services.get_payload_doc(doc["payload_doc_id"], doc["resource_type"])
 
-    meta_doc_content["created_at"] = datetime.fromtimestamp(meta_doc_content["created_at"])
-    meta_doc_content["updated_at"] = datetime.fromtimestamp(meta_doc_content["updated_at"])
-    resource_obj = resource_class.model_validate(meta_doc_content)
-    resource_base_record = resource_obj.to_record(
-        doc["subpath"],
-        meta_doc_content["shortname"],
-        [],
-    )
-
-    # Get lock data
-    if retrieve_lock_status:
-        locked_data = await redis_services.get_lock_doc(
-            space_name,
+        meta_doc_content["created_at"] = datetime.fromtimestamp(meta_doc_content["created_at"])
+        meta_doc_content["updated_at"] = datetime.fromtimestamp(meta_doc_content["updated_at"])
+        resource_obj = resource_class.model_validate(meta_doc_content)
+        resource_base_record = resource_obj.to_record(
             doc["subpath"],
-            doc["shortname"],
+            meta_doc_content["shortname"],
+            [],
         )
-        if locked_data:
-            resource_base_record.attributes["locked"] = locked_data
+
+        # Get lock data
+        if retrieve_lock_status:
+            locked_data = await redis_services.get_lock_doc(
+                space_name,
+                doc["subpath"],
+                doc["shortname"],
+            )
+            if locked_data:
+                resource_base_record.attributes["locked"] = locked_data
 
     # Get attachments
     entry_path = settings.spaces_folder / f"{space_name}/{doc['subpath']}/.dm/{meta_doc_content['shortname']}"
@@ -211,8 +212,8 @@ async def redis_query_aggregate(
 
 
 async def serve_query_space(db, query, logged_in_user):
-    from utils.access_control import access_control
     from models.enums import ResourceType
+    from utils.access_control import access_control
 
     records = []
     total = 0
@@ -336,7 +337,7 @@ async def serve_query_subpath_sorting(query, records):
 async def serve_query_subpath_check_payload(db, resource_base_record, path, resource_obj, query):
     payload_body = resource_base_record.attributes["payload"].body
     if not payload_body or isinstance(payload_body, str):
-        async with aiofiles.open(path / resource_obj.payload.body, "r") as payload_file_content:
+        async with aiofiles.open(path / resource_obj.payload.body) as payload_file_content:
             payload_body = json.loads(await payload_file_content.read())
 
     if query.validate_schema:
@@ -356,7 +357,7 @@ async def set_attachment_for_payload(db, path, folder_obj, folder_record, query,
         and isinstance(folder_obj.payload.body, str)
         and (path / folder_obj.payload.body).is_file()
     ):
-        async with aiofiles.open(path / folder_obj.payload.body, "r") as payload_file_content:
+        async with aiofiles.open(path / folder_obj.payload.body) as payload_file_content:
             folder_record.attributes["payload"].body = json.loads(await payload_file_content.read())
             if os.path.exists(meta_path / shortname):
                 folder_record.attachments = await db.get_entry_attachments(
@@ -408,7 +409,7 @@ async def serve_query_subpath(db, query, logged_in_user):
                         continue
 
                     resource_class = getattr(sys.modules["models.core"], camel_case(resource_name))
-                    async with aiofiles.open(str(one.path), "r") as meta_file:
+                    async with aiofiles.open(str(one.path)) as meta_file:
                         resource_obj = resource_class.model_validate_json(await meta_file.read())
 
                     if query.filter_tags and (
@@ -455,7 +456,7 @@ async def serve_query_subpath(db, query, logged_in_user):
                         and resource_obj.payload.content_type == core.ContentType.json
                         and (path / resource_obj.payload.body).is_file()
                     ):
-                        async with aiofiles.open(path / resource_obj.payload.body, "r") as payload_file_content:
+                        async with aiofiles.open(path / resource_obj.payload.body) as payload_file_content:
                             resource_base_record.attributes["payload"].body = json.loads(await payload_file_content.read())
 
                     if resource_obj.payload and resource_obj.payload.schema_shortname:
@@ -699,7 +700,7 @@ async def serve_query_events(query, logged_in_user):
                 continue
 
             if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-                break
+                continue
             from utils.access_control import access_control
 
             if not await access_control.check_access(
@@ -765,8 +766,7 @@ async def generate_payload_string(
     payload_string = ""
     # Remove system related attributes from payload
     for attr in RedisServices.SYS_ATTRIBUTES:
-        if attr in payload:
-            del payload[attr]
+        payload.pop(attr, None)
 
     # Generate direct payload string
     payload_values = set(flatten_all(payload).values())

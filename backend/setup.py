@@ -1,6 +1,7 @@
 import os
 import shutil
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,7 +25,7 @@ def parse_requirements(filename):
     path = os.path.join(BASE_DIR, filename)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Requirements file not found: {path}")
-    with open(path, "r") as f:
+    with open(path) as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 

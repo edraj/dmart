@@ -1,19 +1,19 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
 import json
 from contextlib import asynccontextmanager
-
 from typing import Any, cast
-from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
-from utils.jwt import decode_jwt
-import asyncio
-from hypercorn.config import Config
-from utils.logger import changeLogFile, logging_schema
-from utils.settings import settings
-from hypercorn.asyncio import serve
-from models.enums import Status as ResponseStatus
-from fastapi.responses import JSONResponse
-from fastapi.logger import logger
 
+from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi.logger import logger
+from fastapi.responses import JSONResponse
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+
+from models.enums import Status as ResponseStatus
+from utils.jwt import decode_jwt
+from utils.logger import change_log_file, logging_schema
+from utils.settings import settings
 
 all_MKW = "__ALL__"
 
@@ -183,7 +183,7 @@ async def main():
     config.bind = [f"{settings.listening_host}:{settings.websocket_port}"]
     config.backlog = 200
 
-    changeLogFile(settings.ws_log_file)
+    change_log_file(settings.ws_log_file)
     config.logconfig_dict = logging_schema
     config.errorlog = logger
     config.accesslog = logger

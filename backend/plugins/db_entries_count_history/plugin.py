@@ -2,12 +2,13 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.logger import logger
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Any
 
 from utils.settings import settings
 
@@ -18,7 +19,7 @@ CONFIG_PATH = Path(__file__).parent / "config.json"
 
 def _load_config():
     try:
-        with open(CONFIG_PATH, "r") as f:
+        with open(CONFIG_PATH) as f:
             return json.load(f)
     except Exception as e:
         logger.error(f"db_entries_count_history: Failed to load config.json: {e}")

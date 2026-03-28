@@ -3,19 +3,19 @@ import copy
 import sys
 from datetime import datetime
 from typing import Any
-from uuid import UUID
-from sqlalchemy import LargeBinary, text, URL
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
-from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
-from sqlmodel._compat import SQLModelConfig  # type: ignore
-from utils.helpers import camel_case, remove_none_dict
-from uuid import uuid4
-from models import core
-from models.enums import ResourceType, UserType, Language
-from utils import regex
-from utils.settings import settings
-import utils.password_hashing as password_hashing
+from uuid import UUID, uuid4
 
+from sqlalchemy import URL, LargeBinary, text
+from sqlalchemy.dialects.postgresql import ARRAY, HSTORE, JSONB, TEXT
+from sqlmodel import Column, Enum, Field, SQLModel, UniqueConstraint, create_engine
+from sqlmodel._compat import SQLModelConfig  # type: ignore
+
+import utils.password_hashing as password_hashing
+from models import core
+from models.enums import Language, ResourceType, UserType
+from utils import regex
+from utils.helpers import camel_case, remove_none_dict
+from utils.settings import settings
 
 metadata = SQLModel.metadata
 
@@ -142,7 +142,7 @@ class Metas(Unique, table=False):
 
         local_prop_list = ["uuid", "resource_type", "shortname", "subpath"]
         return core.Record(
-            resource_type=getattr(self, "resource_type")
+            resource_type=self.resource_type
             if hasattr(self, "resource_type")
             else get_model_from_sql_instance(self.__class__.__name__).__name__.lower(),
             uuid=self.uuid,
@@ -329,11 +329,12 @@ class Aggregated(SQLModel, table=False):
         include: list[str] = [],
         extra: dict[str, Any] | None = None,
     ) -> AggregatedRecord:
-        record_fields = {
-            "resource_type": getattr(self, "resource_type") if hasattr(self, "resource_type") else None,
-            "uuid": getattr(self, "uuid") if hasattr(self, "uuid") else None,
+        record_fields: dict[str, Any]= {
+            "resource_type": self.resource_type if hasattr(self, "resource_type") else None,
+            "uuid": self.uuid if hasattr(self, "uuid") else None,
             "shortname": shortname,
             "subpath": subpath,
+            "attributes": {}
         }
 
         attributes = {}

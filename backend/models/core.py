@@ -1,35 +1,36 @@
 import copy
 import json
-from abc import ABC, abstractmethod
-from pydantic import BaseModel, ConfigDict
-from typing import Any, Dict, TypeVar
-from pydantic.types import UUID4 as UUID
-from uuid import uuid4
-from pydantic import Field
-from datetime import datetime
 import sys
+from abc import ABC, abstractmethod
+from datetime import datetime
+from hashlib import sha256 as hashlib_sha256
+from typing import Any, TypeVar
+from uuid import uuid4
+
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.types import UUID4 as UUID
+
+import utils.password_hashing as password_hashing
+import utils.regex as regex
 from models.enums import (
     ActionType,
+    ConditionType,
     ContentType,
+    EventListenTime,
     Language,
     NotificationPriority,
     NotificationType,
+    PluginType,
     ResourceType,
     UserType,
-    ConditionType,
-    PluginType,
-    EventListenTime,
 )
 from utils.helpers import camel_case, remove_none_dict, snake_case
-import utils.regex as regex
 from utils.settings import settings
-import utils.password_hashing as password_hashing
-from hashlib import sha256 as hashlib_sha256
 
 KeyType = TypeVar("KeyType")
 
 
-def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, Any]) -> Dict[KeyType, Any]:
+def deep_update(mapping: dict[KeyType, Any], *updating_mappings: dict[KeyType, Any]) -> dict[KeyType, Any]:
     updated_mapping = mapping.copy()
     for updating_mapping in updating_mappings:
         for k, v in updating_mapping.items():
@@ -80,7 +81,7 @@ class Payload(Resource):
         self.checksum = sha256.hexdigest()
 
     def update(self, payload: dict, old_body: dict | None = None, replace: bool = False) -> dict | None:
-        if payload.get("body", None) is None:
+        if payload.get("body") is None:
             return None
 
         if "content_type" in payload:
@@ -102,6 +103,7 @@ class Payload(Resource):
             if "schema_shortname" in payload:
                 self.schema_shortname = payload["schema_shortname"]
 
+            self.body = separate_payload_body
             self._calculate_checksum()
 
             return separate_payload_body
@@ -462,9 +464,9 @@ class Permission(Meta):
     subpaths: dict[str, list[str]]  # {"space_name": ["subpath_one", "subpath_two"]}
     resource_types: list[ResourceType]
     actions: list[ActionType]
-    conditions: list[ConditionType] = list()
-    restricted_fields: list[str] = []
-    allowed_fields_values: dict[str, list[str] | list[list[str]]] = {}
+    conditions: list[ConditionType] = Field(default_factory=list)
+    restricted_fields: list[str] = Field(default_factory=list)
+    allowed_fields_values: dict[str, list[str] | list[list[str]]] = Field(default_factory=dict)
     filter_fields_values: str | None = None
 
 
@@ -507,7 +509,7 @@ class Event(BaseModel):
     action_type: ActionType
     resource_type: ResourceType | None = None
     schema_shortname: str | None = None
-    attributes: dict = {}
+    attributes: dict[str, Any] = {}
     user_shortname: str
 
 
@@ -518,9 +520,9 @@ class PluginBase(ABC):
 
 
 class EventFilter(BaseModel):
-    subpaths: list
-    resource_types: list
-    schema_shortnames: list
+    subpaths: list[str]
+    resource_types: list[str]
+    schema_shortnames: list[str]
     actions: list[ActionType]
 
 
@@ -532,7 +534,7 @@ class PluginWrapper(Resource):
     type: PluginType | None = None
     ordinal: int = 9999
     object: PluginBase | None = None
-    dependencies: list = []  # type: ignore
+    dependencies: list[str] = []
     concurrent: bool = True
     attributes: dict[str, Any] | None = None
 
@@ -542,7 +544,7 @@ class NotificationData(Resource):
     title: Translation
     body: Translation
     image_urls: Translation | None = None
-    deep_link: dict = {}
+    deep_link: dict[str, Any] = Field(default_factory=dict)
     entry_id: str | None = None
 
 
