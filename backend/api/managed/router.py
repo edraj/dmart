@@ -265,7 +265,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             folder_views = folder_payload.get("index_attributes", [])
 
     keys: list = [i["name"] for i in folder_views]
-    keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
+    keys_existence = dict(zip(keys, [False for _ in range(len(keys))], strict=False))
 
     # if settings.active_data_db == 'file':
     #     _, search_res = await db.query(query, user_shortname)
@@ -997,9 +997,8 @@ async def retrieve_entry_meta(
             ),
         )
 
-    if resource_type is ResourceType.user:
-        if hasattr(meta, "password"):
-            meta.password = None
+    if resource_type is ResourceType.user and hasattr(meta, "password"):
+        meta.password = None
 
     attachments = {}
     entry_path = settings.spaces_folder / f"{space_name}/{subpath}/.dm/{shortname}"

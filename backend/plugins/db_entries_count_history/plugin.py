@@ -74,7 +74,7 @@ async def background_task() -> None:
 
 
 print("Starting db_entries_count_history background task")
-asyncio.create_task(background_task())
+background_task_ref = asyncio.create_task(background_task())  # noqa: RUF006
 
 
 @router.get("/")

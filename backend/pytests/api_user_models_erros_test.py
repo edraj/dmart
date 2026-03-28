@@ -1,6 +1,6 @@
+from api.user.model.errors import EXPIRED_OTP, INVALID_OTP
 from models.api import Error
 from utils.internal_error_code import InternalErrorCode
-from api.user.model.errors import INVALID_OTP, EXPIRED_OTP
 
 
 def test_invalid_otp():

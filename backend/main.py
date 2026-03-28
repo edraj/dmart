@@ -406,20 +406,19 @@ async def middle(request: Request, call_next):
 
     set_logging(response, extra, request, exception_data)
 
-    if settings.hide_stack_trace:
-        if (
-            response_body
-            and isinstance(response_body, dict)
-            and "error" in response_body
-            and isinstance(response_body["error"], dict)
-            and "stack" in response_body["error"]
-        ):
-            response_body["error"].pop("stack", None)
-            response = JSONResponse(
-                status_code=response.status_code,
-                content=response_body,
-                headers=dict(response.headers),
-            )
+    if settings.hide_stack_trace and (
+        response_body
+        and isinstance(response_body, dict)
+        and "error" in response_body
+        and isinstance(response_body["error"], dict)
+        and "stack" in response_body["error"]
+    ):
+        response_body["error"].pop("stack", None)
+        response = JSONResponse(
+            status_code=response.status_code,
+            content=response_body,
+            headers=dict(response.headers),
+        )
 
     return response
 

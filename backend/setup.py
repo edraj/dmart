@@ -49,7 +49,7 @@ install_requires.append("alembic")
 
 sub_packages = find_packages(exclude=["tests", "pytests", "loadtest"])
 
-packages = ["dmart"] + [f"dmart.{pkg}" for pkg in sub_packages]
+packages = ["dmart", *(f"dmart.{pkg}" for pkg in sub_packages)]
 
 package_dir = {"dmart": "."}
 
@@ -82,8 +82,8 @@ setup(
             "test_utils.py",
             "conftest.py",
             "cli.py",
-        ]
-        + get_sample_files(),
+            *get_sample_files(),
+        ],
         "dmart.cxb": ["**/*"],
         "dmart.languages": ["*.json"],
         "dmart.config": ["*.json"],

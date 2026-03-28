@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import configparser
+import contextlib
 import json
 import os
 import secrets
@@ -47,7 +48,7 @@ commands = """
     db_to_json
     update_query_policies
     help
-    version 
+    version
     info
     init
     migrate
@@ -334,7 +335,7 @@ def hypercorn_main() -> int:
         try:
             return ssl.VerifyMode[value]
         except KeyError:
-            raise argparse.ArgumentTypeError(f"'{value}' is not a valid verify mode")
+            raise argparse.ArgumentTypeError(f"'{value}' is not a valid verify mode") from None
 
     parser.add_argument(
         "--verify-mode",
@@ -377,6 +378,7 @@ def hypercorn_main() -> int:
         warnings.warn(
             "The --access-log argument is deprecated, use `--access-logfile` instead",
             DeprecationWarning,
+            stacklevel=2,
         )
         config.accesslog = args.access_log
     if args.access_logfile is not sentinel:
@@ -397,6 +399,7 @@ def hypercorn_main() -> int:
         warnings.warn(
             "The --error-log argument is deprecated, use `--error-logfile` instead",
             DeprecationWarning,
+            stacklevel=2,
         )
         config.errorlog = args.error_log
     if args.error_logfile is not sentinel:
@@ -561,10 +564,8 @@ def patch_plugin_configs():
 
 def print_formatted(data):
     if isinstance(data, str):
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             data = json.loads(data)
-        except json.JSONDecodeError:
-            pass
 
     if isinstance(data, (dict, list)):
         output = json.dumps(data, indent=4)
@@ -630,6 +631,7 @@ def main():
                 settings.load_cxb_config()
 
             import webtransporter
+
             asyncio.run(webtransporter.main())
         case "cli":
             config_file = None
@@ -775,10 +777,7 @@ def main():
 
             output_file = args.output
             if output_file == ".":
-                if args.space_name:
-                    output_file = f"{args.space_name}.zip"
-                else:
-                    output_file = "all_spaces.zip"
+                output_file = f"{args.space_name}.zip" if args.space_name else "all_spaces.zip"
             elif not output_file.lower().endswith(".zip"):
                 output_file += ".zip"
 
@@ -985,7 +984,7 @@ def main():
                 if not alembic_cli_args:
                     alembic_cli_args = ["upgrade", "head"]
 
-                command = [sys.executable, "-m", "alembic", "-c", temp_config_path] + alembic_cli_args
+                command = [sys.executable, "-m", "alembic", "-c", temp_config_path, *alembic_cli_args]
 
                 result = subprocess.run(command, capture_output=True, text=True, check=False)  # type: ignore
 

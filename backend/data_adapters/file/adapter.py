@@ -380,15 +380,14 @@ class FileAdapter(BaseDataAdapter):
 
         ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
         for user_query_policy in filtered_policies:
-            for perm_key in user_permissions.keys():
-                if user_query_policy.startswith(perm_key):
-                    if ffv := user_permissions[perm_key].get("filter_fields_values"):
-                        if ffv not in ffv_query:
-                            ffv_query.append(ffv)
-                        perm_key_splited = perm_key.split(":")
-                        ffv_spaces.append(perm_key_splited[0])
-                        ffv_subpath.append(perm_key_splited[1])
-                        ffv_resource_type.append(perm_key_splited[2])
+            for perm_key in user_permissions:
+                if user_query_policy.startswith(perm_key) and (ffv := user_permissions[perm_key].get("filter_fields_values")):
+                    if ffv not in ffv_query:
+                        ffv_query.append(ffv)
+                    perm_key_splited = perm_key.split(":")
+                    ffv_spaces.append(perm_key_splited[0])
+                    ffv_subpath.append(perm_key_splited[1])
+                    ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
             perm_key_splited_query = f"@space_name:{'|'.join(ffv_spaces)} @subpath:/{'|/'.join(ffv_subpath)} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}"
@@ -580,7 +579,7 @@ class FileAdapter(BaseDataAdapter):
                 content = await file.read()
                 return class_type.model_validate_json(content)
         except Exception as e:
-            raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
+            raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}") from e
 
     async def load_resource_payload(
         self,
@@ -604,11 +603,11 @@ class FileAdapter(BaseDataAdapter):
             async with aiofiles.open(path, "rb") as f:
                 bytes = await f.read()
             return json.loads(bytes)
-        except Exception as _:
+        except Exception:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
                 error=api.Error(type="db", code=12, message=f"Request object is not available {path}"),
-            )
+            ) from None
 
     async def save(self, space_name: str, subpath: str, meta: core.Meta) -> Any:
         """Save Meta Json to respective file"""
@@ -636,7 +635,7 @@ class FileAdapter(BaseDataAdapter):
                     code=InternalErrorCode.OBJECT_NOT_SAVED,
                     message=e.__str__(),
                 ),
-            )
+            ) from e
 
     async def create(self, space_name: str, subpath: str, meta: core.Meta):
         path, filename = self.metapath(space_name, subpath, meta.shortname, meta.__class__)
@@ -861,7 +860,7 @@ class FileAdapter(BaseDataAdapter):
         dest_shortname: str,
         meta: core.Meta,
     ):
-        src_path, src_filename = self.metapath(
+        src_path, _src_filename = self.metapath(
             src_space_name,
             src_subpath,
             src_shortname,
@@ -1462,9 +1461,8 @@ class FileAdapter(BaseDataAdapter):
 
     async def set_user_session(self, user_shortname: str, token: str) -> bool:
         async with RedisServices() as redis:
-            if settings.max_sessions_per_user == 1:
-                if await redis.get_key(f"user_session:{user_shortname}"):
-                    await redis.del_keys([f"user_session:{user_shortname}"])
+            if settings.max_sessions_per_user == 1 and await redis.get_key(f"user_session:{user_shortname}"):
+                await redis.del_keys([f"user_session:{user_shortname}"])
 
             return bool(
                 await redis.set_key(
@@ -1653,7 +1651,7 @@ class FileAdapter(BaseDataAdapter):
                     code=InternalErrorCode.UNPROCESSABLE_ENTITY,
                     message=str(e),
                 ),
-            )
+            ) from e
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
@@ -1848,7 +1846,7 @@ class FileAdapter(BaseDataAdapter):
             if key in restricted_fields:
                 continue
 
-            if key in meta.model_fields.keys():
+            if key in meta.model_fields:
                 meta_updated = True
                 meta.__setattr__(key, value)
             elif resolved_payload:

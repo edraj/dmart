@@ -1,3 +1,4 @@
+import contextlib
 import json
 import re
 import sys
@@ -249,10 +250,8 @@ class RedisServices(Redis):
         """
         create redis schema index, drop it if exist first
         """
-        try:
+        with contextlib.suppress(Exception):
             await self.redis_indices[space_name][schema_name].dropindex(delete_documents=del_docs)
-        except Exception as _:
-            pass
             # logger.error(f"Error at redis_services.create_index: {e}")
 
         await self.redis_indices[space_name][schema_name].create_index(
@@ -722,8 +721,10 @@ class RedisServices(Redis):
         sort_by: str | None = None,
         highlight_fields: list[str] | None = None,
         schema_name: str = "meta",
-        return_fields: list = [],
+        return_fields: list | None = None,
     ):
+        if return_fields is None:
+            return_fields = []
         # Tries to get the index from the provided space
         try:
             ft_index = self.ft(f"{space_name}:{schema_name}")
@@ -770,8 +771,10 @@ class RedisServices(Redis):
         sort_type: SortType = SortType.ascending,
         sort_by: str | None = None,
         schema_name: str = "meta",
-        load: list = [],
+        load: list | None = None,
     ) -> list:
+        if load is None:
+            load = []
         # Tries to get the index from the provided space
         try:
             ft_index = self.ft(f"{space_name}:{schema_name}")

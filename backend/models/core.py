@@ -560,7 +560,9 @@ class Notification(Meta):
     entry: Locator | None = None
 
     @staticmethod
-    async def from_request(notification_req: dict, entry: dict = {}):
+    async def from_request(notification_req: dict, entry: dict | None = None):
+        if entry is None:
+            entry = {}
         if notification_req["payload"]["schema_shortname"] == "admin_notification_request":
             notification_type = NotificationType.admin
         elif notification_req["payload"]["schema_shortname"] == "system_notification_request":

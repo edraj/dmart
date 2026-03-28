@@ -53,12 +53,11 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                     completed = subprocess.run(
                         cmd,  # type: ignore
                         input=input_json.encode("utf-8"),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
+                        capture_output=True,
                         timeout=settings.jq_timeout,
                         check=False,
                     )
-                except subprocess.TimeoutExpired:
+                except subprocess.TimeoutExpired as e:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
@@ -66,7 +65,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                             code=InternalErrorCode.JQ_TIMEOUT,
                             message="jq filter took too long to execute",
                         ),
-                    )
+                    ) from e
 
                 if completed.returncode != 0:
                     raise api.Exception(
@@ -96,7 +95,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                 timeout=settings.jq_timeout,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
@@ -104,7 +103,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                     code=InternalErrorCode.NOT_ALLOWED,
                     message="jq is not installed!",
                 ),
-            )
+            ) from e
 
     return total, records
 

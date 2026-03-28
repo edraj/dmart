@@ -15,11 +15,11 @@ def decode_jwt(token: str) -> dict[str, Any]:
     decoded_token: dict
     try:
         decoded_token = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-    except Exception:
+    except Exception as e:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="jwtauth", code=InternalErrorCode.INVALID_TOKEN, message="Invalid Token [1]"),
-        )
+        ) from e
     if not decoded_token or "data" not in decoded_token or "expires" not in decoded_token:
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,

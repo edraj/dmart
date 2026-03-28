@@ -25,6 +25,8 @@ from utils.settings import settings
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
 
+_background_tasks: set[asyncio.Task] = set()
+
 # Allow python to search for modules inside the custom plugins
 # by including the path to the parent folder of the custom plugins to sys.path
 if CUSTOM_PLUGINS_PATH.parent.exists():
@@ -148,14 +150,11 @@ class PluginManager:
         ):
             return False
 
-        if (
+        return not (
             plugin_filters.resource_types
             and "__ALL__" not in plugin_filters.resource_types
             and event.resource_type not in plugin_filters.resource_types
-        ):
-            return False
-
-        return True
+        )
 
     async def _safe_coroutine_execution(self, coro, plugin_model):
         try:
@@ -225,7 +224,9 @@ class PluginManager:
                         plugin_execution = object.hook(event)
                         if iscoroutine(plugin_execution):
                             if plugin_model.concurrent:
-                                loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
+                                task = loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
+                                _background_tasks.add(task)
+                                task.add_done_callback(_background_tasks.discard)
                             else:
                                 await plugin_execution
                 except api.Exception as e:

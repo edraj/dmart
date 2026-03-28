@@ -134,8 +134,10 @@ class Metas(Unique, table=False):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
     ) -> core.Record:
+        if include is None:
+            include = []
         # Sanity check
         if self.shortname != shortname:
             raise Exception(f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})")
@@ -241,8 +243,10 @@ class Histories(SQLModel, table=True):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
     ) -> core.Record:
+        if include is None:
+            include = []
         # Sanity check
 
         if self.shortname != shortname:
@@ -326,15 +330,17 @@ class Aggregated(SQLModel, table=False):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> AggregatedRecord:
-        record_fields: dict[str, Any]= {
+        if include is None:
+            include = []
+        record_fields: dict[str, Any] = {
             "resource_type": self.resource_type if hasattr(self, "resource_type") else None,
             "uuid": self.uuid if hasattr(self, "uuid") else None,
             "shortname": shortname,
             "subpath": subpath,
-            "attributes": {}
+            "attributes": {},
         }
 
         attributes = {}

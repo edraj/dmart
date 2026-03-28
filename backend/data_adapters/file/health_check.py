@@ -50,7 +50,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
             return
 
         await cleanup_spaces()
-        is_full: bool = True if not args.space or args.space == "all" else False
+        is_full: bool = bool(not args.space or args.space == "all")
         print_header()
         if health_type == "soft":
             print("Running soft healthcheck")

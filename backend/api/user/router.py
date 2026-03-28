@@ -131,14 +131,18 @@ async def create_user(response: Response, record: core.Record, http_request: Req
             separate_payload_data = user.payload.body
             user.payload.body = record.shortname + ".json"
 
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(separate_payload_data, Path):
-                if user.payload.schema_shortname:
-                    await db.validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=user.payload.schema_shortname,
-                    )
+        if (
+            user.payload
+            and separate_payload_data
+            and not isinstance(separate_payload_data, str)
+            and not isinstance(separate_payload_data, Path)
+            and user.payload.schema_shortname
+        ):
+            await db.validate_payload_with_schema(
+                payload_data=separate_payload_data,
+                space_name=MANAGEMENT_SPACE,
+                schema_shortname=user.payload.schema_shortname,
+            )
 
     if user.msisdn:
         is_valid_otp = (
@@ -215,10 +219,7 @@ async def verify_user(user_request: ConfirmOTPRequest):
     user_identifier = user_request.check_fields()
     key = get_otp_key(user_identifier)
     code = await db.get_otp(key)
-    if not code or code != user_request.code:
-        return False
-
-    return True
+    return bool(code and code == user_request.code)
 
 
 @router.post(
@@ -306,7 +307,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             key: str | None = None
             if not shortname and identifier:
                 if isinstance(identifier, dict):
-                    key, value = list(identifier.items())[0]
+                    key, value = next(iter(identifier.items()))
                     shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
                 else:
                     shortname = await get_shortname_from_identifier(value=identifier, key=key)
@@ -511,7 +512,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"),
-        )
+        ) from _
         # if e.error.type == "db":
         #     raise api.Exception(
         #         status.HTTP_401_UNAUTHORIZED,
@@ -753,9 +754,8 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, user)
 
-    if user.is_active and profile.attributes.get("is_active", None) is not None:
-        if not profile.attributes.get("is_active"):
-            await db.remove_user_session(user.shortname)
+    if user.is_active and profile.attributes.get("is_active", None) is not None and not profile.attributes.get("is_active"):
+        await db.remove_user_session(user.shortname)
 
     history_diff = await db.update(
         MANAGEMENT_SPACE,
@@ -860,7 +860,7 @@ async def otp_request(user_request: SendOTPRequest, skel_accept_language=Header(
     """Request new OTP"""
 
     user_identifier = user_request.check_fields()
-    key, value = list(user_identifier.items())[0]
+    key, value = next(iter(user_identifier.items()))
     user = await db.get_user_by_criteria(key, value)
     if not user and not settings.is_registrable:
         raise api.Exception(
@@ -964,7 +964,7 @@ async def otp_request_login(
 )
 async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     result = user_request.check_fields()
-    key, value = list(result.items())[0]
+    key, value = next(iter(result.items()))
     shortname = await db.get_user_by_criteria(key, value)
 
     if shortname is not None:
@@ -1522,7 +1522,7 @@ if settings.social_login_allowed:
                     code=InternalErrorCode.INVALID_DATA,
                     message=f"Invalid Apple ID token: {e!s}",
                 ),
-            )
+            ) from e
 
         user = await find_or_create_social_user(
             provider="apple",

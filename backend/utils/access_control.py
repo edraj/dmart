@@ -228,7 +228,7 @@ class AccessControl:
         if not permission_key:
             return False
 
-        if (
+        return (
             action_type in user_permissions[permission_key]["allowed_actions"]
             and self.check_access_conditions(
                 set(user_permissions[permission_key]["conditions"]),
@@ -241,10 +241,7 @@ class AccessControl:
                 action_type,
                 record_attributes,
             )
-        ):
-            return True
-
-        return False
+        )
 
     def check_access_conditions(
         self,
@@ -274,7 +271,7 @@ class AccessControl:
         for restricted_field in restricted_fields:
             if restricted_field in flattened_attributes:
                 return False
-            for flattened_key in flattened_attributes.keys():
+            for flattened_key in flattened_attributes:
                 if flattened_key == restricted_field or flattened_key.startswith(f"{restricted_field}."):
                     return False
 

@@ -15,10 +15,13 @@ select = [
     "ASYNC",  # flake8-async (async anti-patterns)
 ]
 ignore = [
-    "E501",   # line too long (handled by line-length)
-    "UP007",  # use X | Y for union types (keep Optional for compatibility)
-    "B008",   # function call in default argument (needed for FastAPI Depends)
-    "RUF012", # mutable class variable (Pydantic handles this)
+    "E501",     # line too long (handled by line-length)
+    "UP007",    # use X | Y for union types (keep Optional for compatibility)
+    "B008",     # function call in default argument (needed for FastAPI Depends)
+    "RUF012",   # mutable class variable (Pydantic handles this)
+    "ASYNC220", # create-subprocess-in-async-function (subprocess calls are intentional)
+    "ASYNC230", # blocking-open-call-in-async-function (requires anyio migration)
+    "ASYNC240", # blocking-path-method-in-async-function (requires anyio migration)
 ]
 
 [lint.per-file-ignores]

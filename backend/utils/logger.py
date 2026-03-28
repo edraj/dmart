@@ -37,7 +37,7 @@ SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cooki
 def mask_replacement(match):
     """Replace matched groups with a general mask."""
     groups = match.groups()
-    for i, group in enumerate(groups):
+    for _, group in enumerate(groups):
         if group is not None:
             # For JSON format: "key": "value" → "key": "******"
             if '"' in group:

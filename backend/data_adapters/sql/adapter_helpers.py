@@ -145,17 +145,11 @@ def validate_search_range(v_str):
     for pattern in date_patterns:
         if re.match(pattern, v_str):
             # Split on either space or comma
-            if "," in v_str[1:-1]:
-                range_values = v_str[1:-1].split(",")
-            else:
-                range_values = v_str[1:-1].split()
+            range_values = v_str[1:-1].split(",") if "," in v_str[1:-1] else v_str[1:-1].split()
             return True, range_values
 
     if re.match(r"^\[-?\d+(?:\.\d+)?[\s,]-?\d+(?:\.\d+)?\]$", v_str):
-        if "," in v_str[1:-1]:
-            v_list = v_str[1:-1].split(",")
-        else:
-            v_list = v_str[1:-1].split()
+        v_list = v_str[1:-1].split(",") if "," in v_str[1:-1] else v_str[1:-1].split()
         return True, v_list
 
     return False, v_str
@@ -312,7 +306,7 @@ def parse_search_string(string):
         all_boolean = True
         all_numeric = True
 
-        for i, val in enumerate(values):
+        for _, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
                 value_type = "datetime"

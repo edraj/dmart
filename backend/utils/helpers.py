@@ -241,7 +241,7 @@ def json_flater(data: dict[str, Any]) -> dict[str, Any]:
     for k, v in data.items():
         if isinstance(v, dict):
             __flatened_data = json_flater(v)
-            _flatened_data = {key: val for key, val in __flatened_data.items()}  # deep copy to resolve the runtime error
+            _flatened_data = dict(__flatened_data)  # deep copy to resolve the runtime error
             _keys = list(_flatened_data.keys())
             for key in _keys:
                 flatened_data[f"{k}.{key}"] = _flatened_data[key]
@@ -366,7 +366,7 @@ def jq_dict_parser(data):
         return {k: jq_dict_parser(v) for k, v in data.items()}
     elif isinstance(data, list):
         return [jq_dict_parser(item) for item in data]
-    elif isinstance(data, UUID) or isinstance(data, datetime):
+    elif isinstance(data, (UUID, datetime)):
         return str(data)
     else:
         return data

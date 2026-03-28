@@ -42,7 +42,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
     spaces_names: list = []
 
     if space_param != "all":
-        if space_param not in spaces.keys():
+        if space_param not in spaces:
             print(f"space name {space_param} is not found")
             return
         spaces_names = [spaces[space_param]]

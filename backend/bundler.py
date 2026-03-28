@@ -25,7 +25,8 @@ version_date = None if result is None or len(result) == 0 else result.decode().s
 
 info = {"branch": branch, "version": version, "tag": tag, "version_date": version_date}
 
-json.dump(info, open("info.json", "w"))
+with open("info.json", "w") as f:
+    json.dump(info, f)
 
 args = [
     "dmart.py",

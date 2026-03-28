@@ -90,7 +90,7 @@ async def bulk_insert_in_batches(model, records, batch_size=2000):
                             record["created_at"] = datetime.fromisoformat(record["created_at"])
                         if isinstance(record.get("updated_at"), str):
                             record["updated_at"] = datetime.fromisoformat(record["updated_at"])
-                    await session.run_sync(lambda ses: ses.bulk_insert_mappings(model, batch))
+                    await session.run_sync(lambda ses, batch=batch: ses.bulk_insert_mappings(model, batch))
                     await session.commit()
                 except Exception as e:
                     print("[!bulk_insert_in_batches]", e)
@@ -122,29 +122,30 @@ async def process_directory(root, dirs, space_name, subpath):
 
     for dir in dirs:
         for file in os.listdir(os.path.join(root, dir)):
-            if not file.startswith("meta"):
-                if file == "history.jsonl":
-                    lines = open(os.path.join(root, dir, file)).readlines()
-                    for line in lines:
-                        history = None
-                        try:
-                            history = json.loads(line.replace("\n", ""))
-                            history["shortname"] = dir
-                            history["space_name"] = space_name
-                            history["subpath"] = subpath_checker(subpath)
-                            history["timestamp"] = datetime.strptime(history["timestamp"], "%Y-%m-%dT%H:%M:%S.%f")
+            if not file.startswith("meta") and file == "history.jsonl":
+                with open(os.path.join(root, dir, file)) as _f:
+                    lines = _f.readlines()
+                for line in lines:
+                    history = None
+                    try:
+                        history = json.loads(line.replace("\n", ""))
+                        history["shortname"] = dir
+                        history["space_name"] = space_name
+                        history["subpath"] = subpath_checker(subpath)
+                        history["timestamp"] = datetime.strptime(history["timestamp"], "%Y-%m-%dT%H:%M:%S.%f")
 
-                            histories.append(history)
+                        histories.append(history)
 
-                        except Exception as e:
-                            print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
-                            print(e)
+                    except Exception as e:
+                        print(f"Error processing Histories {space_name}/{subpath}/{dir}/{history} ... ")
+                        print(e)
 
             p = os.path.join(root, dir, file)
             if Path(p).is_file():
                 if "attachments" in p:
                     if file.startswith("meta") and file.endswith(".json"):
-                        _attachment = json.load(open(os.path.join(root, dir, file)))
+                        with open(os.path.join(root, dir, file)) as _f:
+                            _attachment = json.load(_f)
                         _attachment["space_name"] = space_name
                         _attachment["uuid"] = _attachment.get("uuid", uuid4())
                         _attachment["subpath"] = subpath.replace("//", "/")
@@ -170,14 +171,16 @@ async def process_directory(root, dirs, space_name, subpath):
                         else:
                             _body: str = _attachment.get("payload", {}).get("body", None)
                             if _body and _body.endswith(".json"):
-                                _attachment_body = json.load(open(os.path.join(root, dir, _body)))
+                                with open(os.path.join(root, dir, _body)) as _f:
+                                    _attachment_body = json.load(_f)
                                 _attachment["payload"]["body"] = _attachment_body
                             elif _body:
                                 if not _attachment.get("payload", {}).get("content_type", False):
                                     _attachment["media"] = None
                                 else:
                                     try:
-                                        _attachment["media"] = open(os.path.join(root, dir, _body), "rb").read()
+                                        with open(os.path.join(root, dir, _body), "rb") as _f:
+                                            _attachment["media"] = _f.read()
                                     except Exception as e:
                                         print(f"Error reading media file {os.path.join(root, dir, _body)}: {e}")
                                         _attachment["media"] = None
@@ -191,7 +194,8 @@ async def process_directory(root, dirs, space_name, subpath):
                             print("!!", e)
                             save_report("/", save_issue(_attachment["resource_type"], _attachment, e))
                 elif file.startswith("meta.") and file.endswith(".json"):
-                    entry = json.load(open(p))
+                    with open(p) as _f:
+                        entry = json.load(_f)
                     entry["space_name"] = space_name
                     body = None
                     _payload = entry.get("payload", {})
@@ -199,7 +203,8 @@ async def process_directory(root, dirs, space_name, subpath):
                         if payload := entry.get("payload", {}).get("body", None):
                             if entry.get("payload", {}).get("content_type", None) == "json":
                                 try:
-                                    body = json.load(open(os.path.join(root, dir, "../..", payload)))
+                                    with open(os.path.join(root, dir, "../..", payload)) as _f:
+                                        body = json.load(_f)
                                 except Exception as e:
                                     save_report("/", save_issue(ResourceType.json, entry, e))
                             else:
@@ -373,7 +378,8 @@ async def main(target_path: Path | None = None):
             entry = {}
             if Path(p).is_file():
                 try:
-                    entry = json.load(open(p))
+                    with open(p) as _f:
+                        entry = json.load(_f)
                     entry["space_name"] = space_name
                     entry["shortname"] = space_name
                     entry["query_policies"] = generate_query_policies(
@@ -389,7 +395,8 @@ async def main(target_path: Path | None = None):
                     if _payload:
                         if payload := _payload.get("body", None):
                             if entry.get("payload", {}).get("content_type", None) == "json":
-                                body = json.load(open(os.path.join(root, ".dm", "../..", str(payload))))
+                                with open(os.path.join(root, ".dm", "../..", str(payload))) as _f:
+                                    body = json.load(_f)
                             else:
                                 body = payload
                             sha1 = hashlib.sha1()

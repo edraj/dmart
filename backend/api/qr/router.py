@@ -63,7 +63,7 @@ async def generate_qr_user_profile(
                 code=InternalErrorCode.NOT_ALLOWED,
                 message="segno is not installed!",
             ),
-        )
+        ) from None
 
 
 @router.post("/validate")

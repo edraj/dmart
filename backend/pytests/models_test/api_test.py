@@ -1,17 +1,19 @@
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
+
+from models.api import DataAssetQuery, Error, Exception, Query, RedisAggregate, RedisReducer, Request, Response
 from models.core import Record
 from models.enums import (
     DataAssetType,
     QueryType,
+    RequestType,
     ResourceType,
     SortType,
     Status,
-    RequestType,
 )
 from utils.settings import settings
-from datetime import datetime
-from models.api import Request, RedisReducer, RedisAggregate, Query, Error, Response, Exception, DataAssetQuery
 
 
 def test_request_model():

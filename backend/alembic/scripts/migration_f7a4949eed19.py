@@ -5,7 +5,6 @@ from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.sql.create_tables import Entries, Permissions, Roles, Spaces, Users
 from utils.query_policies_helper import generate_query_policies
 
-
 print("[INFO]  [dmart.script] Performing post-upgrade data migration (calc-query-policies)")
 with SQLAdapter().get_session() as session:
     for table in [Entries, Permissions, Roles, Spaces, Users]:

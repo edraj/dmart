@@ -22,7 +22,7 @@ def redis_doc_to_meta(doc: dict):
         camel_case(doc["resource_type"]),
     )
     for key, value in doc.items():
-        if key in resource_class.model_fields.keys():
+        if key in resource_class.model_fields:
             meta_doc_content[key] = value
     meta_doc_content["created_at"] = datetime.fromtimestamp(meta_doc_content["created_at"])
     meta_doc_content["updated_at"] = datetime.fromtimestamp(meta_doc_content["updated_at"])

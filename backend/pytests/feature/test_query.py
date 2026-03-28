@@ -1,12 +1,13 @@
 import pytest
+from fastapi import status
 from httpx import AsyncClient
+
+from models.enums import QueryType, RequestType
 from pytests.base_test import (
     DEMO_SPACE,
     DEMO_SUBPATH,
 )
 from pytests.feature.test_resource_and_attachment import json_entry_shortname
-from fastapi import status
-from models.enums import RequestType, QueryType
 from utils.settings import settings
 
 

@@ -90,7 +90,7 @@ async def get_record_from_redis_doc(
     )
 
     for key, value in doc.items():
-        if key in resource_class.model_fields.keys():
+        if key in resource_class.model_fields:
             meta_doc_content[key] = value
         elif key not in RedisServices.SYS_ATTRIBUTES:
             payload_doc_content[key] = value
@@ -269,13 +269,7 @@ async def serve_query_search(db, query, logged_in_user):
         if query.sort_by:
             res_data = sorted(
                 res_data,
-                key=lambda d: (
-                    d[query.sort_by]
-                    if query.sort_by in d
-                    else d.get("payload", {})[query.sort_by]
-                    if query.sort_by in d.get("payload", {})
-                    else ""
-                ),
+                key=lambda d: d[query.sort_by] if query.sort_by in d else d.get("payload", {}).get(query.sort_by, ""),
                 reverse=(query.sort_type == api.SortType.descending),
             )
         res_data = res_data[query.offset : (query.limit + query.offset)]

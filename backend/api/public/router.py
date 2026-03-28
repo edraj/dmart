@@ -127,9 +127,8 @@ async def retrieve_entry_meta(
             ),
         )
 
-    if resource_type is ResourceType.user:
-        if hasattr(meta, "password"):
-            meta.password = None
+    if resource_type is ResourceType.user and hasattr(meta, "password"):
+        meta.password = None
 
     attachments = {}
     entry_path = settings.spaces_folder / f"{space_name}/{subpath}/.dm/{shortname}"

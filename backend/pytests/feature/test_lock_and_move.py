@@ -1,12 +1,12 @@
 import pytest
-from httpx import AsyncClient
 from fastapi import status
+from httpx import AsyncClient
+
+from models.enums import ContentType, RequestType, ResourceType
 from pytests.base_test import (
     assert_code_and_status_success,
     set_superman_cookie,
 )
-from models.enums import ResourceType, ContentType, RequestType
-
 
 LM_SPACE = "lockmove"
 LM_SUBPATH = "items"

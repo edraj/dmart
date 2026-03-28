@@ -298,13 +298,12 @@ async def update_user_payload(profile, user):
         else:
             user.payload.body = separate_payload_data
 
-    if user.payload and separate_payload_data:
-        if user.payload.schema_shortname:
-            await db.validate_payload_with_schema(
-                payload_data=separate_payload_data,
-                space_name=MANAGEMENT_SPACE,
-                schema_shortname=str(user.payload.schema_shortname),
-            )
+    if user.payload and separate_payload_data and user.payload.schema_shortname:
+        await db.validate_payload_with_schema(
+            payload_data=separate_payload_data,
+            space_name=MANAGEMENT_SPACE,
+            schema_shortname=str(user.payload.schema_shortname),
+        )
 
     await db.save_payload_from_json(
         MANAGEMENT_SPACE,

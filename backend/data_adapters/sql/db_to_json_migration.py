@@ -296,7 +296,7 @@ async def export_data_with_query(query, user_shortname):
 
     space_folder = os.path.relpath(str(settings.spaces_folder))
 
-    total, records = await serve_query(query, user_shortname)
+    _total, records = await serve_query(query, user_shortname)
 
     with Session(get_engine()) as session:
         if query.space_name == "management":
@@ -394,15 +394,17 @@ async def export_data_with_query(query, user_shortname):
             del _entry["subpath"]
             del _entry["resource_type"]
 
-            if entry.attributes.get("payload"):
-                if entry.attributes.get("payload", {}).get("content_type") == core.ContentType.json:
-                    if _entry.get("attributes", {}).get("payload", {}).get("body", None) is not None:
-                        if isinstance(_entry.get("attributes", {}).get("payload").get("body", None), dict):
-                            write_json_file(
-                                f"{dir_path}/{entry.shortname}.json",
-                                _entry.get("attributes", {}).get("payload").get("body", None),
-                            )
-                        _entry.get("attributes", {}).get("payload")["body"] = f"{entry.shortname}.json"
+            if (
+                entry.attributes.get("payload")
+                and entry.attributes.get("payload", {}).get("content_type") == core.ContentType.json
+                and _entry.get("attributes", {}).get("payload", {}).get("body", None) is not None
+            ):
+                if isinstance(_entry.get("attributes", {}).get("payload").get("body", None), dict):
+                    write_json_file(
+                        f"{dir_path}/{entry.shortname}.json",
+                        _entry.get("attributes", {}).get("payload").get("body", None),
+                    )
+                _entry.get("attributes", {}).get("payload")["body"] = f"{entry.shortname}.json"
 
             _entry = {**_entry, **_entry.get("attributes", {})}
             if "attributes" in _entry:
@@ -465,7 +467,9 @@ async def export_data_with_query(query, user_shortname):
                         attachment_body = attachment.payload["body"]
 
                 if attachment_body is not None:
-                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "json") or (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "comment"):
+                    if (isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "json") or (
+                        isinstance(attachment.payload, dict) and attachment.payload.get("content_type") == "comment"
+                    ):
                         write_json_file(f"{media_path}/{attachment.shortname}.json", attachment_body)
                         attachment.payload["body"] = f"{attachment.shortname}.json"
                     else:
@@ -480,9 +484,8 @@ async def export_data_with_query(query, user_shortname):
             else:
                 with open(f"{dir_meta_path}/meta.{entry.resource_type}.json") as f:
                     entry_data = json.load(f)
-                    if __attachment is not None:
-                        if "payload" in entry_data:
-                            entry_data["payload"] = __attachment.payload
+                    if __attachment is not None and "payload" in entry_data:
+                        entry_data["payload"] = __attachment.payload
 
     return space_folder
 

@@ -142,7 +142,7 @@ def query_aggregation(table, query):
                         field = getattr(table, base_arg)
                         if field is None:
                             continue
-                        if isinstance(field.type, Integer) or isinstance(field.type, Boolean):
+                        if isinstance(field.type, (Integer, Boolean)):
                             field_expr_str = f"{field}::int"
                         elif isinstance(field.type, Float):
                             field_expr_str = f"{field}::float"
@@ -249,7 +249,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 code=InternalErrorCode.SOMETHING_WRONG,
                 message=str(e),
             ),
-        )
+        ) from e
 
     if query.space_name:
         statement = statement.where(table.space_name == query.space_name)
@@ -290,9 +290,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             def _field_exists_in_table(_field: str) -> bool:
                 if _field in table_columns:
                     return True
-                if _field.startswith("payload.") and "payload" in table_columns:
-                    return True
-                return False
+                return _field.startswith("payload.") and "payload" in table_columns
 
             for field, field_data in search_tokens.items():
                 if not _field_exists_in_table(field):
@@ -889,10 +887,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                                 conditions.append(f"{field} != :{p_val}")
                                             else:
                                                 conditions.append(f"{field} = :{p_val}")
-                                    if negative:
-                                        join_operator = " AND "
-                                    else:
-                                        join_operator = " AND " if operation == "AND" else " OR "
+                                    join_operator = " AND " if negative else (" AND " if operation == "AND" else " OR ")
                                     statement = statement.where(text("(" + join_operator.join(conditions) + ")"))
 
                             if conditions:
@@ -927,25 +922,24 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
         statement = statement.where(table.created_at <= query.to_date)
 
     try:
-        if not is_for_count:
-            if query.sort_by:
-                if query.sort_by.startswith("attributes."):
-                    query.sort_by = query.sort_by[11:]
-                if "." in query.sort_by:
-                    # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
-                    sort_expression = transform_keys_to_sql(
-                        query.sort_by.replace("@", "", 1)
-                        if query.sort_by.startswith("@")
-                        else (f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by)
-                    )
-                    sort_type = " DESC" if query.sort_type == SortType.descending else ""
-                    sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
-                    statement = statement.order_by(text(sort_expression))
-                else:
-                    if query.sort_type == SortType.ascending:
-                        statement = statement.order_by(getattr(table, query.sort_by))
-                    if query.sort_type == SortType.descending:
-                        statement = statement.order_by(getattr(table, query.sort_by).desc())
+        if not is_for_count and query.sort_by:
+            if query.sort_by.startswith("attributes."):
+                query.sort_by = query.sort_by[11:]
+            if "." in query.sort_by:
+                # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
+                sort_expression = transform_keys_to_sql(
+                    query.sort_by.replace("@", "", 1)
+                    if query.sort_by.startswith("@")
+                    else (f"payload.{query.sort_by}" if query.sort_by.startswith("body.") else query.sort_by)
+                )
+                sort_type = " DESC" if query.sort_type == SortType.descending else ""
+                sort_expression = f"CASE WHEN ({sort_expression}) ~ '^[0-9]+$' THEN ({sort_expression})::float END {sort_type}, ({sort_expression}) {sort_type}"
+                statement = statement.order_by(text(sort_expression))
+            else:
+                if query.sort_type == SortType.ascending:
+                    statement = statement.order_by(getattr(table, query.sort_by))
+                if query.sort_type == SortType.descending:
+                    statement = statement.order_by(getattr(table, query.sort_by).desc())
 
     except Exception as e:
         print("[!set_sql_statement_from_query]", e)
@@ -1191,7 +1185,7 @@ class SQLAdapter(BaseDataAdapter):
             if len(results) == 0:
                 return attachments_dict
 
-            for idx, item in enumerate(results):
+            for _idx, item in enumerate(results):
                 item = item[0]
                 attachment_record = Attachments.model_validate(item)
                 attachment_json = attachment_record.model_dump()
@@ -1260,10 +1254,7 @@ class SQLAdapter(BaseDataAdapter):
 
         table = self.get_table(class_type)
 
-        if table is Attachments:
-            statement = select(table).options(defer(Attachments.media))  # type: ignore
-        else:
-            statement = select(table)
+        statement = select(table).options(defer(Attachments.media)) if table is Attachments else select(table)  # type: ignore
 
         statement = statement.where(col(table.space_name) == space_name).where(table.shortname == shortname)
         if table in [Users, Entries, Attachments]:
@@ -1413,15 +1404,14 @@ class SQLAdapter(BaseDataAdapter):
 
         ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
         for user_query_policy in filtered_policies:
-            for perm_key in user_permissions.keys():
-                if user_query_policy.startswith(perm_key):
-                    if ffv := user_permissions[perm_key].get("filter_fields_values"):
-                        if ffv not in ffv_query:
-                            ffv_query.append(ffv)
-                        perm_key_splited = perm_key.split(":")
-                        ffv_spaces.append(perm_key_splited[0])
-                        ffv_subpath.append(perm_key_splited[1])
-                        ffv_resource_type.append(perm_key_splited[2])
+            for perm_key in user_permissions:
+                if user_query_policy.startswith(perm_key) and (ffv := user_permissions[perm_key].get("filter_fields_values")):
+                    if ffv not in ffv_query:
+                        ffv_query.append(ffv)
+                    perm_key_splited = perm_key.split(":")
+                    ffv_spaces.append(perm_key_splited[0])
+                    ffv_subpath.append(perm_key_splited[1])
+                    ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
             perm_key_splited_query = f"@space_name:{'|'.join(ffv_spaces)} @subpath:/{'|/'.join(ffv_subpath)} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}"
@@ -1588,7 +1578,7 @@ class SQLAdapter(BaseDataAdapter):
                     code=InternalErrorCode.SOMETHING_WRONG,
                     message=str(e),
                 ),
-            )
+            ) from e
         return total, results
 
     async def _apply_client_joins(
@@ -1668,7 +1658,7 @@ class SQLAdapter(BaseDataAdapter):
             search_terms = []
             possible_match = True
 
-            for l_path, l_arr, r_path, r_arr in parsed_joins:
+            for l_path, l_arr, r_path, _r_arr in parsed_joins:
                 left_values = set()
                 for br in base_records:
                     l_vals = get_values_from_record(br, l_path, l_arr)
@@ -1731,8 +1721,8 @@ class SQLAdapter(BaseDataAdapter):
                     all_match = True
                     for i in range(1, len(parsed_joins)):
                         l_p, l_a, r_p, r_a = parsed_joins[i]
-                        l_vs = set(str(x) for x in get_values_from_record(br, l_p, l_a) if x is not None)
-                        r_vs = set(str(x) for x in get_values_from_record(cand, r_p, r_a) if x is not None)
+                        l_vs = {str(x) for x in get_values_from_record(br, l_p, l_a) if x is not None}
+                        r_vs = {str(x) for x in get_values_from_record(cand, r_p, r_a) if x is not None}
 
                         if not l_vs.intersection(r_vs):
                             all_match = False
@@ -1752,7 +1742,7 @@ class SQLAdapter(BaseDataAdapter):
 
                     from utils.helpers import jq_dict_parser
 
-                    def _run_jq_subprocess() -> list:
+                    def _run_jq_subprocess(matched_list=matched_list, sub_query=sub_query) -> list:
                         _input_local = []
                         for m_list in matched_list:
                             _m_local = [record.model_dump() for record in m_list]
@@ -1767,12 +1757,11 @@ class SQLAdapter(BaseDataAdapter):
                             completed = subprocess.run(
                                 cmd,
                                 input=input_json.encode("utf-8"),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
+                                capture_output=True,
                                 timeout=settings.jq_timeout,
                                 check=False,
                             )
-                        except subprocess.TimeoutExpired:
+                        except subprocess.TimeoutExpired as e:
                             raise api.Exception(
                                 status.HTTP_400_BAD_REQUEST,
                                 api.Error(
@@ -1780,7 +1769,7 @@ class SQLAdapter(BaseDataAdapter):
                                     code=InternalErrorCode.JQ_TIMEOUT,
                                     message="jq filter took too long to execute",
                                 ),
-                            )
+                            ) from e
 
                         if completed.returncode != 0:
                             raise api.Exception(
@@ -1810,7 +1799,7 @@ class SQLAdapter(BaseDataAdapter):
                         loop.run_in_executor(None, _run_jq_subprocess),
                         timeout=settings.jq_timeout,
                     )
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
@@ -1818,7 +1807,7 @@ class SQLAdapter(BaseDataAdapter):
                             code=InternalErrorCode.NOT_ALLOWED,
                             message="jq is not installed!",
                         ),
-                    )
+                    ) from e
 
             for i, br in enumerate(base_records):
                 br.attributes["join"][alias] = matched_list[i] if i < len(matched_list) else []
@@ -1998,12 +1987,11 @@ class SQLAdapter(BaseDataAdapter):
                     "subpath": subpath,
                 }
 
-                if meta.__class__ is core.Folder:
-                    if entity["subpath"] != "/":
-                        if not entity["subpath"].startswith("/"):
-                            entity["subpath"] = f"/{entity['subpath']}"
-                        if entity["subpath"].endswith("/"):
-                            entity["subpath"] = entity["subpath"][:-1]
+                if meta.__class__ is core.Folder and entity["subpath"] != "/":
+                    if not entity["subpath"].startswith("/"):
+                        entity["subpath"] = f"/{entity['subpath']}"
+                    if entity["subpath"].endswith("/"):
+                        entity["subpath"] = entity["subpath"][:-1]
 
                 if "subpath" in entity:
                     if entity["subpath"] != "/" and entity["subpath"].endswith("/"):
@@ -2049,7 +2037,7 @@ class SQLAdapter(BaseDataAdapter):
                     code=InternalErrorCode.SOMETHING_WRONG,
                     message=f"Failed saving an entry. Error: {e}",
                 ),
-            )
+            ) from e
 
     async def create(self, space_name: str, subpath: str, meta: core.Meta):
         result = await self.load_or_none(space_name, subpath, meta.shortname, meta.__class__)
@@ -2117,7 +2105,7 @@ class SQLAdapter(BaseDataAdapter):
                     code=InternalErrorCode.SOMETHING_WRONG,
                     message="failed to update entry",
                 ),
-            )
+            ) from e
 
     async def update(
         self,
@@ -2196,7 +2184,7 @@ class SQLAdapter(BaseDataAdapter):
                     code=InternalErrorCode.SOMETHING_WRONG,
                     message="failed to update entry",
                 ),
-            )
+            ) from e
 
         history_diff = await self.store_entry_diff(
             space_name,
@@ -2403,7 +2391,7 @@ class SQLAdapter(BaseDataAdapter):
                             code=InternalErrorCode.SOMETHING_WRONG,
                             message="failed to move entry",
                         ),
-                    )
+                    ) from e
             except Exception as e:
                 print("[!move]", e)
                 logger.error(f"Failed parsing an entry. Error: {e}")
@@ -2414,7 +2402,7 @@ class SQLAdapter(BaseDataAdapter):
                         code=InternalErrorCode.SOMETHING_WRONG,
                         message="failed to move entry",
                     ),
-                )
+                ) from e
 
     def delete_empty(self, path: Path):
         pass
@@ -2467,7 +2455,7 @@ class SQLAdapter(BaseDataAdapter):
 
             result = (await session.execute(statement)).fetchall()
             result = [result[0] for result in result]
-            return False if len(result) == 0 else True
+            return len(result) != 0
 
     async def delete(
         self,
@@ -2594,7 +2582,7 @@ class SQLAdapter(BaseDataAdapter):
                         code=InternalErrorCode.SOMETHING_WRONG,
                         message="failed to delete entry",
                     ),
-                )
+                ) from e
 
     async def lock_handler(
         self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
@@ -2823,9 +2811,8 @@ class SQLAdapter(BaseDataAdapter):
             return {k: SQLAdapter._sanitize_large_integers(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [SQLAdapter._sanitize_large_integers(v) for v in obj]
-        elif isinstance(obj, int) and not isinstance(obj, bool):
-            if obj < _INT64_MIN or obj > _INT64_MAX:
-                return str(obj)
+        elif isinstance(obj, int) and not isinstance(obj, bool) and (obj < _INT64_MIN or obj > _INT64_MAX):
+            return str(obj)
         return obj
 
     async def _set_query_final_results(self, query, results):
@@ -2907,7 +2894,7 @@ class SQLAdapter(BaseDataAdapter):
         # Run all attachment retrievals concurrently
         if attachment_tasks:
             attachments_list = await asyncio.gather(*attachment_tasks)
-            for idx, attachments in zip(attachment_indices, attachments_list):
+            for idx, attachments in zip(attachment_indices, attachments_list, strict=False):
                 valid_results[idx].attachments = attachments
 
         return valid_results
@@ -2959,7 +2946,7 @@ class SQLAdapter(BaseDataAdapter):
             results = (await session.execute(statement)).all()
             results = [result[0] for result in results]
             spaces = {}
-            for idx, item in enumerate(results):
+            for _idx, item in enumerate(results):
                 space = Spaces.model_validate(item)
                 spaces[space.shortname] = space.model_dump()
             return spaces
@@ -3058,10 +3045,7 @@ class SQLAdapter(BaseDataAdapter):
 
             if action is api.RequestType.update and current_record is not None:
                 records = [r for r in records if not (r.shortname == record.shortname and r.subpath == record.subpath)]
-                if total == 1:
-                    total = 0
-                else:
-                    total = len(records)
+                total = 0 if total == 1 else len(records)
 
             if total != 0:
                 raise API_Exception(

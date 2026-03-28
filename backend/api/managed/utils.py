@@ -104,9 +104,9 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             -          new_row = row
             -          add item attributes to the new_row
             -          list_new_rows.append(new_row)
-            -      add new_list[0] attributes to row
-            -    
-            -  rows += list_new_rows
+             -      add new_list[0] attributes to row
+             -
+             -  rows += list_new_rows
             """
             if isinstance(attribute_val, list) and len(attribute_val) > 0:
                 if isinstance(attribute_val[0], dict):
@@ -138,7 +138,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
-            key=lambda d: d[query.sort_by] if query.sort_by in d else "",
+            key=lambda d: d.get(query.sort_by, ""),
             reverse=(query.sort_type == api.SortType.descending),
         )
 
@@ -584,12 +584,15 @@ async def serve_request_update(request, owner_shortname: str):
                     new_resource_payload_data,
                 )
 
-            if isinstance(resource_obj, core.User) and (
-                record.attributes.get("is_active", None) is not None
-                or (settings.logout_on_pwd_change and record.attributes.get("password", None) is not None)
+            if (
+                isinstance(resource_obj, core.User)
+                and (
+                    record.attributes.get("is_active", None) is not None
+                    or (settings.logout_on_pwd_change and record.attributes.get("password", None) is not None)
+                )
+                and not record.attributes.get("is_active")
             ):
-                if not record.attributes.get("is_active"):
-                    await db.remove_user_session(record.shortname)
+                await db.remove_user_session(record.shortname)
 
             rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
 
@@ -1447,7 +1450,7 @@ async def serve_space_update(request, record, owner_shortname: str, is_replace: 
                 code=InternalErrorCode.INVALID_SPACE_NAME,
                 message=f"Space name {request.space_name} provided is empty or invalid [6]",
             ),
-        )
+        ) from None
     if not await access_control.check_access(
         user_shortname=owner_shortname,
         space_name=settings.all_spaces_mw,
@@ -1667,7 +1670,7 @@ async def import_resources_from_csv_handler(
                         message=f"Invalid value for {key}: {value}",
                         info=[{"message": str(e)}],
                     ),
-                )
+                ) from e
 
         match len(keys_list):
             case 1:

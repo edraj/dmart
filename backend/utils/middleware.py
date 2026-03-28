@@ -1,3 +1,4 @@
+import contextlib
 from contextvars import ContextVar
 from typing import Any
 
@@ -11,7 +12,7 @@ from utils.settings import settings
 
 REQUEST_DATA_CTX_KEY = "request_data"
 
-_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default={})
+_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default={})  # noqa: B039
 
 
 def get_request_data() -> dict:
@@ -27,10 +28,8 @@ class CustomRequestMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"]:
-            try:
+            with contextlib.suppress(Exception):
                 await self.app(scope, receive, send)
-            except Exception as _:
-                pass
             return
 
         request = Request(scope, receive)

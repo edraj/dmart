@@ -1,18 +1,18 @@
 import pytest
-from httpx import AsyncClient
 from fastapi import status
-from utils.internal_error_code import InternalErrorCode
+from httpx import AsyncClient
+
+from models.api import Query
+from models.enums import QueryType, ResourceType
 from pytests.base_test import (
+    MANAGEMENT_SPACE,
+    USERS_SUBPATH,
     assert_code_and_status_success,
     assert_resource_created,
     set_superman_cookie,
-    MANAGEMENT_SPACE,
-    USERS_SUBPATH,
     superman,
 )
-from models.api import Query
-from models.enums import QueryType, ResourceType
-
+from utils.internal_error_code import InternalErrorCode
 
 new_user_data = {
     "shortname": "test_user_100100",

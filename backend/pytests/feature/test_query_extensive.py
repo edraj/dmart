@@ -1,10 +1,12 @@
-import pytest
 from datetime import datetime, timedelta
-from models.enums import QueryType, ResourceType, RequestType
+
+import pytest
 from httpx import AsyncClient
+
+from models.enums import QueryType, RequestType, ResourceType
 from pytests.base_test import (
-    USERS_SUBPATH,
     MANAGEMENT_SPACE,
+    USERS_SUBPATH,
     assert_code_and_status_success,
 )
 
