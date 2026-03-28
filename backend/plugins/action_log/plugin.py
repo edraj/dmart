@@ -1,15 +1,16 @@
 import sys
-from typing import Any
-import aiofiles
-from utils.middleware import get_request_data
-from models.core import ActionType, PluginBase, Event, Payload
-from models.enums import ContentType, ResourceType
-from models.core import Action, Locator, Meta
-from utils.helpers import camel_case
-from utils.settings import settings
 from datetime import datetime
+from typing import Any
+
+import aiofiles
 from fastapi.logger import logger
+
 from data_adapters.adapter import data_adapter as db
+from models.core import Action, ActionType, Event, Locator, Meta, Payload, PluginBase
+from models.enums import ContentType, ResourceType
+from utils.helpers import camel_case
+from utils.middleware import get_request_data
+from utils.settings import settings
 
 
 class Plugin(PluginBase):

@@ -1,13 +1,14 @@
+import io
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Tuple, Type, TypeVar
+from typing import Any, TypeVar
+
 from starlette.datastructures import UploadFile
+
 import models.api as api
 import models.core as core
-from models.enums import LockAction
-import io
 from models.core import Record
-from models.enums import RequestType
+from models.enums import LockAction, RequestType
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -55,7 +56,7 @@ class BaseDataAdapter(ABC):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
@@ -66,7 +67,7 @@ class BaseDataAdapter(ABC):
         self,
         space_name: str,
         subpath: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
@@ -78,7 +79,7 @@ class BaseDataAdapter(ABC):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild | None:
@@ -99,7 +100,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def query(self, query: api.Query, user_shortname: str | None = None) -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
         pass
 
     @abstractmethod
@@ -108,7 +109,7 @@ class BaseDataAdapter(ABC):
         space_name: str,
         subpath: str,
         shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         user_shortname: str | None = None,
         schema_shortname: str | None = None,
     ) -> MetaChild:
@@ -120,7 +121,7 @@ class BaseDataAdapter(ABC):
         space_name: str,
         subpath: str,
         filename: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
         schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         pass
@@ -215,7 +216,7 @@ class BaseDataAdapter(ABC):
         src_shortname: str,
         dest_subpath: str,
         dest_shortname: str,
-        class_type: Type[MetaChild],
+        class_type: type[MetaChild],
     ):
         pass
 
@@ -269,7 +270,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         pass
 
     @abstractmethod

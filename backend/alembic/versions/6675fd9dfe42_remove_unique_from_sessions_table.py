@@ -6,10 +6,10 @@ Create Date: 2024-12-29 16:26:29.871839
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
-
 
 # revision identifiers, used by Alembic.
 revision: str = "6675fd9dfe42"

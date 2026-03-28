@@ -1,11 +1,11 @@
 import argparse
 import hashlib
 import json
+
 import requests
 
 from models.enums import RequestType
 from utils.settings import settings
-
 
 local_username = "dmart"
 local_password = "Test1234"

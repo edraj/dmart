@@ -1,12 +1,14 @@
-import time
-from uuid import uuid4
-import pytest
-import os
 import json
+import os
+import time
 from pathlib import Path
-from sqlmodel import Session, create_engine, text, SQLModel
-from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
+from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import OperationalError
+from sqlmodel import Session, SQLModel, create_engine, text
+
+from data_adapters.sql.create_tables import Attachments, Entries, Histories, Spaces
 from utils.settings import settings
 
 
@@ -172,7 +174,8 @@ def test_json_to_db_migration(setup_environment):
                     p = os.path.join(root, ".dm", "meta.space.json")
                     entry = {}
                     if Path(p).is_file():
-                        entry = json.load(open(p))
+                        with open(p) as _f:
+                            entry = json.load(_f)
                         entry["space_name"] = space_name
                         entry["subpath"] = "/"
                         session.add(Spaces.model_validate(entry))
@@ -189,7 +192,8 @@ def test_json_to_db_migration(setup_environment):
                     for file in os.listdir(os.path.join(root, dir)):
                         if not file.startswith("meta"):
                             if file == "history.jsonl":
-                                lines = open(os.path.join(root, dir, file), "r").readlines()
+                                with open(os.path.join(root, dir, file)) as _f:
+                                    lines = _f.readlines()
                                 for line in lines:
                                     history = json.loads(line)
                                     history["shortname"] = dir
@@ -201,13 +205,15 @@ def test_json_to_db_migration(setup_environment):
                         p = os.path.join(root, dir, file)
                         if Path(p).is_file():
                             if "attachments" in p:
-                                _attachment = json.load(open(os.path.join(root, dir, file)))
+                                with open(os.path.join(root, dir, file)) as _f:
+                                    _attachment = json.load(_f)
                                 _attachment["space_name"] = space_name
                                 _attachment["uuid"] = _attachment.get("uuid", uuid4())
                                 _attachment["subpath"] = subpath_checker(_attachment["subpath"])
                                 session.add(Attachments.model_validate(_attachment))
                             elif file.endswith(".json"):
-                                entry = json.load(open(p))
+                                with open(p) as _f:
+                                    entry = json.load(_f)
                                 entry["space_name"] = space_name
                                 entry["subpath"] = subpath_checker(subpath)
                                 session.add(Entries.model_validate(entry))
@@ -215,7 +221,7 @@ def test_json_to_db_migration(setup_environment):
         assert True  # Assert that the migration completes without error
     except Exception as e:
         print(f"Migration failed: {e}")
-        assert False  # Fail the test if there is any exception
+        raise AssertionError("Migration failed") from e  # Fail the test if there is any exception
 
     # Clean up the mock directory structure
     os.remove("/tmp/test_space/.dm/meta.space.json")

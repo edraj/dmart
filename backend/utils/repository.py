@@ -1,19 +1,21 @@
-import os
-import shutil
-import re
-import sys
 import asyncio
 import json
+import os
+import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
 from fastapi import status
+
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from models.enums import ContentType, Language
 from data_adapters.adapter import data_adapter as db
+from models.enums import ContentType, Language
 from utils.helpers import (
     camel_case,
     jq_dict_parser,
@@ -51,12 +53,11 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                     completed = subprocess.run(
                         cmd,  # type: ignore
                         input=input_json.encode("utf-8"),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
+                        capture_output=True,
                         timeout=settings.jq_timeout,
                         check=False,
                     )
-                except subprocess.TimeoutExpired:
+                except subprocess.TimeoutExpired as e:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
@@ -64,7 +65,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                             code=InternalErrorCode.JQ_TIMEOUT,
                             message="jq filter took too long to execute",
                         ),
-                    )
+                    ) from e
 
                 if completed.returncode != 0:
                     raise api.Exception(
@@ -94,7 +95,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                 timeout=settings.jq_timeout,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
@@ -102,7 +103,7 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                     code=InternalErrorCode.NOT_ALLOWED,
                     message="jq is not installed!",
                 ),
-            )
+            ) from e
 
     return total, records
 
@@ -457,7 +458,8 @@ async def health_check_entry(
             )
 
     if (
-        entry_meta_obj.payload.checksum
+        entry_meta_obj.payload
+        and entry_meta_obj.payload.checksum
         and entry_meta_obj.payload.client_checksum
         and entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
     ):

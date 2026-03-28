@@ -1,48 +1,50 @@
+import asyncio
+import json
+import sys
 from datetime import datetime
 from io import BytesIO
+from pathlib import Path as FilePath
 from typing import Any
 
 from fastapi import status
-from models.api import Exception as API_Exception, Error as API_Error
-from utils import password_hashing
-from utils.generate_email import generate_email_from_template, generate_subject
-from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
-from utils.internal_error_code import InternalErrorCode
-from utils.router_helper import is_space_exist
-from utils.ticket_sys_utils import (
-    set_init_state_from_record,
-    set_init_state_for_record,
-    transite,
-    post_transite,
-    check_open_state,
-)
+
 import models.api as api
 import models.core as core
-from models.enums import (
-    ContentType,
-    RequestType,
-    ResourceType,
-    DataAssetType,
-)
-import sys
-import json
-from utils.access_control import access_control
 import utils.regex as regex
 import utils.repository as repository
-from utils.helpers import (
-    camel_case,
-    flatten_dict,
-)
-from utils.settings import settings
-from utils.plugin_manager import plugin_manager
 from api.user.service import (
     send_email,
     send_sms,
 )
-from languages.loader import languages
 from data_adapters.adapter import data_adapter as db
-from pathlib import Path as FilePath
-import asyncio
+from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
+from languages.loader import languages
+from models.api import Error as API_Error
+from models.api import Exception as API_Exception
+from models.enums import (
+    ContentType,
+    DataAssetType,
+    RequestType,
+    ResourceType,
+)
+from utils import password_hashing
+from utils.access_control import access_control
+from utils.generate_email import generate_email_from_template, generate_subject
+from utils.helpers import (
+    camel_case,
+    flatten_dict,
+)
+from utils.internal_error_code import InternalErrorCode
+from utils.plugin_manager import plugin_manager
+from utils.router_helper import is_space_exist
+from utils.settings import settings
+from utils.ticket_sys_utils import (
+    check_open_state,
+    post_transite,
+    set_init_state_for_record,
+    set_init_state_from_record,
+    transite,
+)
 
 
 async def iter_bytesio(data: BytesIO, chunk_size: int = 8192):
@@ -102,9 +104,9 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             -          new_row = row
             -          add item attributes to the new_row
             -          list_new_rows.append(new_row)
-            -      add new_list[0] attributes to row
-            -    
-            -  rows += list_new_rows
+             -      add new_list[0] attributes to row
+             -
+             -  rows += list_new_rows
             """
             if isinstance(attribute_val, list) and len(attribute_val) > 0:
                 if isinstance(attribute_val[0], dict):
@@ -136,7 +138,7 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
     if query.sort_by in core.Meta.model_fields and len(query.filter_schema_names) > 1:
         json_data = sorted(
             json_data,
-            key=lambda d: d[query.sort_by] if query.sort_by in d else "",
+            key=lambda d: d.get(query.sort_by, ""),
             reverse=(query.sort_type == api.SortType.descending),
         )
 
@@ -582,12 +584,15 @@ async def serve_request_update(request, owner_shortname: str):
                     new_resource_payload_data,
                 )
 
-            if isinstance(resource_obj, core.User) and (
-                record.attributes.get("is_active", None) is not None
-                or (settings.logout_on_pwd_change and record.attributes.get("password", None) is not None)
+            if (
+                isinstance(resource_obj, core.User)
+                and (
+                    record.attributes.get("is_active", None) is not None
+                    or (settings.logout_on_pwd_change and record.attributes.get("password", None) is not None)
+                )
+                and not record.attributes.get("is_active")
             ):
-                if not record.attributes.get("is_active"):
-                    await db.remove_user_session(record.shortname)
+                await db.remove_user_session(record.shortname)
 
             rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
 
@@ -1445,7 +1450,7 @@ async def serve_space_update(request, record, owner_shortname: str, is_replace: 
                 code=InternalErrorCode.INVALID_SPACE_NAME,
                 message=f"Space name {request.space_name} provided is empty or invalid [6]",
             ),
-        )
+        ) from None
     if not await access_control.check_access(
         user_shortname=owner_shortname,
         space_name=settings.all_spaces_mw,
@@ -1665,7 +1670,7 @@ async def import_resources_from_csv_handler(
                         message=f"Invalid value for {key}: {value}",
                         info=[{"message": str(e)}],
                     ),
-                )
+                ) from e
 
         match len(keys_list):
             case 1:

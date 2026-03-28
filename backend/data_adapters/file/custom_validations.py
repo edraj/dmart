@@ -1,10 +1,12 @@
 import json
+from pathlib import Path as FSPath
 from typing import Any
+
 import aiofiles
+from jsonschema import Draft7Validator
+
 from utils.helpers import csv_file_to_json
 from utils.settings import settings
-from pathlib import Path as FSPath
-from jsonschema import Draft7Validator
 
 
 def get_schema_path(space_name: str, schema_shortname: str):
@@ -35,7 +37,7 @@ async def validate_jsonl_with_schema(
 
     schema = json.loads(FSPath(schema_path).read_text())
 
-    async with aiofiles.open(file_path, "r") as file:
+    async with aiofiles.open(file_path) as file:
         lines = await file.readlines()
         for line in lines:
             Draft7Validator(schema).validate(line)

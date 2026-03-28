@@ -1,23 +1,26 @@
+import codecs
 import csv
 import hashlib
 import json
 import os
-import subprocess
 import re
+import subprocess
 import sys
 import tempfile
 import traceback
 import zipfile
-import codecs
+from collections.abc import Callable
 from datetime import datetime
-from io import StringIO, BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path as FilePath
 from re import sub as res_sub
 
 # from time import time
-from typing import Any, Callable
+from typing import Any
+
 from fastapi import APIRouter, Body, Depends, Form, Path, Query, UploadFile, status
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.background import BackgroundTask
 from starlette.responses import FileResponse, StreamingResponse
 
 import models.api as api
@@ -33,25 +36,26 @@ from api.managed.utils import (
     get_resource_content_type_from_payload_content_type,
     handle_update_state,
     import_resources_from_csv_handler,
+    iter_bytesio,
     serve_request_assign,
     serve_request_create,
     serve_request_delete,
     serve_request_move,
-    serve_request_update_acl,
     serve_request_patch,
     serve_request_update,
+    serve_request_update_acl,
     update_state_handle_resolution,
-    iter_bytesio,
 )
 from data_adapters.adapter import data_adapter as db
+from data_adapters.sql.json_to_db_migration import main as json_to_db_main
 from models.enums import (
     ContentType,
     # DataAssetType,
     LockAction,
+    QueryType,
     RequestType,
     ResourceType,
     TaskType,
-    QueryType,
 )
 from utils.access_control import access_control
 from utils.helpers import (
@@ -64,9 +68,6 @@ from utils.jwt import GetJWTToken, JWTBearer
 from utils.plugin_manager import plugin_manager
 from utils.router_helper import is_space_exist
 from utils.settings import settings
-from data_adapters.sql.json_to_db_migration import main as json_to_db_main
-from starlette.background import BackgroundTask
-
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -104,7 +105,7 @@ async def import_data(
                 settings.spaces_folder = original_spaces_folder
 
         except Exception as e:
-            return api.Response(status=api.Status.failed, attributes={"message": f"Failed to import data: {str(e)}"})
+            return api.Response(status=api.Status.failed, attributes={"message": f"Failed to import data: {e!s}"})
 
 
 @router.post("/export", response_class=FileResponse)
@@ -161,7 +162,7 @@ async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
         return JSONResponse(
             status_code=400,
             content=api.Response(
-                status=api.Status.failed, attributes={"message": f"Failed to export data: {str(e)}"}
+                status=api.Status.failed, attributes={"message": f"Failed to export data: {e!s}"}
             ).model_dump(),
         )
 
@@ -264,7 +265,7 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
             folder_views = folder_payload.get("index_attributes", [])
 
     keys: list = [i["name"] for i in folder_views]
-    keys_existence = dict(zip(keys, [False for _ in range(len(keys))]))
+    keys_existence = dict(zip(keys, [False for _ in range(len(keys))], strict=False))
 
     # if settings.active_data_db == 'file':
     #     _, search_res = await db.query(query, user_shortname)
@@ -874,7 +875,7 @@ async def import_resources_from_csv(
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     meta_class_attributes = dict(resource_cls.model_fields)
     if space_name == "management" and subpath.strip("/") == "users":
-        user_cls = getattr(sys.modules["models.core"], "User")
+        user_cls = sys.modules["models.core"].User
         meta_class_attributes.update(user_cls.model_fields)
     failed_shortnames: list = []
     success_count = 0
@@ -996,9 +997,8 @@ async def retrieve_entry_meta(
             ),
         )
 
-    if resource_type is ResourceType.user:
-        if hasattr(meta, "password"):
-            setattr(meta, "password", None)
+    if isinstance(meta, core.User) and hasattr(meta, "password"):
+        meta.password = None
 
     attachments = {}
     entry_path = settings.spaces_folder / f"{space_name}/{subpath}/.dm/{shortname}"
@@ -1268,7 +1268,16 @@ async def cancel_lock(
 
 
 @router.get("/reload-security-data")
-async def reload_security_data(_=Depends(JWTBearer())):
+async def reload_security_data(logged_in_user=Depends(JWTBearer())):
+    if logged_in_user != "dmart":
+        raise api.Exception(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error=api.Error(
+                type="auth",
+                code=InternalErrorCode.NOT_ALLOWED,
+                message="Only admin users can reload security data",
+            ),
+        )
     if settings.active_data_db == "file":
         await access_control.load_permissions_and_roles()
 
@@ -1282,7 +1291,6 @@ async def execute(
     record: core.Record,
     logged_in_user=Depends(JWTBearer()),
 ):
-    task_type = task_type
     meta = await db.load(
         space_name=space_name,
         subpath=record.subpath,

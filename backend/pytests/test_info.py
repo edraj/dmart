@@ -1,7 +1,8 @@
-from httpx import AsyncClient
-from pytests.base_test import get_superman_cookie
-from fastapi import status
 import pytest
+from fastapi import status
+from httpx import AsyncClient
+
+from pytests.base_test import get_superman_cookie
 
 
 @pytest.mark.run(order=6)

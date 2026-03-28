@@ -1,6 +1,12 @@
 import pytest
+from fastapi import status
 from httpx import AsyncClient
+
+from models.api import Query
+from models.enums import ContentType, QueryType, RequestType, ResourceType
 from pytests.base_test import (
+    DEMO_SPACE,
+    DEMO_SUBPATH,
     assert_bad_request,
     assert_code_and_status_success,
     assert_resource_created,
@@ -9,15 +15,10 @@ from pytests.base_test import (
     delete_resource,
     delete_space,
     init_test_db,
-    set_superman_cookie,
-    DEMO_SPACE,
-    DEMO_SUBPATH,
-    upload_resource_with_payload,
     retrieve_content_folder,
+    set_superman_cookie,
+    upload_resource_with_payload,
 )
-from fastapi import status
-from models.api import Query
-from models.enums import QueryType, ResourceType, ContentType, RequestType
 from utils.settings import settings
 
 

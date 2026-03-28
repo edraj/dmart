@@ -1,10 +1,11 @@
 import sys
-from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
+
+from data_adapters.adapter import data_adapter as db
+from models.core import ACL, ActionType, ConditionType, Group, Meta, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
-from utils.settings import settings
-from data_adapters.adapter import data_adapter as db
 from utils.regex import FILE_PATTERN
+from utils.settings import settings
 
 
 class AccessControl:
@@ -58,9 +59,10 @@ class AccessControl:
         resource_is_active: bool = False,
         resource_owner_shortname: str | None = None,
         resource_owner_group: str | None = None,
-        record_attributes: dict = {},
+        record_attributes: dict | None = None,
         entry_shortname: str | None = None,
     ):
+        record_attributes = record_attributes or {}
         effective_space = entry_shortname if (resource_type == ResourceType.space and entry_shortname) else space_name
 
         if entry_shortname:
@@ -226,7 +228,7 @@ class AccessControl:
         if not permission_key:
             return False
 
-        if (
+        return (
             action_type in user_permissions[permission_key]["allowed_actions"]
             and self.check_access_conditions(
                 set(user_permissions[permission_key]["conditions"]),
@@ -239,10 +241,7 @@ class AccessControl:
                 action_type,
                 record_attributes,
             )
-        ):
-            return True
-
-        return False
+        )
 
     def check_access_conditions(
         self,
@@ -272,7 +271,7 @@ class AccessControl:
         for restricted_field in restricted_fields:
             if restricted_field in flattened_attributes:
                 return False
-            for flattened_key in flattened_attributes.keys():
+            for flattened_key in flattened_attributes:
                 if flattened_key == restricted_field or flattened_key.startswith(f"{restricted_field}."):
                     return False
 
@@ -285,9 +284,7 @@ class AccessControl:
                 and not any(
                     all(i in allowed_values for i in flattened_attributes[field_name]) for allowed_values in field_values
                 )
-            ):
-                return False
-            elif (
+            ) or (
                 not isinstance(flattened_attributes[field_name], list) and flattened_attributes[field_name] not in field_values
             ):
                 return False

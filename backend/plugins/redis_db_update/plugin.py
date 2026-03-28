@@ -1,15 +1,17 @@
 import sys
-from models.core import ActionType, Attachment, PluginBase, Event, Space
-from utils.helpers import camel_case
-from data_adapters.file.adapter_helpers import generate_payload_string
-from data_adapters.adapter import data_adapter as db
-from models import core
-from models.enums import ContentType, ResourceType
-from data_adapters.file.redis_services import RedisServices
-from fastapi.logger import logger
-from data_adapters.file.create_index import main as reload_redis
-from utils.settings import settings
 from typing import Any
+
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
+from data_adapters.file.adapter_helpers import generate_payload_string
+from data_adapters.file.create_index import main as reload_redis
+from data_adapters.file.redis_services import RedisServices
+from models import core
+from models.core import ActionType, Attachment, Event, PluginBase, Space
+from models.enums import ContentType, ResourceType
+from utils.helpers import camel_case
+from utils.settings import settings
 
 
 class Plugin(PluginBase):

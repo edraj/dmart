@@ -1,50 +1,52 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 """Main module"""
 
-import socket
-from starlette.datastructures import UploadFile
-from contextlib import asynccontextmanager
 import asyncio
 import json
 import os
-from os import getpid
+import socket
 import sys
 import time
 import traceback
+from contextlib import asynccontextmanager
 from datetime import datetime
+from os import getpid
+from pathlib import Path
 from typing import Any, cast
 from urllib.parse import quote
-from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import ValidationError
-from starlette.middleware.gzip import GZipMiddleware
 
-from languages.loader import load_langs
-from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
-from utils.jwt import JWTBearer
-from utils.plugin_manager import plugin_manager
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import Depends, FastAPI, Request, Response, status
-from utils.logger import logging_schema
-from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from utils.access_control import access_control
-from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
+from fastapi.logger import logger
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
+from jsonschema.exceptions import ValidationError as SchemaValidationError
+from pydantic import ValidationError
 from starlette.concurrency import iterate_in_threadpool
+from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.staticfiles import StaticFiles
+
 import models.api as api
-from utils.settings import settings
-from asgi_correlation_id import CorrelationIdMiddleware
-from data_adapters.adapter import data_adapter as db
+from api.info.router import git_info
+from api.info.router import router as info
 from api.managed.router import router as managed
-from api.qr.router import router as qr
 from api.public.router import router as public
+from api.qr.router import router as qr
 from api.user.router import router as user
-from api.info.router import router as info, git_info
+from data_adapters.adapter import data_adapter as db
+from languages.loader import load_langs
+from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
-from pathlib import Path
+from utils.jwt import JWTBearer
+from utils.logger import logging_schema
+from utils.middleware import ChannelMiddleware, CustomRequestMiddleware
+from utils.plugin_manager import plugin_manager
+from utils.settings import settings
 
 
 class SPAStaticFiles(StaticFiles):
@@ -227,6 +229,7 @@ def set_middleware_response_headers(request, response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     return response
 
@@ -300,7 +303,7 @@ async def middle(request: Request, call_next):
                     response_body = json.loads(raw_data)
                 except Exception:
                     response_body = {}
-    except asyncio.TimeoutError:
+    except TimeoutError:
         response = JSONResponse(
             content={"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}},
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -403,20 +406,19 @@ async def middle(request: Request, call_next):
 
     set_logging(response, extra, request, exception_data)
 
-    if settings.hide_stack_trace:
-        if (
-            response_body
-            and isinstance(response_body, dict)
-            and "error" in response_body
-            and isinstance(response_body["error"], dict)
-            and "stack" in response_body["error"]
-        ):
-            response_body["error"].pop("stack", None)
-            response = JSONResponse(
-                status_code=response.status_code,
-                content=response_body,
-                headers=dict(response.headers),
-            )
+    if settings.hide_stack_trace and (
+        response_body
+        and isinstance(response_body, dict)
+        and "error" in response_body
+        and isinstance(response_body["error"], dict)
+        and "stack" in response_body["error"]
+    ):
+        response_body["error"].pop("stack", None)
+        response = JSONResponse(
+            status_code=response.status_code,
+            content=response_body,
+            headers=dict(response.headers),
+        )
 
     return response
 
@@ -550,9 +552,7 @@ async def catchall(x):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        error=api.Error(
-            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message=f"Requested method or path is invalid : {x}"
-        ),
+        error=api.Error(type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"),
     )
 
 

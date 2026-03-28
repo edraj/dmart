@@ -4,11 +4,11 @@ from pathlib import Path
 
 import models.api as api
 import models.core as core
+from data_adapters.sql.create_tables import Aggregated, Entries, Histories, Permissions, Roles, Spaces, Users
 from models.enums import QueryType
-from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Users, Spaces, Aggregated
 from utils.helpers import (
-    str_to_datetime,
     process_jsonl_file,
+    str_to_datetime,
 )
 from utils.settings import settings
 
@@ -145,17 +145,11 @@ def validate_search_range(v_str):
     for pattern in date_patterns:
         if re.match(pattern, v_str):
             # Split on either space or comma
-            if "," in v_str[1:-1]:
-                range_values = v_str[1:-1].split(",")
-            else:
-                range_values = v_str[1:-1].split()
+            range_values = v_str[1:-1].split(",") if "," in v_str[1:-1] else v_str[1:-1].split()
             return True, range_values
 
     if re.match(r"^\[-?\d+(?:\.\d+)?[\s,]-?\d+(?:\.\d+)?\]$", v_str):
-        if "," in v_str[1:-1]:
-            v_list = v_str[1:-1].split(",")
-        else:
-            v_list = v_str[1:-1].split()
+        v_list = v_str[1:-1].split(",") if "," in v_str[1:-1] else v_str[1:-1].split()
         return True, v_list
 
     return False, v_str
@@ -267,10 +261,7 @@ def parse_search_string(string):
         if match:
             potential_op = match.group(1)
             potential_val = match.group(2)
-            if potential_op == "!":
-                comparison_operator = potential_op
-                value = potential_val
-            elif re.match(r"^-?\d+(?:\.\d+)?$", potential_val):
+            if potential_op == "!" or re.match(r"^-?\d+(?:\.\d+)?$", potential_val):
                 comparison_operator = potential_op
                 value = potential_val
 
@@ -315,7 +306,7 @@ def parse_search_string(string):
         all_boolean = True
         all_numeric = True
 
-        for i, val in enumerate(values):
+        for _, val in enumerate(values):
             is_datetime, format_string = is_date_time_value(val)
             if is_datetime:
                 value_type = "datetime"
@@ -391,7 +382,7 @@ async def events_query(query: api.Query, user_shortname: str | None = None) -> t
             continue
 
         if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-            break
+            continue
 
         if not await access_control.check_access(
             user_shortname=str(user_shortname),
@@ -422,7 +413,7 @@ def set_results_from_aggregation(query, item, results, idx):
 
     results[idx] = Aggregated.model_validate(item).to_record(
         query.subpath,
-        (str(getattr(item, "shortname")) if hasattr(item, "shortname") and isinstance(item.shortname, str) else "/"),
+        (str(item.shortname) if hasattr(item, "shortname") and isinstance(item.shortname, str) else "/"),
         extra=extra,
     )
 

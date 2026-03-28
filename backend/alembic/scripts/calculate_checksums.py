@@ -2,9 +2,11 @@
 import asyncio
 import hashlib
 import json
+
 from sqlalchemy import select
+
 from data_adapters.sql.adapter import SQLAdapter
-from data_adapters.sql.create_tables import Histories, Users, Entries, Spaces, Roles, Permissions
+from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Spaces, Users
 
 
 def flatten_dict(d, parent_key="", sep="."):

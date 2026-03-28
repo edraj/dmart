@@ -1,7 +1,7 @@
 from models.core import NotificationData
 from utils.async_request import AsyncRequest
-from utils.notification import Notifier
 from utils.helpers import lang_code
+from utils.notification import Notifier
 from utils.settings import settings
 
 

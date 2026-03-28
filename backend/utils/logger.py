@@ -1,10 +1,10 @@
-import re
 import json
 import logging
 import os
+import re
+import socket
 
 from utils.settings import settings
-import socket
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -37,7 +37,7 @@ SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cooki
 def mask_replacement(match):
     """Replace matched groups with a general mask."""
     groups = match.groups()
-    for i, group in enumerate(groups):
+    for _, group in enumerate(groups):
         if group is not None:
             # For JSON format: "key": "value" → "key": "******"
             if '"' in group:
@@ -68,7 +68,8 @@ class CustomFormatter(logging.Formatter):
     def __init__(self) -> None:
         log_dir = os.path.dirname(settings.log_file)
         if not os.path.exists(log_dir):
-            os.mkdir(log_dir)
+            os.makedirs(log_dir, exist_ok=True)
+        self._hostname = socket.gethostname()
         super().__init__()
 
     def format(self, record):
@@ -78,8 +79,7 @@ class CustomFormatter(logging.Formatter):
 
         props = getattr(record, "props", {})
 
-        # Extract hostname
-        hostname = socket.gethostname()
+        hostname = self._hostname
 
         data = {
             "hostname": hostname,
@@ -159,7 +159,7 @@ logging_schema: dict = {
 }
 
 
-def changeLogFile(log_file: str | None = None) -> None:
+def change_log_file(log_file: str | None = None) -> None:
     global logging_schema
     if (
         log_file

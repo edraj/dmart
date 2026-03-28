@@ -1,8 +1,9 @@
-from firebase_admin import credentials, messaging, initialize_app  # type: ignore
-from utils.notification import Notifier
-from utils.helpers import lang_code
-from utils.settings import settings
+from firebase_admin import credentials, initialize_app, messaging  # type: ignore
+
 from models.core import NotificationData
+from utils.helpers import lang_code
+from utils.notification import Notifier
+from utils.settings import settings
 
 
 class FirebaseNotifier(Notifier):

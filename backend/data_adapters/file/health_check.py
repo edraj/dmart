@@ -15,14 +15,14 @@ from redis.commands.search.query import Query
 from redis.commands.search.result import Result
 
 from api.managed.router import serve_request
-from models.core import Folder
-from utils import repository
 from data_adapters.adapter import data_adapter as db
 from data_adapters.file.custom_validations import get_schema_path
-from utils.helpers import camel_case
 from data_adapters.file.redis_services import RedisServices
-from models import core, api
+from models import api, core
+from models.core import Folder
 from models.enums import ContentType, RequestType, ResourceType
+from utils import repository
+from utils.helpers import camel_case
 from utils.settings import settings
 
 duplicated_entries: dict = {}
@@ -50,7 +50,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
             return
 
         await cleanup_spaces()
-        is_full: bool = True if not args.space or args.space == "all" else False
+        is_full: bool = bool(not args.space or args.space == "all")
         print_header()
         if health_type == "soft":
             print("Running soft healthcheck")
@@ -71,7 +71,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
                         health_check["folders_report"].update(health_check_res.get("folders_report", {}))
                 print_health_check(health_check)
                 await save_health_check_entry(health_check, space)
-                print(f"Completed in: {'{:.2f}'.format(time.time() - before_time)} sec")
+                print(f"Completed in: {f'{time.time() - before_time:.2f}'} sec")
 
         elif not health_type or health_type == "hard":
             print("Running hard healthcheck")
@@ -85,7 +85,7 @@ async def main(health_type: str, space_param: str, schemas_param: list):
                 if health_check:
                     await save_health_check_entry(health_check, space)
                 print_health_check(health_check)
-                print(f"Completed in: {'{:.2f}'.format(time.time() - before_time)} sec")
+                print(f"Completed in: {f'{time.time() - before_time:.2f}'} sec")
         else:
             print("Wrong mode specify [soft or hard]")
             return
@@ -103,7 +103,7 @@ def print_health_check(health_check):
         for schema_path, val in health_check.get("folders_report", {}).items():
             valid = val.get("valid_entries", 0)
             invalid = len(val.get("invalid_entries", []))
-            print("{:<32} {:<6} {:<6}".format(schema_path, valid, invalid))
+            print(f"{schema_path:<32} {valid:<6} {invalid:<6}")
             for one in val.get("invalid_entries", []):
                 print(
                     f"\t\t\t\tInvalid item/issues: {one.get('shortname', 'n/a')}/"
@@ -470,7 +470,7 @@ async def save_duplicated_entries() -> None:
         owner_shortname="dmart",
     )
 
-    print(f"Completed in: {'{:.2f}'.format(time.time() - before_time)} sec")
+    print(f"Completed in: {f'{time.time() - before_time:.2f}'} sec")
 
 
 async def cleanup_spaces() -> None:
@@ -523,4 +523,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     before_time = time.time()
     asyncio.run(main(args.type, args.space or "all", args.schemas))
-    print(f"total time: {'{:.2f}'.format(time.time() - before_time)} sec")
+    print(f"total time: {f'{time.time() - before_time:.2f}'} sec")

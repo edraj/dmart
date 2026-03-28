@@ -1,13 +1,15 @@
 import json
-from utils.settings import settings
+
 from fastapi import status
+
 from models.api import Query
-from models.enums import QueryType, ResourceType, RequestType
+from models.enums import QueryType, RequestType, ResourceType
+from utils.settings import settings
 
 superman = {}
 alibaba = {}
 
-with open("./login_creds.sh", "r") as file:
+with open("./login_creds.sh") as file:
     for line in file.readlines():
         if line.strip().startswith("export SUPERMAN"):
             superman = json.loads(str(line.strip().split("'")[1]))
@@ -110,22 +112,22 @@ async def delete_space(client) -> None:
 def check_repeated_shortname(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "failed" == json_response.get("status")
-    assert "request" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "request"
 
 
 def check_not_found(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "failed" == json_response.get("status")
-    assert "db" == json_response.get("error").get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error").get("type") == "db"
 
 
 def check_unauthorized(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "failed" == json_response.get("status")
-    assert "auth" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "auth"
 
 
 def assert_code_and_status_success(response):
@@ -227,7 +229,7 @@ async def upload_resource_with_payload(
         assert_code_and_status_success(response)
 
     if attachment:
-        with open(record_path, "r") as record_file:
+        with open(record_path) as record_file:
             record_data = json.loads(record_file.read())
             subpath_parts = record_data["subpath"].split("/")
             attach_parent_subpath, attach_parent_shortname = "/".join(subpath_parts[:-1]), subpath_parts[-1]

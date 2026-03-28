@@ -1,9 +1,9 @@
 import os
 from html import escape
-from locust import events
-from flask import Blueprint, render_template, jsonify
-import psutil
 
+import psutil
+from flask import Blueprint, jsonify, render_template
+from locust import events
 
 stats: dict = {}
 min_cpu: float = 999999999

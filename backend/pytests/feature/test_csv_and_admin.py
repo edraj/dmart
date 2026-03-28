@@ -1,14 +1,12 @@
 import pytest
-from httpx import AsyncClient
 from fastapi import status
+from httpx import AsyncClient
+
+from models.enums import QueryType
 from pytests.base_test import (
-    assert_code_and_status_success,
-    set_superman_cookie,
     MANAGEMENT_SPACE,
     USERS_SUBPATH,
 )
-from models.enums import QueryType
-
 
 # --- CSV Export tests ---
 # The CSV endpoint requires the folder to have payload with csv_columns/index_attributes.

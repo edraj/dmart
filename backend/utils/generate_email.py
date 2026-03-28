@@ -1,5 +1,6 @@
-from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
 
 
 def generate_email_from_template(template, data):

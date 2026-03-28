@@ -1,5 +1,6 @@
-from api.user.service import gen_alphanumeric
 import pytest
+
+from api.user.service import gen_alphanumeric
 
 
 @pytest.mark.run(order=9)

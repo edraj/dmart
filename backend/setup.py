@@ -1,6 +1,7 @@
 import os
 import shutil
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,7 +25,7 @@ def parse_requirements(filename):
     path = os.path.join(BASE_DIR, filename)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Requirements file not found: {path}")
-    with open(path, "r") as f:
+    with open(path) as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 
@@ -48,7 +49,7 @@ install_requires.append("alembic")
 
 sub_packages = find_packages(exclude=["tests", "pytests", "loadtest"])
 
-packages = ["dmart"] + [f"dmart.{pkg}" for pkg in sub_packages]
+packages = ["dmart", *(f"dmart.{pkg}" for pkg in sub_packages)]
 
 package_dir = {"dmart": "."}
 
@@ -81,8 +82,8 @@ setup(
             "test_utils.py",
             "conftest.py",
             "cli.py",
-        ]
-        + get_sample_files(),
+            *get_sample_files(),
+        ],
         "dmart.cxb": ["**/*"],
         "dmart.languages": ["*.json"],
         "dmart.config": ["*.json"],

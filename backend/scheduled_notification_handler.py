@@ -1,13 +1,14 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import asyncio
 from datetime import datetime, timedelta
 
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
 from models.api import Query
 from models.core import Content, Notification, NotificationData, Translation
-from data_adapters.adapter import data_adapter as db
 from utils.notification import NotificationManager
 from utils.settings import settings
-from fastapi.logger import logger
-import asyncio
 
 
 async def trigger_admin_notifications() -> None:

@@ -1,20 +1,21 @@
-from copy import deepcopy
 import csv
-from datetime import datetime
 import json
+
+# TBD from referencing import Registry, Resource
+# TBD import referencing.jsonschema
+from collections.abc import MutableMapping
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from re import sub as re_sub
+from typing import Any
 from uuid import UUID
 
 import aiofiles
 from jsonschema.validators import _RefResolver as RefResolver  # type: ignore
 
-# TBD from referencing import Registry, Resource
-# TBD import referencing.jsonschema
-from collections.abc import MutableMapping
-from models.enums import Language
-from typing import Any
 from languages.loader import languages
+from models.enums import Language
 
 
 def flatten_all(d: MutableMapping, parent_key: str = "", sep: str = ".") -> dict:
@@ -240,7 +241,7 @@ def json_flater(data: dict[str, Any]) -> dict[str, Any]:
     for k, v in data.items():
         if isinstance(v, dict):
             __flatened_data = json_flater(v)
-            _flatened_data = {key: val for key, val in __flatened_data.items()}  # deep copy to resolve the runtime error
+            _flatened_data = dict(__flatened_data)  # deep copy to resolve the runtime error
             _keys = list(_flatened_data.keys())
             for key in _keys:
                 flatened_data[f"{k}.{key}"] = _flatened_data[key]
@@ -305,7 +306,7 @@ def pp(*args, **kwargs):
 async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
     data: list[dict[str, Any]] = []
 
-    async with aiofiles.open(csv_file_path, mode="r", encoding="utf-8", newline="") as csvf:
+    async with aiofiles.open(csv_file_path, encoding="utf-8", newline="") as csvf:
         contents = await csvf.readlines()
         csvReader = csv.DictReader(contents)
 
@@ -317,7 +318,7 @@ async def csv_file_to_json(csv_file_path: Path) -> list[dict[str, Any]]:
 
 async def read_jsonl_file(file_path):
     data = []
-    async with aiofiles.open(file_path, "r") as file:
+    async with aiofiles.open(file_path) as file:
         async for line in file:
             data.append(json.loads(line))
     return data
@@ -336,7 +337,7 @@ async def process_jsonl_file(
     if not file_path.is_file():
         return 0, []
 
-    async with aiofiles.open(file_path, "r") as f:
+    async with aiofiles.open(file_path) as f:
         lines = await f.readlines()
 
     if search:
@@ -365,9 +366,7 @@ def jq_dict_parser(data):
         return {k: jq_dict_parser(v) for k, v in data.items()}
     elif isinstance(data, list):
         return [jq_dict_parser(item) for item in data]
-    elif isinstance(data, UUID):
-        return str(data)
-    elif isinstance(data, datetime):
+    elif isinstance(data, (UUID, datetime)):
         return str(data)
     else:
         return data
