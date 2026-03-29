@@ -1,16 +1,12 @@
 import pytest
-from httpx import AsyncClient
 from fastapi import status
+from httpx import AsyncClient
+
+from models.enums import QueryType, ResourceType
 from pytests.base_test import (
-    assert_code_and_status_success,
-    set_superman_cookie,
     DEMO_SPACE,
     DEMO_SUBPATH,
-    MANAGEMENT_SPACE,
-    USERS_SUBPATH,
 )
-from models.enums import QueryType, ResourceType
-
 
 # --- Public Query ---
 # Note: Anonymous user typically has limited or no permissions.

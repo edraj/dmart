@@ -1,4 +1,4 @@
-from models.enums import ResourceType, ConditionType
+from models.enums import ConditionType, ResourceType
 from utils.settings import settings
 
 

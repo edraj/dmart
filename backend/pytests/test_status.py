@@ -1,7 +1,7 @@
 # from pytests.base_test import  client
+import pytest
 from fastapi import status
 from httpx import AsyncClient
-import pytest
 
 
 # @pytest.mark.asyncio(scope="session")

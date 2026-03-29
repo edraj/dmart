@@ -3,31 +3,33 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import configparser
+import contextlib
 import json
+import os
+import secrets
 import shutil
 import ssl
 import subprocess
 import sys
-import os
-import secrets
-import zipfile
 import tempfile
-import configparser
+import zipfile
 
 sys.path.append(os.path.dirname(__file__))
 
-from utils.settings import settings, get_env_file
-from utils.logger import logging_schema
+import re
 import time
 import warnings
 import webbrowser
-import re
 
 # from multiprocessing import freeze_support
 from pathlib import Path
 
 from hypercorn.config import Config
 from hypercorn.run import run
+
+from utils.logger import logging_schema
+from utils.settings import get_env_file, settings
 
 # freeze_support()
 
@@ -46,7 +48,7 @@ commands = """
     db_to_json
     update_query_policies
     help
-    version 
+    version
     info
     init
     migrate
@@ -99,7 +101,7 @@ LISTENING_PORT=8282
             default_config = ""
             sample_path = Path(__file__).resolve().parent / "config.ini.sample"
             if sample_path.exists():
-                with open(sample_path, "r") as f:
+                with open(sample_path) as f:
                     default_config = f.read()
             else:
                 default_config = (
@@ -115,7 +117,7 @@ LISTENING_PORT=8282
             login_creds_path = dmart_home / "login_creds.sh"
             if login_creds_path.exists():
                 try:
-                    with open(login_creds_path, "r") as f:
+                    with open(login_creds_path) as f:
                         creds_content = f.read()
 
                     match = re.search(r"export SUPERMAN='(.*?)'", creds_content)
@@ -199,7 +201,7 @@ def hypercorn_main() -> int:
     parser.add_argument(
         "-c",
         "--config",
-        help="Location of a TOML config file, or when prefixed with `file:` a Python file, or when prefixed with `python:` a Python module.",  # noqa: E501
+        help="Location of a TOML config file, or when prefixed with `file:` a Python file, or when prefixed with `python:` a Python module.",
         default="hypercorn_config.toml",
     )
     parser.add_argument(
@@ -333,7 +335,7 @@ def hypercorn_main() -> int:
         try:
             return ssl.VerifyMode[value]
         except KeyError:
-            raise argparse.ArgumentTypeError(f"'{value}' is not a valid verify mode")
+            raise argparse.ArgumentTypeError(f"'{value}' is not a valid verify mode") from None
 
     parser.add_argument(
         "--verify-mode",
@@ -376,6 +378,7 @@ def hypercorn_main() -> int:
         warnings.warn(
             "The --access-log argument is deprecated, use `--access-logfile` instead",
             DeprecationWarning,
+            stacklevel=2,
         )
         config.accesslog = args.access_log
     if args.access_logfile is not sentinel:
@@ -396,6 +399,7 @@ def hypercorn_main() -> int:
         warnings.warn(
             "The --error-log argument is deprecated, use `--error-logfile` instead",
             DeprecationWarning,
+            stacklevel=2,
         )
         config.errorlog = args.error_log
     if args.error_logfile is not sentinel:
@@ -512,7 +516,7 @@ def patch_plugin_configs():
         return
 
     try:
-        with open(plugins_config_path, "r") as f:
+        with open(plugins_config_path) as f:
             patches = json.load(f)
     except Exception as e:
         print(f"Error reading {plugins_config_path}: {e}")
@@ -544,7 +548,7 @@ def patch_plugin_configs():
             continue
 
         try:
-            with open(plugin_config_path, "r") as f:
+            with open(plugin_config_path) as f:
                 original_config = json.load(f)
 
             updated_config = deep_update(original_config, patch_data)
@@ -560,10 +564,8 @@ def patch_plugin_configs():
 
 def print_formatted(data):
     if isinstance(data, str):
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             data = json.loads(data)
-        except json.JSONDecodeError:
-            pass
 
     if isinstance(data, (dict, list)):
         output = json.dumps(data, indent=4)
@@ -574,7 +576,7 @@ def print_formatted(data):
 
     if sys.stdout.isatty():
         try:
-            from pygments import highlight, lexers, formatters
+            from pygments import formatters, highlight, lexers
 
             lexer = lexers.get_lexer_by_name(lexer_name)
             print(highlight(output, lexer, formatters.TerminalFormatter()).strip())
@@ -629,6 +631,7 @@ def main():
                 settings.load_cxb_config()
 
             import webtransporter
+
             asyncio.run(webtransporter.main())
         case "cli":
             config_file = None
@@ -749,7 +752,7 @@ def main():
             args = parser.parse_args()
             before_time = time.time()
             asyncio.run(health_check(args.type, args.space, args.schemas))
-            print(f"total time: {'{:.2f}'.format(time.time() - before_time)} sec")
+            print(f"total time: {f'{time.time() - before_time:.2f}'} sec")
         case "create-index":
             from data_adapters.file.create_index import main as create_index
 
@@ -774,10 +777,7 @@ def main():
 
             output_file = args.output
             if output_file == ".":
-                if args.space_name:
-                    output_file = f"{args.space_name}.zip"
-                else:
-                    output_file = "all_spaces.zip"
+                output_file = f"{args.space_name}.zip" if args.space_name else "all_spaces.zip"
             elif not output_file.lower().endswith(".zip"):
                 output_file += ".zip"
 
@@ -984,7 +984,7 @@ def main():
                 if not alembic_cli_args:
                     alembic_cli_args = ["upgrade", "head"]
 
-                command = [sys.executable, "-m", "alembic", "-c", temp_config_path] + alembic_cli_args
+                command = [sys.executable, "-m", "alembic", "-c", temp_config_path, *alembic_cli_args]
 
                 result = subprocess.run(command, capture_output=True, text=True, check=False)  # type: ignore
 

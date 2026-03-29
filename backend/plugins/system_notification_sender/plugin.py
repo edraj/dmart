@@ -1,21 +1,23 @@
 from sys import modules as sys_modules
 from uuid import uuid4
+
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
 from models import api
-from models.enums import ContentType, QueryType
 from models.core import (
     ActionType,
     Content,
+    Event,
     NotificationData,
     Payload,
     PluginBase,
-    Event,
     Translation,
 )
-from utils.notification import NotificationManager
+from models.enums import ContentType, QueryType
 from utils.helpers import camel_case, replace_message_vars
+from utils.notification import NotificationManager
 from utils.settings import settings
-from fastapi.logger import logger
-from data_adapters.adapter import data_adapter as db
 
 
 class Plugin(PluginBase):

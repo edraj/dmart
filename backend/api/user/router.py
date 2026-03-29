@@ -2,40 +2,39 @@
 
 import json
 import re
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 import aiofiles
-from utils.async_request import AsyncRequest
-from utils.generate_email import generate_subject
-from utils.generate_email import generate_email_from_template
-from fastapi import APIRouter, Body, Query, Request, status, Depends, Response, Header
+import jwt as pyjwt
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, status
+from fastapi.logger import logger
+from fastapi.responses import JSONResponse
+from fastapi_sso.sso.base import OpenID, SSOBase
+from fastapi_sso.sso.facebook import FacebookSSO
+from fastapi_sso.sso.google import GoogleSSO
+from jwt import PyJWKClient
+
 import models.api as api
 import models.core as core
-from models.enums import ActionType, RequestType, ResourceType, ContentType, UserType
+import utils.password_hashing as password_hashing
+import utils.regex as rgx
+import utils.repository as repository
 from data_adapters.adapter import data_adapter as db
+from languages.loader import languages
+from models.api import Status
+from models.enums import ActionType, ContentType, RequestType, ResourceType, UserType
 from utils.access_control import access_control
+from utils.async_request import AsyncRequest
+from utils.generate_email import generate_email_from_template, generate_subject
 from utils.helpers import flatten_dict
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer, sign_jwt, decode_jwt
-from typing import Any
-from utils.settings import settings
-import utils.repository as repository
+from utils.jwt import JWTBearer, decode_jwt, sign_jwt
 from utils.plugin_manager import plugin_manager
-import utils.password_hashing as password_hashing
-from models.api import Status
+from utils.settings import settings
 from utils.social_sso import get_apple_sso, get_facebook_sso, get_google_sso
-from .service import (
-    gen_alphanumeric,
-    get_otp_key,
-    send_email,
-    send_sms,
-    send_otp,
-    email_send_otp,
-    get_shortname_from_identifier,
-    check_user_validation,
-    set_user_profile,
-    update_user_payload,
-    get_otp_confirmation_email_or_msisdn,
-)
+
 from .model.requests import (
     ConfirmOTPRequest,
     PasswordResetRequest,
@@ -43,16 +42,19 @@ from .model.requests import (
     SocialMobileLoginRequest,
     UserLoginRequest,
 )
-import utils.regex as rgx
-from languages.loader import languages
-from fastapi_sso.sso.google import GoogleSSO
-from fastapi_sso.sso.facebook import FacebookSSO
-from fastapi_sso.sso.base import OpenID, SSOBase
-from fastapi.logger import logger
-from fastapi.responses import JSONResponse
-from datetime import datetime
-import jwt as pyjwt
-from jwt import PyJWKClient
+from .service import (
+    check_user_validation,
+    email_send_otp,
+    gen_alphanumeric,
+    get_otp_confirmation_email_or_msisdn,
+    get_otp_key,
+    get_shortname_from_identifier,
+    send_email,
+    send_otp,
+    send_sms,
+    set_user_profile,
+    update_user_payload,
+)
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -129,14 +131,18 @@ async def create_user(response: Response, record: core.Record, http_request: Req
             separate_payload_data = user.payload.body
             user.payload.body = record.shortname + ".json"
 
-        if user.payload and separate_payload_data:
-            if not isinstance(separate_payload_data, str) and not isinstance(separate_payload_data, Path):
-                if user.payload.schema_shortname:
-                    await db.validate_payload_with_schema(
-                        payload_data=separate_payload_data,
-                        space_name=MANAGEMENT_SPACE,
-                        schema_shortname=user.payload.schema_shortname,
-                    )
+        if (
+            user.payload
+            and separate_payload_data
+            and not isinstance(separate_payload_data, str)
+            and not isinstance(separate_payload_data, Path)
+            and user.payload.schema_shortname
+        ):
+            await db.validate_payload_with_schema(
+                payload_data=separate_payload_data,
+                space_name=MANAGEMENT_SPACE,
+                schema_shortname=user.payload.schema_shortname,
+            )
 
     if user.msisdn:
         is_valid_otp = (
@@ -213,10 +219,7 @@ async def verify_user(user_request: ConfirmOTPRequest):
     user_identifier = user_request.check_fields()
     key = get_otp_key(user_identifier)
     code = await db.get_otp(key)
-    if not code or code != user_request.code:
-        return False
-
-    return True
+    return bool(code and code == user_request.code)
 
 
 @router.post(
@@ -304,7 +307,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             key: str | None = None
             if not shortname and identifier:
                 if isinstance(identifier, dict):
-                    key, value = list(identifier.items())[0]
+                    key, value = next(iter(identifier.items()))
                     shortname = identifier.get("shortname") or await get_shortname_from_identifier(value=value, key=key)
                 else:
                     shortname = await get_shortname_from_identifier(value=identifier, key=key)
@@ -509,7 +512,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"),
-        )
+        ) from _
         # if e.error.type == "db":
         #     raise api.Exception(
         #         status.HTTP_401_UNAUTHORIZED,
@@ -567,7 +570,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
                 and user.payload.content_type == ContentType.json
                 and (path / str(user.payload.body)).is_file()
             ):
-                async with aiofiles.open(path / str(user.payload.body), "r") as payload_file_content:
+                async with aiofiles.open(path / str(user.payload.body)) as payload_file_content:
                     attributes["payload"].body = json.loads(await payload_file_content.read())
 
     attributes["type"] = user.type
@@ -751,9 +754,8 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
         if "payload" in profile.attributes and "body" in profile.attributes["payload"]:
             await update_user_payload(profile, user)
 
-    if user.is_active and profile.attributes.get("is_active", None) is not None:
-        if not profile.attributes.get("is_active"):
-            await db.remove_user_session(user.shortname)
+    if user.is_active and profile.attributes.get("is_active", None) is not None and not profile.attributes.get("is_active"):
+        await db.remove_user_session(user.shortname)
 
     history_diff = await db.update(
         MANAGEMENT_SPACE,
@@ -858,7 +860,7 @@ async def otp_request(user_request: SendOTPRequest, skel_accept_language=Header(
     """Request new OTP"""
 
     user_identifier = user_request.check_fields()
-    key, value = list(user_identifier.items())[0]
+    key, value = next(iter(user_identifier.items()))
     user = await db.get_user_by_criteria(key, value)
     if not user and not settings.is_registrable:
         raise api.Exception(
@@ -962,7 +964,7 @@ async def otp_request_login(
 )
 async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     result = user_request.check_fields()
-    key, value = list(result.items())[0]
+    key, value = next(iter(result.items()))
     shortname = await db.get_user_by_criteria(key, value)
 
     if shortname is not None:
@@ -1313,6 +1315,16 @@ if settings.social_login_allowed:
         provider: str, provider_id: str, email: str | None, first_name: str | None, last_name: str | None, picture: str | None
     ) -> core.User:
         shortname = f"{provider}_{provider_id}"
+        await plugin_manager.before_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
+                shortname=shortname,
+                action_type=core.ActionType.create,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
+            )
+        )
         user: core.User | None = await db.load_or_none(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
@@ -1331,6 +1343,16 @@ if settings.social_login_allowed:
             )
             setattr(user, f"{provider}_id", provider_id)
             await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
+            await plugin_manager.after_action(
+                core.Event(
+                    space_name=MANAGEMENT_SPACE,
+                    subpath=USERS_SUBPATH,
+                    shortname=shortname,
+                    action_type=core.ActionType.create,
+                    resource_type=ResourceType.user,
+                    user_shortname=shortname,
+                )
+            )
         return user
 
     async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:
@@ -1407,7 +1429,37 @@ if settings.social_login_allowed:
         body: SocialMobileLoginRequest,
     ):
         """Endpoint for Facebook SSO login from mobile apps SDK implementation. using access token."""
+        app_access_token = f"{settings.facebook_client_id}|{settings.facebook_client_secret}"
         async with AsyncRequest() as session:
+            # Verify the token belongs to our app
+            debug_res = await session.get(
+                url="https://graph.facebook.com/debug_token",
+                params={
+                    "input_token": body.token,
+                    "access_token": app_access_token,
+                },
+            )
+            if debug_res.status != 200:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Invalid Facebook access token",
+                    ),
+                )
+            debug_data = (await debug_res.json()).get("data", {})
+            if not debug_data.get("is_valid") or str(debug_data.get("app_id")) != settings.facebook_client_id:
+                raise api.Exception(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    error=api.Error(
+                        type="auth",
+                        code=InternalErrorCode.INVALID_DATA,
+                        message="Token was not issued for this application",
+                    ),
+                )
+
+            # Fetch user profile
             res = await session.get(
                 url="https://graph.facebook.com/me",
                 params={
@@ -1421,7 +1473,7 @@ if settings.social_login_allowed:
                     error=api.Error(
                         type="auth",
                         code=InternalErrorCode.INVALID_DATA,
-                        message="Invalid Facebook access token",
+                        message="Failed to fetch Facebook user profile",
                     ),
                 )
 
@@ -1468,9 +1520,9 @@ if settings.social_login_allowed:
                 error=api.Error(
                     type="auth",
                     code=InternalErrorCode.INVALID_DATA,
-                    message=f"Invalid Apple ID token: {str(e)}",
+                    message=f"Invalid Apple ID token: {e!s}",
                 ),
-            )
+            ) from e
 
         user = await find_or_create_social_user(
             provider="apple",

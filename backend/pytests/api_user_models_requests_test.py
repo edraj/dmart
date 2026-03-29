@@ -2,12 +2,12 @@ import pytest
 from pydantic import ValidationError
 
 from api.user.model.requests import (
-    SendOTPRequest,
-    PasswordResetRequest,
     ConfirmOTPRequest,
-    UserLoginRequest,
     Exception,
     InternalErrorCode,
+    PasswordResetRequest,
+    SendOTPRequest,
+    UserLoginRequest,
 )
 
 

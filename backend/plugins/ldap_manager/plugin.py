@@ -1,10 +1,10 @@
 from fastapi.logger import logger
+from ldap3 import ALL, AUTO_BIND_NO_TLS, MODIFY_REPLACE, Connection, Server
+
+from data_adapters.adapter import data_adapter as db
 from models.core import Event, PluginBase, User
 from models.enums import ActionType
 from utils.settings import settings
-from data_adapters.adapter import data_adapter as db
-
-from ldap3 import AUTO_BIND_NO_TLS, MODIFY_REPLACE, Server, Connection, ALL
 
 
 class Plugin(PluginBase):

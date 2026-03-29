@@ -1,10 +1,12 @@
-import models.api as api
+from typing import Any
+
 from fastapi import status
-from data_adapters.adapter import data_adapter as db
+
+import models.api as api
 import models.core as core
+from data_adapters.adapter import data_adapter as db
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
-from typing import Any
 
 
 async def get_init_state_from_workflow(space_name: str, workflow_shortname: str):
@@ -166,26 +168,25 @@ def transite(states, current_state: str, action: str, user_roles):
 
 def post_transite(states, next_state: str, resolution: str):
     for state in states:
-        if state["state"] == next_state:
-            if "resolutions" in state:
-                available_resolutions = [one for one in state["resolutions"]]
-                if len(available_resolutions) == 0:
-                    return {
-                        "status": False,
-                        "message": f"The state {next_state} does not have any resolutions defined",
-                    }
-                else:
-                    if isinstance(available_resolutions[0], str):
-                        if resolution in available_resolutions:
-                            return {"status": True, "message": resolution}
-                    else:
-                        if resolution in [item["key"] for item in available_resolutions]:
-                            return {"status": True, "message": resolution}
-
+        if state["state"] == next_state and "resolutions" in state:
+            available_resolutions = list(state["resolutions"])
+            if len(available_resolutions) == 0:
                 return {
                     "status": False,
-                    "message": f"The resolution {resolution} provided is not acceptable in state {next_state}",
+                    "message": f"The state {next_state} does not have any resolutions defined",
                 }
+            else:
+                if isinstance(available_resolutions[0], str):
+                    if resolution in available_resolutions:
+                        return {"status": True, "message": resolution}
+                else:
+                    if resolution in [item["key"] for item in available_resolutions]:
+                        return {"status": True, "message": resolution}
+
+            return {
+                "status": False,
+                "message": f"The resolution {resolution} provided is not acceptable in state {next_state}",
+            }
     return {
         "status": False,
         "message": f"Cannot fetch the next state {next_state} with resolution {resolution}",

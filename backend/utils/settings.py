@@ -3,11 +3,11 @@
 import json
 import logging
 import os
-import secrets
 import re
+import secrets
 import string
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -165,7 +165,7 @@ class Settings(BaseSettings):
         channels_config_file = Path(__file__).resolve().parent.parent / "config/channels.json"
         if channels_config_file.exists():
             try:
-                with open(channels_config_file, "r") as file:
+                with open(channels_config_file) as file:
                     self.channels = json.load(file)
 
                 # Compile the patterns for better performance
@@ -208,7 +208,7 @@ class Settings(BaseSettings):
         if config_path:
             self.cxb_config_path = config_path
             try:
-                with open(config_path, "r") as f:
+                with open(config_path) as f:
                     config_data = json.load(f)
                     if "cxb_url" in config_data:
                         url = config_data["cxb_url"]

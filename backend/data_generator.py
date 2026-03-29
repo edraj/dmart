@@ -2,10 +2,12 @@ import argparse
 import asyncio
 from pathlib import Path
 from uuid import uuid4
+
+from jsf import JSF  # type: ignore
+
+from data_adapters.adapter import data_adapter as db
 from models.core import Content, Payload
 from models.enums import ContentType
-from jsf import JSF  # type: ignore
-from data_adapters.adapter import data_adapter as db
 
 
 async def main(space: str, subpath: str, schema_path: str, num: int):
@@ -14,7 +16,7 @@ async def main(space: str, subpath: str, schema_path: str, num: int):
         print("Invalid schema file path")
 
     faker = JSF.from_json(Path(schema_path))  # type: ignore
-    for i in range(0, num):
+    for _ in range(0, num):
         payload = faker.generate()
         uuid = uuid4()
         shortname = str(uuid)[:8]

@@ -1,6 +1,7 @@
-import asyncio
 import argparse
-from typing import Awaitable
+import asyncio
+from collections.abc import Awaitable
+
 from data_adapters.file.redis_services import RedisServices
 
 #!/usr/bin/env python

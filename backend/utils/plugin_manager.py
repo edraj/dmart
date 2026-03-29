@@ -6,6 +6,7 @@ from importlib.util import find_spec, module_from_spec
 from inspect import iscoroutine
 from pathlib import Path
 from typing import Any
+
 import aiofiles
 from fastapi import Depends, FastAPI
 from fastapi.logger import logger
@@ -13,16 +14,18 @@ from fastapi.logger import logger
 from models import api
 from models.core import (
     ActionType,
-    PluginWrapper,
-    PluginBase,
     Event,
     EventFilter,
     EventListenTime,
+    PluginBase,
+    PluginWrapper,
 )
-from models.enums import ResourceType, PluginType
+from models.enums import PluginType, ResourceType
 from utils.settings import settings
 
 CUSTOM_PLUGINS_PATH = settings.spaces_folder / "custom_plugins"
+
+_background_tasks: set[asyncio.Task] = set()
 
 # Allow python to search for modules inside the custom plugins
 # by including the path to the parent folder of the custom plugins to sys.path
@@ -80,7 +83,7 @@ class PluginManager:
                 continue
 
             # Load plugin config file
-            async with aiofiles.open(config_file_path, "r") as config_file:
+            async with aiofiles.open(config_file_path) as config_file:
                 plugin_wrapper: PluginWrapper = PluginWrapper.model_validate_json(await config_file.read())
             plugin_wrapper.shortname = plugin_path.name
             if not plugin_wrapper.is_active:
@@ -107,7 +110,7 @@ class PluginManager:
 
                 # Add the Hook Plugin to the loaded plugins
                 elif plugin_wrapper.type == PluginType.hook:
-                    plugin_wrapper.object = getattr(module, "Plugin")()
+                    plugin_wrapper.object = module.Plugin()
 
                     self.store_plugin_in_its_action_dict(plugin_wrapper)
 
@@ -147,22 +150,19 @@ class PluginManager:
         ):
             return False
 
-        if (
+        return not (
             plugin_filters.resource_types
             and "__ALL__" not in plugin_filters.resource_types
             and event.resource_type not in plugin_filters.resource_types
-        ):
-            return False
-
-        return True
+        )
 
     async def _safe_coroutine_execution(self, coro, plugin_model):
         try:
             await coro
         except api.Exception as e:
-            logger.error(f"Plugin:{plugin_model} raised api.Exception: {str(e)}")
+            logger.error(f"Plugin:{plugin_model} raised api.Exception: {e!s}")
         except Exception as e:
-            logger.error(f"Plugin:{plugin_model}:{str(e)}")
+            logger.error(f"Plugin:{plugin_model}:{e!s}")
 
     async def before_action(self, event: Event):
         if event.action_type not in self.plugins_wrappers:
@@ -194,7 +194,7 @@ class PluginManager:
                 except api.Exception as e:
                     raise e
                 except Exception as e:
-                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
+                    logger.error(f"Plugin:{plugin_model}:{e!s}")
 
     async def after_action(self, event: Event):
         if event.action_type not in self.plugins_wrappers:
@@ -211,7 +211,7 @@ class PluginManager:
             return
         space_plugins = space.active_plugins
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         for plugin_model in after_plugins:
             if (
                 plugin_model.shortname in space_plugins
@@ -224,13 +224,15 @@ class PluginManager:
                         plugin_execution = object.hook(event)
                         if iscoroutine(plugin_execution):
                             if plugin_model.concurrent:
-                                loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
+                                task = loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
+                                _background_tasks.add(task)
+                                task.add_done_callback(_background_tasks.discard)
                             else:
                                 await plugin_execution
                 except api.Exception as e:
                     raise e
                 except Exception as e:
-                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
+                    logger.error(f"Plugin:{plugin_model}:{e!s}")
 
 
 plugin_manager = PluginManager()

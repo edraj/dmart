@@ -1,18 +1,20 @@
 import re
-import models.core as core
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from builtins import Exception as PyException
 from datetime import datetime
 from typing import Any
-from builtins import Exception as PyException
+
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+import models.core as core
+import utils.regex as regex
 from models.enums import (
     DataAssetType,
     QueryType,
+    RequestType,
     ResourceType,
     SortType,
     Status,
-    RequestType,
 )
-import utils.regex as regex
 from utils.settings import settings
 
 # Pattern for validating field paths used in search, sort_by, aggregation

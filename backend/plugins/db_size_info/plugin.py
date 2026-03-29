@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.logger import logger
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Any
 
 from utils.settings import settings
 

@@ -1,15 +1,18 @@
+import contextlib
 from contextvars import ContextVar
 from typing import Any
-from starlette.types import ASGIApp, Receive, Scope, Send
+
+from fastapi import status
 from starlette.requests import Request
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+import models.api as api
 from utils.internal_error_code import InternalErrorCode
 from utils.settings import settings
-import models.api as api
-from fastapi import status
 
 REQUEST_DATA_CTX_KEY = "request_data"
 
-_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default={})
+_request_data_ctx_var: ContextVar[dict] = ContextVar(REQUEST_DATA_CTX_KEY, default={})  # noqa: B039
 
 
 def get_request_data() -> dict:
@@ -25,10 +28,8 @@ class CustomRequestMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ["http", "websocket"]:
-            try:
+            with contextlib.suppress(Exception):
                 await self.app(scope, receive, send)
-            except Exception as _:
-                pass
             return
 
         request = Request(scope, receive)
@@ -44,9 +45,10 @@ class CustomRequestMiddleware:
             }
         )
 
-        await self.app(scope, receive, send)
-
-        _request_data_ctx_var.reset(request_data)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _request_data_ctx_var.reset(request_data)
 
 
 class ChannelMiddleware:

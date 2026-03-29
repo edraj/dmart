@@ -1,9 +1,10 @@
-from typing import Dict
+
 from pydantic import BaseModel, Field
-from utils.internal_error_code import InternalErrorCode
+
 import utils.regex as rgx
-from models.api import Exception, Error
+from models.api import Error, Exception
 from models.enums import StrEnum
+from utils.internal_error_code import InternalErrorCode
 
 
 class OTPType(StrEnum):
@@ -16,7 +17,7 @@ class SendOTPRequest(BaseModel):
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
     email: str | None = Field(None, pattern=rgx.EMAIL)
 
-    def check_fields(self) -> Dict[str, str]:
+    def check_fields(self) -> dict[str, str]:
         if self.email is None and self.msisdn is None and self.shortname is None:
             raise Exception(
                 422,
@@ -61,7 +62,7 @@ class PasswordResetRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     email: str | None = Field(None, pattern=rgx.EMAIL)
 
-    def check_fields(self) -> Dict[str, str]:
+    def check_fields(self) -> dict[str, str]:
         if self.email is None and self.msisdn is None and self.shortname is None:
             raise Exception(
                 422,
@@ -123,7 +124,7 @@ class UserLoginRequest(BaseModel):
     firebase_token: str | None = Field(None)
     otp: str | None = Field(None)
 
-    def check_fields(self) -> Dict[str, str] | None:
+    def check_fields(self) -> dict[str, str] | None:
         if self.shortname is None and self.email is None and self.msisdn is None:
             return {}
             # raise ValueError("One of these [shortname, email, msisdn] should be set!")

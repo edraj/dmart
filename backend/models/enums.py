@@ -1,4 +1,5 @@
 from enum import StrEnum
+
 import redis.commands.search.reducers as reducers
 
 

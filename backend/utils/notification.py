@@ -1,15 +1,15 @@
-from abc import ABC, abstractmethod
-from importlib.util import find_spec, module_from_spec
 import json
 import sys
-from typing import Any
+from abc import ABC, abstractmethod
+from importlib.util import find_spec, module_from_spec
 from pathlib import Path
+from typing import Any
 
-from models.core import NotificationData
-from utils.settings import settings
-from models.core import User
-from data_adapters.adapter import data_adapter as db
 from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
+from models.core import NotificationData, User
+from utils.settings import settings
 
 
 class Notifier(ABC):

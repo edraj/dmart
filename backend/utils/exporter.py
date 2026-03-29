@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
-from hashlib import blake2b, md5
+import copy
 import json
 import os
 import shutil
 import sys
-import copy
+from hashlib import blake2b, md5
+from pathlib import Path
+
 import jsonschema
 from aiofiles import open as aopen
-from pathlib import Path
 
 # from pydantic import config
 
@@ -53,19 +54,17 @@ def meta_path(space_path: Path, subpath: str, file_path: str, resource_type: str
 
 async def get_meta(*, space_path: Path, subpath: str, file_path: str, resource_type: str):
     meta_content = meta_path(space_path, subpath, file_path, resource_type)
-    async with aopen(meta_content, "r") as f:
+    async with aopen(meta_content) as f:
         return json.loads(await f.read())
 
 
 def validate_config(config_obj: dict):
-    if (
+    return not (
         not config_obj.get("space")
         or not config_obj.get("subpath")
         or not config_obj.get("resource_type")
         or not config_obj.get("schema_shortname")
-    ):
-        return False
-    return True
+    )
 
 
 def remove_fields(src: dict, restricted_keys: list):
@@ -144,7 +143,7 @@ async def extract(
 
     space_path = Path(f"{spaces_path}/{space}")
     subpath_schema_obj = None
-    with open(space_path / f"schema/{schema_shortname}.json", "r") as f:
+    with open(space_path / f"schema/{schema_shortname}.json") as f:
         subpath_schema_obj = json.load(f)
     input_subpath_schema_obj = copy.deepcopy(subpath_schema_obj)
 
@@ -173,7 +172,8 @@ async def extract(
         subpath_schema_obj["properties"] = remove_fields(
             subpath_schema_obj["properties"], [field["field_name"] for field in excluded_payload_fields]
         )
-    open(schema_fil, "w").write(json.dumps(subpath_schema_obj) + "\n")
+    with open(schema_fil, "w") as f:
+        f.write(json.dumps(subpath_schema_obj) + "\n")
 
     # Generat output content file
     data_file = output_subpath / "data.ljson"
@@ -182,14 +182,12 @@ async def extract(
         if not file_name.endswith(".json"):
             continue
         if entries_since:
-            payload_ts = int(round(os.path.getmtime(os.path.join(path, file_name)) * 1000))
-            meta_ts = int(
-                round(os.path.getmtime(meta_path(space_path, subpath, file_name.split(".")[0], resource_type)) * 1000)
-            )
+            payload_ts = round(os.path.getmtime(os.path.join(path, file_name)) * 1000)
+            meta_ts = round(os.path.getmtime(meta_path(space_path, subpath, file_name.split(".")[0], resource_type)) * 1000)
             if payload_ts <= entries_since and meta_ts <= entries_since:
                 continue
 
-        async with aopen(os.path.join(path, file_name), "r") as f:
+        async with aopen(os.path.join(path, file_name)) as f:
             content = await f.read()
         try:
             payload = json.loads(content)
@@ -209,7 +207,8 @@ async def extract(
         # jsonschema.validate(instance=out, schema=subpath_schema_obj)
 
         encrypted_out = enc_dict(out, hashed_data)
-        open(data_file, "a").write(json.dumps(encrypted_out) + "\n")
+        with open(data_file, "a") as f:
+            f.write(json.dumps(encrypted_out) + "\n")
 
     # Security: Do not write the hash-to-plaintext mapping to disk, as it
     # completely negates the purpose of hashing PII fields.
@@ -239,7 +238,7 @@ if __name__ == "__main__":
         output_path = args.output
 
     if args.since:
-        since = int(round(float(args.since) * 1000))
+        since = round(float(args.since) * 1000)
 
     if not os.path.isdir(args.spaces):
         exit_with_error(f"The spaces folder {args.spaces} is not found.")
@@ -257,7 +256,7 @@ if __name__ == "__main__":
     # print(con)
 
     tasks = []
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         config_objs = json.load(f)
 
     for config_obj in config_objs:

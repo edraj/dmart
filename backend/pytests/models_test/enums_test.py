@@ -1,31 +1,32 @@
 import pytest
+import redis.commands.search.reducers as reducers
+
 from models.enums import (
-    StrEnum,
-    RequestType,
-    Language,
-    PublicSubmitResourceType,
-    ResourceType,
-    DataAssetType,
+    ActionType,
     AttachmentType,
+    ConditionType,
     ContentType,
+    DataAssetType,
+    EventListenTime,
+    Language,
+    LockAction,
+    NotificationPriority,
+    NotificationType,
+    PluginType,
+    PublicSubmitResourceType,
+    QueryType,
+    ReactionType,
+    RedisReducerName,
+    RequestType,
+    ResourceType,
+    SortType,
+    Status,
+    StrBoolEnum,
+    StrEnum,
     TaskType,
     UserType,
     ValidationEnum,
-    LockAction,
-    NotificationType,
-    NotificationPriority,
-    StrBoolEnum,
-    ActionType,
-    ConditionType,
-    PluginType,
-    EventListenTime,
-    QueryType,
-    SortType,
-    Status,
-    RedisReducerName,
-    ReactionType,
 )
-import redis.commands.search.reducers as reducers
 
 
 def test_str_enum():

@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
 from utils.settings import settings
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
@@ -17,7 +18,7 @@ log = logging.getLogger("db_entries_count_history.periodic")
 
 
 def _load_config():
-    with open(CONFIG_PATH, "r") as f:
+    with open(CONFIG_PATH) as f:
         return json.load(f)
 
 
