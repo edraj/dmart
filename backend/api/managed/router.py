@@ -873,7 +873,7 @@ async def import_resources_from_csv(
 
     resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     meta_class_attributes = dict(resource_cls.model_fields)
-    if space_name == "management" and subpath.strip("/") == "users":
+    if space_name == settings.management_space and subpath.strip("/") == "users":
         user_cls = getattr(sys.modules["models.core"], "User")
         meta_class_attributes.update(user_cls.model_fields)
     failed_shortnames: list = []

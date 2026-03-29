@@ -24,6 +24,9 @@ from fastapi.logger import logger
 import redis
 
 
+MANAGEMENT_SPACE: str = settings.management_space
+
+
 class RedisServices(Redis):
     META_SCHEMA: list[Field] = [
         TextField("$.uuid", no_stem=True, as_name="uuid"),  # type: ignore
@@ -134,7 +137,7 @@ class RedisServices(Redis):
 
     CUSTOM_INDICES = [
         {
-            "space": "management",
+            "space": MANAGEMENT_SPACE,
             "subpath": "roles",
             "class": core.Role,
             "exclude_from_index": [
@@ -147,7 +150,7 @@ class RedisServices(Redis):
             ],
         },
         {
-            "space": "management",
+            "space": MANAGEMENT_SPACE,
             "subpath": "groups",
             "class": core.Group,
             "exclude_from_index": [
@@ -160,7 +163,7 @@ class RedisServices(Redis):
             ],
         },
         {
-            "space": "management",
+            "space": MANAGEMENT_SPACE,
             "subpath": "users",
             "class": core.User,
             "exclude_from_index": [
@@ -179,7 +182,7 @@ class RedisServices(Redis):
             ],
         },
         {
-            "space": "management",
+            "space": MANAGEMENT_SPACE,
             "subpath": "permissions",
             "class": core.Permission,
             "exclude_from_index": [

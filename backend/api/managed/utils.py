@@ -45,6 +45,9 @@ from pathlib import Path as FilePath
 import asyncio
 
 
+MANAGEMENT_SPACE: str = settings.management_space
+
+
 async def iter_bytesio(data: BytesIO, chunk_size: int = 8192):
     data.seek(0)
     while True:
@@ -798,7 +801,7 @@ async def serve_request_assign(request, owner_shortname: str):
                     ),
                 )
             _target_user = await db.load(
-                space_name=settings.management_space,
+                space_name=MANAGEMENT_SPACE,
                 subpath=settings.users_subpath,
                 shortname=record.attributes["owner_shortname"],
                 class_type=core.User,
@@ -1520,7 +1523,7 @@ async def serve_space_update(request, record, owner_shortname: str, is_replace: 
 
 
 async def serve_space_delete(request, record, owner_shortname: str):
-    if request.space_name == "management":
+    if request.space_name == MANAGEMENT_SPACE:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(

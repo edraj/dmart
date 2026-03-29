@@ -434,7 +434,7 @@ def set_table_for_query(query):
         return Spaces
     elif query.type is QueryType.history:
         return Histories
-    elif query.space_name == "management":
+    elif query.space_name == settings.management_space:
         match query.subpath:
             case "/users":
                 return Users
