@@ -3,23 +3,24 @@ import copy
 import sys
 from datetime import datetime
 from typing import Any
-from uuid import UUID
-from sqlalchemy import LargeBinary, text, URL
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, TEXT, HSTORE
-from sqlmodel import SQLModel, create_engine, Field, UniqueConstraint, Enum, Column
-from sqlmodel._compat import SQLModelConfig # type: ignore
-from utils.helpers import camel_case, remove_none_dict
-from uuid import uuid4
-from models import core
-from models.enums import ResourceType, UserType, Language
-from utils import regex
-from utils.settings import settings
-import utils.password_hashing as password_hashing
+from uuid import UUID, uuid4
 
+from sqlalchemy import URL, LargeBinary, text
+from sqlalchemy.dialects.postgresql import ARRAY, HSTORE, JSONB, TEXT
+from sqlmodel import Column, Enum, Field, SQLModel, UniqueConstraint, create_engine
+from sqlmodel._compat import SQLModelConfig  # type: ignore
+
+import utils.password_hashing as password_hashing
+from models import core
+from models.enums import Language, ResourceType, UserType
+from utils import regex
+from utils.helpers import camel_case, remove_none_dict
+from utils.settings import settings
 
 metadata = SQLModel.metadata
 
-def get_model_from_sql_instance(db_record_type) :
+
+def get_model_from_sql_instance(db_record_type):
     match db_record_type:
         case Roles.__class__:
             return core.Role
@@ -38,11 +39,17 @@ def get_model_from_sql_instance(db_record_type) :
 
 
 class Unique(SQLModel, table=False):
-    shortname: str = Field(regex=regex.SHORTNAME) # sa_type=String)
+    shortname: str = Field(regex=regex.SHORTNAME)  # sa_type=String)
     space_name: str = Field(regex=regex.SPACENAME)
     subpath: str = Field(regex=regex.SUBPATH)
     __table_args__ = (UniqueConstraint("shortname", "space_name", "subpath"),)
-    model_config = SQLModelConfig(form_attributes=True, populate_by_name=True, validate_assignment=True, use_enum_values=True, arbitrary_types_allowed=True)  # type: ignore
+    model_config = SQLModelConfig(
+        form_attributes=True,
+        populate_by_name=True,
+        validate_assignment=True,
+        use_enum_values=True,
+        arbitrary_types_allowed=True,
+    )  # type: ignore
 
 
 class Metas(Unique, table=False):
@@ -62,6 +69,7 @@ class Metas(Unique, table=False):
     last_checksum_history: str | None = Field(default=None)
 
     resource_type: str = Field()
+
     @staticmethod
     def from_record(record: core.Record, owner_shortname: str):
         if record.shortname == settings.auto_uuid_rule:
@@ -69,9 +77,7 @@ class Metas(Unique, table=False):
             record.shortname = str(record.uuid)[:8]
             record.attributes["uuid"] = record.uuid
 
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
+        meta_class = getattr(sys.modules["models.core"], camel_case(record.resource_type))
 
         if issubclass(meta_class, core.User) and "password" in record.attributes:
             hashed_pass = password_hashing.hash_password(record.attributes["password"])
@@ -83,9 +89,7 @@ class Metas(Unique, table=False):
 
     @staticmethod
     def check_record(record: core.Record, owner_shortname: str):
-        meta_class = getattr(
-            sys.modules["models.core"], camel_case(record.resource_type)
-        )
+        meta_class = getattr(sys.modules["models.core"], camel_case(record.resource_type))
 
         meta_obj = meta_class(
             owner_shortname=owner_shortname,
@@ -94,9 +98,7 @@ class Metas(Unique, table=False):
         )
         return meta_obj
 
-    def update_from_record(
-            self, record: core.Record, old_body: dict | None = None, replace: bool = False
-    ) -> dict | None:
+    def update_from_record(self, record: core.Record, old_body: dict | None = None, replace: bool = False) -> dict | None:
         restricted_fields = [
             "uuid",
             "shortname",
@@ -117,11 +119,7 @@ class Metas(Unique, table=False):
 
                 self.__setattr__(field_name, record.attributes[field_name])
 
-        if (
-                not self.payload
-                and "payload" in record.attributes
-                and "content_type" in record.attributes["payload"]
-        ):
+        if not self.payload and "payload" in record.attributes and "content_type" in record.attributes["payload"]:
             self.payload = core.Payload(
                 content_type=core.ContentType(record.attributes["payload"]["content_type"]),
                 schema_shortname=record.attributes["payload"].get("schema_shortname"),
@@ -129,34 +127,34 @@ class Metas(Unique, table=False):
             )
 
         if self.payload and "payload" in record.attributes:
-            return self.payload.update(
-                payload=record.attributes["payload"], old_body=old_body, replace=replace
-            )
+            return self.payload.update(payload=record.attributes["payload"], old_body=old_body, replace=replace)
         return None
 
     def to_record(
-            self,
-            subpath: str,
-            shortname: str,
-            include: list[str] = [],
+        self,
+        subpath: str,
+        shortname: str,
+        include: list[str] | None = None,
     ) -> core.Record:
+        if include is None:
+            include = []
         # Sanity check
         if self.shortname != shortname:
-            raise Exception(
-                f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})"
-            )
+            raise Exception(f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})")
 
-        local_prop_list = ["uuid","resource_type","shortname","subpath"]
+        local_prop_list = ["uuid", "resource_type", "shortname", "subpath"]
         return core.Record(
-            resource_type= getattr(self, 'resource_type') if hasattr(self, 'resource_type') else get_model_from_sql_instance(self.__class__.__name__).__name__.lower(),
-            uuid= self.uuid,
-            shortname= self.shortname,
-            subpath= subpath,
-            attributes= {
+            resource_type=self.resource_type
+            if hasattr(self, "resource_type")
+            else get_model_from_sql_instance(self.__class__.__name__).__name__.lower(),
+            uuid=self.uuid,
+            shortname=self.shortname,
+            subpath=subpath,
+            attributes={
                 key: value
                 for key, value in self.__dict__.items()
-                if key != '_sa_instance_state' and (not include or key in include) and key not in local_prop_list
-            }
+                if key != "_sa_instance_state" and (not include or key in include) and key not in local_prop_list
+            },
         )
 
 
@@ -184,13 +182,13 @@ class Users(Metas, table=True):
     last_login: dict | None = Field(default=None, sa_type=JSONB)
     notes: str | None = None
     last_checksum_history: str | None = Field(default=None)
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
 class Roles(Metas, table=True):
     permissions: list[str] = Field(default_factory=dict, sa_type=JSONB)
     owner_shortname: str = Field(foreign_key="users.shortname")
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
     last_checksum_history: str | None = Field(default=None)
 
 
@@ -220,7 +218,7 @@ class Entries(Metas, table=True):
     collaborators: dict[str, str] | None = Field(None, default_factory=None, sa_type=JSONB)
     resolution_reason: str | None = None
     last_checksum_history: str | None = Field(default=None)
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
 class Attachments(Metas, table=True):
@@ -245,17 +243,17 @@ class Histories(SQLModel, table=True):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
     ) -> core.Record:
+        if include is None:
+            include = []
         # Sanity check
 
         if self.shortname != shortname:
-            raise Exception(
-                f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})"
-            )
+            raise Exception(f"shortname in meta({subpath}/{self.shortname}) should be same as body({subpath}/{shortname})")
 
         record_fields = {
-            "resource_type": 'history',
+            "resource_type": "history",
             "uuid": self.uuid,
             "shortname": self.shortname,
             "subpath": subpath,
@@ -263,7 +261,7 @@ class Histories(SQLModel, table=True):
 
         attributes = {}
         for key, value in self.__dict__.items():
-            if key == '_sa_instance_state':
+            if key == "_sa_instance_state":
                 continue
             if (not include or key in include) and key not in record_fields:
                 attributes[key] = copy.deepcopy(value)
@@ -287,7 +285,7 @@ class Spaces(Metas, table=True):
     active_plugins: list[str] | None = Field(default_factory=None, sa_type=JSONB)
     ordinal: int | None = None
     last_checksum_history: str | None = Field(default=None)
-    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT)) # type: ignore
+    query_policies: list[str] = Field(default=[], sa_type=ARRAY(TEXT))  # type: ignore
 
 
 class AggregatedRecord(SQLModel, table=False):
@@ -311,7 +309,7 @@ class Aggregated(SQLModel, table=False):
     is_active: bool | None = None
     displayname: dict | core.Translation | None = None
     description: dict | core.Translation | None = None
-    tags: list[str]| None = None
+    tags: list[str] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     owner_shortname: str | None = None
@@ -332,28 +330,28 @@ class Aggregated(SQLModel, table=False):
         self,
         subpath: str,
         shortname: str,
-        include: list[str] = [],
+        include: list[str] | None = None,
         extra: dict[str, Any] | None = None,
     ) -> AggregatedRecord:
-        record_fields = {
-            "resource_type": getattr(self, 'resource_type') if hasattr(self, 'resource_type') else None,
-            "uuid": getattr(self, 'uuid') if hasattr(self, 'uuid') else None,
+        if include is None:
+            include = []
+        record_fields: dict[str, Any] = {
+            "resource_type": self.resource_type if hasattr(self, "resource_type") else None,
+            "uuid": self.uuid if hasattr(self, "uuid") else None,
             "shortname": shortname,
             "subpath": subpath,
+            "attributes": {},
         }
 
         attributes = {}
 
         for key, value in self.__dict__.items():
-            if key == '_sa_instance_state':
+            if key == "_sa_instance_state":
                 continue
             if (not include or key in include) and key not in record_fields and value is not None:
                 attributes[key] = copy.deepcopy(value)
 
-        record_fields["attributes"] = {
-            **attributes,
-            **(extra if extra is not None else {})
-        }
+        record_fields["attributes"] = {**attributes, **(extra if extra is not None else {})}
         return AggregatedRecord(**record_fields)
 
 
@@ -394,7 +392,7 @@ class OTP(SQLModel, table=True):
 
 def generate_tables():
     postgresql_url = URL.create(
-        drivername=settings.database_driver.replace('+asyncpg', '+psycopg'),
+        drivername=settings.database_driver.replace("+asyncpg", "+psycopg"),
         host=settings.database_host,
         port=settings.database_port,
         username=settings.database_username,
@@ -411,45 +409,58 @@ def generate_tables():
     SQLModel.metadata.create_all(engine)
 
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS authz_mv_meta (
                 id INT PRIMARY KEY,
                 last_source_ts TIMESTAMPTZ,
                 refreshed_at TIMESTAMPTZ
             )
-        """))
-        conn.execute(text("""
+        """)
+        )
+        conn.execute(
+            text("""
             INSERT INTO authz_mv_meta(id, last_source_ts, refreshed_at)
             VALUES (1, to_timestamp(0), now())
             ON CONFLICT (id) DO NOTHING
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE MATERIALIZED VIEW IF NOT EXISTS mv_user_roles AS
             SELECT u.shortname AS user_shortname,
                    r.shortname AS role_shortname
             FROM users u
             JOIN LATERAL jsonb_array_elements_text(u.roles) AS role_name ON TRUE
             JOIN roles r ON r.shortname = role_name
-        """))
-        conn.execute(text("""
+        """)
+        )
+        conn.execute(
+            text("""
             CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_roles_unique
             ON mv_user_roles (user_shortname, role_shortname)
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE MATERIALIZED VIEW IF NOT EXISTS mv_role_permissions AS
             SELECT r.shortname AS role_shortname,
                    p.shortname AS permission_shortname
             FROM roles r
             JOIN LATERAL jsonb_array_elements_text(r.permissions) AS perm_name ON TRUE
             JOIN permissions p ON p.shortname = perm_name
-        """))
-        conn.execute(text("""
+        """)
+        )
+        conn.execute(
+            text("""
             CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_role_permissions_unique
             ON mv_role_permissions (role_shortname, permission_shortname)
-        """))
+        """)
+        )
         conn.commit()
+
 
 # ALERMBIC
 def init_db():

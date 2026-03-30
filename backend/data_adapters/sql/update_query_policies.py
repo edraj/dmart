@@ -3,22 +3,24 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from typing import Sequence
+from collections.abc import Sequence
 
-from sqlalchemy import URL, select, update as sa_update
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import URL, select
+from sqlalchemy import update as sa_update
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 # AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import col
 
-from utils.settings import settings
-from utils.query_policies_helper import generate_query_policies
 from data_adapters.sql.create_tables import Entries
+from utils.query_policies_helper import generate_query_policies
+from utils.settings import settings
 
 
 async def update_all_entries(batch_size: int = 1000) -> int:
     postgresql_url = URL.create(
-        drivername=settings.database_driver.replace('+asyncpg', '+psycopg'),
+        drivername=settings.database_driver.replace("+asyncpg", "+psycopg"),
         host=settings.database_host,
         port=settings.database_port,
         username=settings.database_username,
@@ -27,22 +29,25 @@ async def update_all_entries(batch_size: int = 1000) -> int:
     )
 
     engine = create_async_engine(
-            postgresql_url,
-            echo=False,
-            pool_size=settings.database_pool_size,
-            max_overflow=settings.database_max_overflow,
-            pool_timeout=settings.database_pool_timeout,
-            pool_recycle=settings.database_pool_recycle,
-        )
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False) # type: ignore
+        postgresql_url,
+        echo=False,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_timeout=settings.database_pool_timeout,
+        pool_recycle=settings.database_pool_recycle,
+    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore
 
     updated = 0
     offset = 0
 
-    async with async_session() as session: # type: ignore
+    async with async_session() as session:  # type: ignore
         while True:
             result = await session.execute(
-                select(Entries).order_by(Entries.space_name, Entries.subpath, Entries.shortname).offset(offset).limit(batch_size)
+                select(Entries)
+                .order_by(Entries.space_name, Entries.subpath, Entries.shortname)
+                .offset(offset)
+                .limit(batch_size)
             )
             rows: Sequence[Entries] = [row[0] if not isinstance(row, Entries) else row for row in result.fetchall()]
             if not rows:
@@ -55,9 +60,9 @@ async def update_all_entries(batch_size: int = 1000) -> int:
                         subpath=row.subpath,
                         resource_type=row.resource_type,
                         is_active=row.is_active,
-                        owner_shortname=getattr(row, 'owner_shortname', 'dmart') or 'dmart',
-                        owner_group_shortname=getattr(row, 'owner_group_shortname', None),
-                        entry_shortname=row.shortname if row.resource_type == 'folder' else None,
+                        owner_shortname=getattr(row, "owner_shortname", "dmart") or "dmart",
+                        owner_group_shortname=getattr(row, "owner_group_shortname", None),
+                        entry_shortname=row.shortname if row.resource_type == "folder" else None,
                     )
                 except Exception as e:
                     print(f"Error while computing query_policies for {row.space_name}/{row.subpath}/{row.shortname}")

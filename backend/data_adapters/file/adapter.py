@@ -1,53 +1,80 @@
 import io
-import shutil
-from copy import copy
-from shutil import copy2 as copy_file
-from typing import Type, Any, Tuple
+import json
 import os
+import shutil
 import sys
+from copy import copy
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from pathlib import Path as FSPath
+from shutil import copy2 as copy_file
 from sys import modules as sys_modules
+from typing import Any
+
+import aiofiles
+from fastapi import status
 from fastapi.logger import logger
+from jsonschema import Draft7Validator
 from redis.commands.search.field import TextField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-from datetime import datetime
-import aiofiles
-from pathlib import Path
-from data_adapters.file.adapter_helpers import serve_query_space, serve_query_search, serve_query_subpath, \
-    serve_query_counters, serve_query_tags, serve_query_random, serve_query_history, serve_query_events, \
-    serve_query_aggregation, get_record_from_redis_doc
-from data_adapters.helpers import trans_magic_words
-from models.api import Exception as API_Exception, Error as API_Error
-import models.core as core
-from utils import regex
-from data_adapters.file.custom_validations import get_schema_path
-from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
-from models.enums import ContentType, ResourceType, LockAction
+from starlette.datastructures import UploadFile
 
-from utils.helpers import arr_remove_common, read_jsonl_file, snake_case, camel_case, flatten_list_of_dicts_in_dict, \
-    flatten_dict, resolve_schema_references, process_jsonl_file
+import models.api as api
+import models.core as core
+from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
+from data_adapters.file.adapter_helpers import (
+    get_record_from_redis_doc,
+    serve_query_aggregation,
+    serve_query_counters,
+    serve_query_events,
+    serve_query_history,
+    serve_query_random,
+    serve_query_search,
+    serve_query_space,
+    serve_query_subpath,
+    serve_query_tags,
+)
+from data_adapters.file.custom_validations import get_schema_path
+from data_adapters.file.redis_services import RedisServices
+from data_adapters.helpers import trans_magic_words
+from models.api import Error as API_Error
+from models.api import Exception as API_Exception
+from models.enums import ContentType, LockAction, ResourceType
+from utils import regex
+from utils.helpers import (
+    arr_remove_common,
+    camel_case,
+    flatten_dict,
+    flatten_list_of_dicts_in_dict,
+    process_jsonl_file,
+    read_jsonl_file,
+    resolve_schema_references,
+    snake_case,
+)
 from utils.internal_error_code import InternalErrorCode
 from utils.middleware import get_request_data
-from data_adapters.file.redis_services import RedisServices
 from utils.password_hashing import hash_password
 from utils.plugin_manager import plugin_manager
 from utils.regex import FILE_PATTERN, FOLDER_PATTERN, SPACES_PATTERN
 from utils.settings import settings
-from jsonschema import Draft7Validator
-from starlette.datastructures import UploadFile
-from pathlib import Path as FSPath
-import models.api as api
-from fastapi import status
-import json
+
+
+@lru_cache(maxsize=128)
+def _get_cached_validator(schema_path: str, mtime_ns: int) -> Draft7Validator:
+    """Cache compiled JSON schema validators keyed by path and file mtime.
+    The mtime_ns parameter ensures the cache is invalidated when the schema
+    file is modified on disk."""
+    schema = json.loads(FSPath(schema_path).read_text())
+    return Draft7Validator(schema)
 
 
 def sort_alteration(attachments_dict, attachments_path):
     for attachment_name, attachments in attachments_dict.items():
         try:
             if attachment_name == ResourceType.alteration:
-                attachments_dict[attachment_name] = sorted(
-                    attachments, key=lambda d: d.attributes["created_at"]
-                )
+                attachments_dict[attachment_name] = sorted(attachments, key=lambda d: d.attributes["created_at"])
         except Exception as e:
             logger.error(
                 f"Invalid attachment entry:{attachments_path / attachment_name}.\
@@ -57,15 +84,13 @@ def sort_alteration(attachments_dict, attachments_path):
 
 def is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
     return (
-            retrieve_json_payload
-            and resource_obj
-            and resource_record_obj
-            and resource_obj.payload
-            and resource_obj.payload.content_type
-            and resource_obj.payload.content_type == ContentType.json
-            and Path(
-        f"{attachment_entry.path}/{resource_obj.payload.body}"
-    ).is_file()
+        retrieve_json_payload
+        and resource_obj
+        and resource_record_obj
+        and resource_obj.payload
+        and resource_obj.payload.content_type
+        and resource_obj.payload.content_type == ContentType.json
+        and Path(f"{attachment_entry.path}/{resource_obj.payload.body}").is_file()
     )
 
 
@@ -82,16 +107,10 @@ def locator_query_path_sub_folder(locators, query, subpath_iterator, total):
 
         shortname = match.group(1)
         resource_name = match.group(2).lower()
-        if (
-                query.filter_types
-                and ResourceType(resource_name) not in query.filter_types
-        ):
+        if query.filter_types and ResourceType(resource_name) not in query.filter_types:
             continue
 
-        if (
-                query.filter_shortnames
-                and shortname not in query.filter_shortnames
-        ):
+        if query.filter_shortnames and shortname not in query.filter_shortnames:
             continue
 
         locators.append(
@@ -137,8 +156,6 @@ def locator_query_sub_folder(locators, query, subfolders_iterator, total):
     return locators, total
 
 
-
-
 class FileAdapter(BaseDataAdapter):
     async def test_connection(self):
         try:
@@ -153,11 +170,7 @@ class FileAdapter(BaseDataAdapter):
         total: int = 0
         if query.type != api.QueryType.subpath:
             return total, locators
-        path = (
-                settings.spaces_folder
-                / query.space_name
-                / query.subpath
-        )
+        path = settings.spaces_folder / query.space_name / query.subpath
 
         if query.include_fields is None:
             query.include_fields = []
@@ -167,27 +180,38 @@ class FileAdapter(BaseDataAdapter):
         if not meta_path.is_dir():
             return total, locators
 
-        path_iterator = os.scandir(meta_path)
-        for entry in path_iterator:
-            if not entry.is_dir():
-                continue
+        with os.scandir(meta_path) as path_iterator:
+            for entry in path_iterator:
+                if not entry.is_dir():
+                    continue
 
-            subpath_iterator = os.scandir(entry)
-            locators, total = locator_query_path_sub_folder(locators, query, subpath_iterator, total)
+                with os.scandir(entry) as subpath_iterator:
+                    locators, total = locator_query_path_sub_folder(locators, query, subpath_iterator, total)
 
         # Get all matching sub folders
-        subfolders_iterator = os.scandir(path)
-        locators, total = locator_query_sub_folder(locators, query, subfolders_iterator, total)
+        with os.scandir(path) as subfolders_iterator:
+            locators, total = locator_query_sub_folder(locators, query, subfolders_iterator, total)
 
         return total, locators
 
     def folder_path(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
     ):
-        return f"{settings.spaces_folder}/{space_name}/{subpath}/{shortname}"
+        result = (settings.spaces_folder / space_name / subpath / shortname).resolve()
+        spaces_root = settings.spaces_folder.resolve()
+        if not result.is_relative_to(spaces_root):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Invalid path: directory traversal detected",
+                ),
+            )
+        return str(result)
 
     async def otp_created_since(self, key: str) -> int | None:
         async with RedisServices() as redis_services:
@@ -196,7 +220,7 @@ class FileAdapter(BaseDataAdapter):
             if not isinstance(ttl, int):
                 return None
             return settings.otp_token_ttl - ttl
-        
+
     async def save_otp(
         self,
         key: str,
@@ -206,8 +230,8 @@ class FileAdapter(BaseDataAdapter):
             await redis_services.set(key, otp, settings.otp_token_ttl)
 
     async def get_otp(
-            self,
-            key: str,
+        self,
+        key: str,
     ):
         async with RedisServices() as redis_services:
             return await redis_services.get_content_by_id(key)
@@ -216,13 +240,28 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.del_keys([key])
 
+    @staticmethod
+    def _validate_path_within_spaces(path: Path) -> None:
+        """Ensure the resolved path stays within the spaces folder to prevent directory traversal."""
+        resolved = path.resolve()
+        spaces_root = settings.spaces_folder.resolve()
+        if not resolved.is_relative_to(spaces_root):
+            raise api.Exception(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=api.Error(
+                    type="db",
+                    code=InternalErrorCode.NOT_ALLOWED,
+                    message="Invalid path: directory traversal detected",
+                ),
+            )
+
     def metapath(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
@@ -239,9 +278,7 @@ class FileAdapter(BaseDataAdapter):
         elif issubclass(class_type, core.Attachment):
             [parent_subpath, parent_name] = subpath.rsplit("/", 1)
             # schema_shortname = "." + schema_shortname if schema_shortname else ""
-            attachment_folder = (
-                f"{parent_name}/attachments.{class_type.__name__.lower()}"
-            )
+            attachment_folder = f"{parent_name}/attachments.{class_type.__name__.lower()}"
             path = path / parent_subpath / ".dm" / attachment_folder
             filename = f"meta.{shortname}.json"
         elif issubclass(class_type, core.History):
@@ -251,14 +288,15 @@ class FileAdapter(BaseDataAdapter):
         else:
             path = path / subpath / ".dm" / shortname
             filename = f"meta.{snake_case(class_type.__name__)}.json"
+        self._validate_path_within_spaces(path)
         return path, filename
 
     def payload_path(
-            self,
-            space_name: str,
-            subpath: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
         path = settings.spaces_folder / space_name
@@ -268,30 +306,29 @@ class FileAdapter(BaseDataAdapter):
         if issubclass(class_type, core.Attachment):
             [parent_subpath, parent_name] = subpath.rsplit("/", 1)
             schema_shortname = "." + schema_shortname if schema_shortname else ""
-            attachment_folder = (
-                f"{parent_name}/attachments{schema_shortname}.{class_type.__name__.lower()}"
-            )
+            attachment_folder = f"{parent_name}/attachments{schema_shortname}.{class_type.__name__.lower()}"
             path = path / parent_subpath / ".dm" / attachment_folder
         else:
             path = path / subpath
+        self._validate_path_within_spaces(path)
         return path
 
-    async def load_or_none(self,
-                           space_name: str,
-                           subpath: str,
-                           shortname: str,
-                           class_type: Type[MetaChild],
-                           user_shortname: str | None = None,
-                           schema_shortname: str | None = None
-                           ) -> MetaChild | None:  # type: ignore
+    async def load_or_none(
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
+    ) -> MetaChild | None:  # type: ignore
         """Load a Meta Json according to the reuqested Class type"""
         try:
             return await self.load(space_name, subpath, shortname, class_type, user_shortname, schema_shortname)
         except Exception as _:
             return None
 
-    async def query(self, query: api.Query, user_shortname: str | None = None) \
-            -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
         records: list[core.Record] = []
         total: int = 0
 
@@ -312,13 +349,17 @@ class FileAdapter(BaseDataAdapter):
             )
 
         from utils.query_policies_helper import get_user_query_policies
+
         user_query_policies = await get_user_query_policies(
             self, user_shortname, query.space_name, query.subpath, query.type == api.QueryType.spaces
         )
         if not query.exact_subpath:
             r = await get_user_query_policies(
-                self, user_shortname, query.space_name, f'{query.subpath}/%'.replace('//', '/'),
-                query.type == api.QueryType.spaces
+                self,
+                user_shortname,
+                query.space_name,
+                f"{query.subpath}/%".replace("//", "/"),
+                query.type == api.QueryType.spaces,
             )
             user_query_policies.extend(r)
 
@@ -328,44 +369,42 @@ class FileAdapter(BaseDataAdapter):
         user_permissions = await self.get_user_permissions(user_shortname)
         filtered_policies = []
 
-        _subpath_target_permissions = '/' if query.subpath == '/' else query.subpath.removeprefix('/')
+        _subpath_target_permissions = "/" if query.subpath == "/" else query.subpath.removeprefix("/")
         if query.filter_types:
             for ft in query.filter_types:
-                target_permissions = f'{query.space_name}:{_subpath_target_permissions}:{ft}'
-                filtered_policies = [policy for policy in user_query_policies if
-                                     policy.startswith(target_permissions)]
+                target_permissions = f"{query.space_name}:{_subpath_target_permissions}:{ft}"
+                filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
         else:
-            target_permissions = f'{query.space_name}:{_subpath_target_permissions}'
+            target_permissions = f"{query.space_name}:{_subpath_target_permissions}"
             filtered_policies = [policy for policy in user_query_policies if policy.startswith(target_permissions)]
 
         ffv_spaces, ffv_subpath, ffv_resource_type, ffv_query = [], [], [], []
         for user_query_policy in filtered_policies:
-            for perm_key in user_permissions.keys():
-                if user_query_policy.startswith(perm_key):
-                    if ffv := user_permissions[perm_key].get('filter_fields_values'):
-                        if ffv not in ffv_query:
-                            ffv_query.append(ffv)
-                        perm_key_splited = perm_key.split(':')
-                        ffv_spaces.append(perm_key_splited[0])
-                        ffv_subpath.append(perm_key_splited[1])
-                        ffv_resource_type.append(perm_key_splited[2])
+            for perm_key in user_permissions:
+                if user_query_policy.startswith(perm_key) and (ffv := user_permissions[perm_key].get("filter_fields_values")):
+                    if ffv not in ffv_query:
+                        ffv_query.append(ffv)
+                    perm_key_splited = perm_key.split(":")
+                    ffv_spaces.append(perm_key_splited[0])
+                    ffv_subpath.append(perm_key_splited[1])
+                    ffv_resource_type.append(perm_key_splited[2])
 
         if len(ffv_spaces):
-            perm_key_splited_query = f'@space_name:{"|".join(ffv_spaces)} @subpath:/{"|/".join(ffv_subpath)} @resource_type:{"|".join(ffv_resource_type)} {" ".join(ffv_query)}'
+            perm_key_splited_query = f"@space_name:{'|'.join(ffv_spaces)} @subpath:/{'|/'.join(ffv_subpath)} @resource_type:{'|'.join(ffv_resource_type)} {' '.join(ffv_query)}"
             if query.search:
-                query.search += f' {perm_key_splited_query}'
+                query.search += f" {perm_key_splited_query}"
             else:
                 query.search = perm_key_splited_query
 
         if query.search:
-            parts = [p for p in query.search.split(' ') if p]
+            parts = [p for p in query.search.split(" ") if p]
             seen = set()
             deduped_parts = []
             for p in parts:
                 if p not in seen:
                     seen.add(p)
                     deduped_parts.append(p)
-            query.search = ' '.join(deduped_parts)
+            query.search = " ".join(deduped_parts)
 
         match query.type:
             case api.QueryType.spaces:
@@ -395,9 +434,9 @@ class FileAdapter(BaseDataAdapter):
             case api.QueryType.aggregation:
                 total, records = await serve_query_aggregation(self, query, user_shortname)
 
-        if getattr(query, 'join', None):
+        if getattr(query, "join", None):
             try:
-                records = await self._apply_client_joins(records, query.join, (user_shortname or "anonymous")) # type: ignore
+                records = await self._apply_client_joins(records, query.join, (user_shortname or "anonymous"))  # type: ignore
             except Exception as e:
                 print("[!client_join(file)]", e)
 
@@ -405,12 +444,12 @@ class FileAdapter(BaseDataAdapter):
 
     async def _apply_client_joins(self, base_records: list[core.Record], joins: list, user_shortname: str) -> list[core.Record]:
         def parse_join_on(expr: str) -> tuple[str, bool, str, bool]:
-            parts = [p.strip() for p in expr.split(':', 1)]
+            parts = [p.strip() for p in expr.split(":", 1)]
             if len(parts) != 2:
                 raise ValueError(f"Invalid join_on expression: {expr}")
             left, right = parts[0], parts[1]
-            _l_arr = left.endswith('[]')
-            _r_arr = right.endswith('[]')
+            _l_arr = left.endswith("[]")
+            _r_arr = right.endswith("[]")
             if _l_arr:
                 left = left[:-2]
             if _r_arr:
@@ -426,6 +465,7 @@ class FileAdapter(BaseDataAdapter):
                 else:
                     container = rec.attributes or {}
                     from data_adapters.helpers import get_nested_value as _get
+
                     val = _get(container, path)
 
                 if val is None:
@@ -441,31 +481,32 @@ class FileAdapter(BaseDataAdapter):
                 return [val]
             except Exception as e:
                 import logging
+
                 logging.getLogger("data_adapters").warning(
-                    f"Skipping bad record value extraction for path '{path}' "
-                    f"on record '{getattr(rec, 'shortname', '?')}': {e}"
+                    f"Skipping bad record value extraction for path '{path}' on record '{getattr(rec, 'shortname', '?')}': {e}"
                 )
                 return []
+
+        if not base_records:
+            return base_records
 
         for rec in base_records:
             if rec.attributes is None:
                 rec.attributes = {}
-            if rec.attributes.get('join') is None:
-                rec.attributes['join'] = {}
+            if rec.attributes.get("join") is None:
+                rec.attributes["join"] = {}
 
-        import models.api as api
         for join_item in joins:
-            join_on = getattr(join_item, 'join_on', None)
-            alias = getattr(join_item, 'alias', None)
-            q = getattr(join_item, 'query', None)
+            join_on = getattr(join_item, "join_on", None)
+            alias = getattr(join_item, "alias", None)
+            q = getattr(join_item, "query", None)
             if not join_on or not alias or q is None:
                 continue
 
             sub_query = q if isinstance(q, api.Query) else api.Query.model_validate(q)
-            import models.api as api
-            from utils.settings import settings
+
             q_raw = q if isinstance(q, dict) else q.model_dump(exclude_defaults=True)
-            user_limit = q_raw.get('limit') or q_raw.get('limit_')
+            user_limit = q_raw.get("limit") or q_raw.get("limit_")
             sub_query.limit = settings.max_query_limit
 
             _total, right_records = await self.query(sub_query, user_shortname)
@@ -500,25 +541,23 @@ class FileAdapter(BaseDataAdapter):
                 if user_limit:
                     unique = unique[:user_limit]
 
-                br.attributes['join'][alias] = unique
+                br.attributes["join"][alias] = unique
 
         return base_records
 
     async def load(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> MetaChild:
         """Load a Meta Json according to the requested Class type"""
         if subpath == shortname and class_type is core.Folder:
             shortname = ""
-        path, filename = self.metapath(
-            space_name, subpath, shortname, class_type, schema_shortname
-        )
+        path, filename = self.metapath(space_name, subpath, shortname, class_type, schema_shortname)
         if not (path / filename).is_file():
             # Remove the folder
             if path.is_dir() and len(os.listdir(path)) == 0:
@@ -536,19 +575,19 @@ class FileAdapter(BaseDataAdapter):
         path /= filename
         content = ""
         try:
-            async with aiofiles.open(path, "r") as file:
+            async with aiofiles.open(path) as file:
                 content = await file.read()
                 return class_type.model_validate_json(content)
         except Exception as e:
-            raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}")
+            raise Exception(f"Error Invalid Entry At: {path}. Error {e} {content=}") from e
 
     async def load_resource_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            filename: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        filename: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ):
         """Load a Meta class payload file"""
 
@@ -564,11 +603,11 @@ class FileAdapter(BaseDataAdapter):
             async with aiofiles.open(path, "rb") as f:
                 bytes = await f.read()
             return json.loads(bytes)
-        except Exception as _:
+        except Exception:
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
                 error=api.Error(type="db", code=12, message=f"Request object is not available {path}"),
-            )
+            ) from None
 
     async def save(self, space_name: str, subpath: str, meta: core.Meta) -> Any:
         """Save Meta Json to respective file"""
@@ -585,10 +624,8 @@ class FileAdapter(BaseDataAdapter):
                 os.makedirs(path)
 
             meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-            with open(path / filename, "w") as file:
-                file.write(meta_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(path / filename, "w") as file:
+                await file.write(meta_json)
             return meta_json
         except Exception as e:
             raise API_Exception(
@@ -598,55 +635,44 @@ class FileAdapter(BaseDataAdapter):
                     code=InternalErrorCode.OBJECT_NOT_SAVED,
                     message=e.__str__(),
                 ),
-            )
+            ) from e
 
     async def create(self, space_name: str, subpath: str, meta: core.Meta):
-        path, filename = self.metapath(
-            space_name, subpath, meta.shortname, meta.__class__
-        )
+        path, filename = self.metapath(space_name, subpath, meta.shortname, meta.__class__)
 
         if (path / filename).is_file():
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(
-                    type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
+                error=api.Error(type="create", code=InternalErrorCode.SHORTNAME_ALREADY_EXIST, message="already exists"),
             )
 
         if not path.is_dir():
             os.makedirs(path)
 
-        with open(path / filename, "w") as file:
-            file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
 
     async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
-        path, filename = self.metapath(
-            space_name, subpath, meta.shortname, meta.__class__
-        )
-        payload_file_path = self.payload_path(
-            space_name, subpath, meta.__class__)
+        path, filename = self.metapath(space_name, subpath, meta.shortname, meta.__class__)
+        payload_file_path = self.payload_path(space_name, subpath, meta.__class__)
         payload_filename = meta.shortname + Path(attachment.filename).suffix
 
         if not (path / filename).is_file():
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(
-                    type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+                error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
             )
 
         content = await attachment.read()
-        with open(payload_file_path / payload_filename, "wb") as file:
-            file.write(content)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
+            await file.write(content)
 
     async def save_payload_from_json(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
     ):
         path, filename = self.metapath(
             space_name,
@@ -662,39 +688,33 @@ class FileAdapter(BaseDataAdapter):
             meta.payload.schema_shortname if meta.payload else None,
         )
 
-        payload_filename = f"{meta.shortname}.json" if not issubclass(meta.__class__,
-                                                                      core.Log) else f"{meta.shortname}.jsonl"
+        payload_filename = f"{meta.shortname}.json" if not issubclass(meta.__class__, core.Log) else f"{meta.shortname}.jsonl"
 
         if not (path / filename).is_file():
             raise api.Exception(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(
-                    type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
+                error=api.Error(type="create", code=InternalErrorCode.MISSING_METADATA, message="metadata is missing"),
             )
 
         payload_json = json.dumps(payload_data)
         if issubclass(meta.__class__, core.Log) and (payload_file_path / payload_filename).is_file():
-            with open(payload_file_path / payload_filename, "a") as file:
-                file.write(f"\n{payload_json}")
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "a") as file:
+                await file.write(f"\n{payload_json}")
         else:
-            with open(payload_file_path / payload_filename, "w") as file:
-                file.write(payload_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
+                await file.write(payload_json)
 
     async def update(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
     ) -> dict:
         """Update the entry, store the difference and return it"""
         path, filename = self.metapath(
@@ -702,32 +722,25 @@ class FileAdapter(BaseDataAdapter):
             subpath,
             meta.shortname,
             meta.__class__,
-
             schema_shortname,
         )
         if not (path / filename).is_file():
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
-                error=api.Error(type="update", code=InternalErrorCode.OBJECT_NOT_FOUND,
-                                message="Request object is not available"),
+                error=api.Error(
+                    type="update", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                ),
             )
         if retrieve_lock_status:
             async with RedisServices() as redis_services:
-                if await redis_services.is_entry_locked(
-                        space_name, subpath, meta.shortname, user_shortname
-                ):
+                if await redis_services.is_entry_locked(space_name, subpath, meta.shortname, user_shortname):
                     raise api.Exception(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        error=api.Error(
-                            type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                        error=api.Error(type="update", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
                     )
-                elif await redis_services.get_lock_doc(
-                        space_name, subpath, meta.shortname
-                ):
+                elif await redis_services.get_lock_doc(space_name, subpath, meta.shortname):
                     # if the current can release the lock that means he is the right user
-                    await redis_services.delete_lock_doc(
-                        space_name, subpath, meta.shortname
-                    )
+                    await redis_services.delete_lock_doc(space_name, subpath, meta.shortname)
                     await self.store_entry_diff(
                         space_name,
                         "/" + subpath,
@@ -741,10 +754,8 @@ class FileAdapter(BaseDataAdapter):
 
         meta.updated_at = datetime.now()
         meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-        with open(path / filename, "w") as file:
-            file.write(meta_json)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta_json)
 
         if issubclass(meta.__class__, core.Log):
             return {}
@@ -763,12 +774,12 @@ class FileAdapter(BaseDataAdapter):
         return history_diff
 
     async def update_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
-            owner_shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
+        owner_shortname: str,
     ):
         await self.save_payload_from_json(
             space_name,
@@ -778,15 +789,15 @@ class FileAdapter(BaseDataAdapter):
         )
 
     async def store_entry_diff(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            owner_shortname: str,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            resource_type,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        owner_shortname: str,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        resource_type,
     ) -> dict:
         diff_keys = list(old_version_flattend.keys())
         diff_keys.extend(list(new_version_flattend.keys()))
@@ -795,16 +806,8 @@ class FileAdapter(BaseDataAdapter):
             if key in ["updated_at"]:
                 continue
             if key in updated_attributes_flattend:
-                old = (
-                    copy(old_version_flattend[key])
-                    if key in old_version_flattend
-                    else "null"
-                )
-                new = (
-                    copy(new_version_flattend[key])
-                    if key in new_version_flattend
-                    else "null"
-                )
+                old = copy(old_version_flattend[key]) if key in old_version_flattend else "null"
+                new = copy(new_version_flattend[key]) if key in new_version_flattend else "null"
 
                 if old != new:
                     if isinstance(old, list) and isinstance(new, list):
@@ -820,7 +823,7 @@ class FileAdapter(BaseDataAdapter):
             shortname="history",
             owner_shortname=owner_shortname,
             timestamp=datetime.now(),
-            request_headers=get_request_data().get('request_headers', {}),
+            request_headers=get_request_data().get("request_headers", {}),
             diff=history_diff,
         )
         history_path = settings.spaces_folder / space_name
@@ -834,31 +837,30 @@ class FileAdapter(BaseDataAdapter):
                 if subpath == "/":
                     history_path = Path(f"{history_path}/.dm/{shortname}")
                 else:
-                    history_path = Path(
-                        f"{history_path}/{subpath}/.dm/{shortname}")
+                    history_path = Path(f"{history_path}/{subpath}/.dm/{shortname}")
 
         if not os.path.exists(history_path):
             os.makedirs(history_path)
 
         async with aiofiles.open(
-                f"{history_path}/history.jsonl",
-                "a",
+            f"{history_path}/history.jsonl",
+            "a",
         ) as events_file:
             await events_file.write(f"{history_obj.model_dump_json(exclude_none=True, warnings='error')}\n")
 
         return history_diff
 
     async def move(
-            self,
-            src_space_name: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_space_name: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            meta: core.Meta,
+        self,
+        src_space_name: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_space_name: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        meta: core.Meta,
     ):
-        src_path, src_filename = self.metapath(
+        src_path, _src_filename = self.metapath(
             src_space_name,
             src_subpath,
             src_shortname,
@@ -869,7 +871,6 @@ class FileAdapter(BaseDataAdapter):
             dest_subpath or src_subpath,
             dest_shortname or src_shortname,
             meta.__class__,
-
         )
 
         meta_updated = False
@@ -896,44 +897,28 @@ class FileAdapter(BaseDataAdapter):
 
         # Create dest dir if there's a change in the subpath AND the shortname
         # and the subpath shortname folder doesn't exist,
-        if (
-                src_shortname != dest_shortname
-                and src_subpath != dest_subpath
-                and not os.path.isdir(dest_path_without_dm)
-        ):
+        if src_shortname != dest_shortname and src_subpath != dest_subpath and not os.path.isdir(dest_path_without_dm):
             os.makedirs(dest_path_without_dm)
 
         os.rename(src=src_path, dst=dest_path_without_dm)
 
         # Move payload file with the meta file
-        if (
-                meta.payload
-                and meta.payload.content_type != ContentType.text
-                and isinstance(meta.payload.body, str)
-        ):
-            src_payload_file_path = (
-                    self.payload_path(src_space_name, src_subpath, meta.__class__)
-                    / meta.payload.body
-            )
+        if meta.payload and meta.payload.content_type != ContentType.text and isinstance(meta.payload.body, str):
+            src_payload_file_path = self.payload_path(src_space_name, src_subpath, meta.__class__) / meta.payload.body
             file_extension = Path(meta.payload.body).suffix
-            if file_extension.startswith('.'):
+            if file_extension.startswith("."):
                 file_extension = file_extension[1:]
             meta.payload.body = meta.shortname + "." + file_extension
             dist_payload_file_path = (
-                    self.payload_path(
-                        dest_space_name, dest_subpath or src_subpath, meta.__class__
-                    )
-                    / meta.payload.body
+                self.payload_path(dest_space_name, dest_subpath or src_subpath, meta.__class__) / meta.payload.body
             )
             if src_payload_file_path.is_file():
                 os.rename(src=src_payload_file_path, dst=dist_payload_file_path)
 
         if meta_updated:
             meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-            with open(dest_path / dest_filename, "w") as opened_file:
-                opened_file.write(meta_json)
-                opened_file.flush()
-                os.fsync(opened_file)
+            async with aiofiles.open(dest_path / dest_filename, "w") as opened_file:
+                await opened_file.write(meta_json)
 
         # Delete Src path if empty
         if src_path.parent.is_dir():
@@ -947,14 +932,14 @@ class FileAdapter(BaseDataAdapter):
             self.delete_empty(path.parent)
 
     async def clone(
-            self,
-            src_space: str,
-            dest_space: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            class_type: Type[MetaChild],
+        self,
+        src_space: str,
+        dest_space: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        class_type: type[MetaChild],
     ):
 
         meta_obj = await self.load(
@@ -964,15 +949,12 @@ class FileAdapter(BaseDataAdapter):
             class_type=class_type,
         )
 
-        src_path, src_filename = self.metapath(
-            src_space, src_subpath, src_shortname, class_type
-        )
+        src_path, src_filename = self.metapath(src_space, src_subpath, src_shortname, class_type)
         dest_path, dest_filename = self.metapath(
             dest_space,
             dest_subpath,
             dest_shortname,
             class_type,
-
         )
 
         # Create dest dir if not exist
@@ -983,30 +965,18 @@ class FileAdapter(BaseDataAdapter):
 
         self.payload_path(src_space, src_subpath, class_type)
         # Move payload file with the meta file
-        if (
-                meta_obj.payload
-                and meta_obj.payload.content_type != ContentType.text
-                and isinstance(meta_obj.payload.body, str)
-        ):
-            src_payload_file_path = (
-                    self.payload_path(src_space, src_subpath, class_type)
-                    / meta_obj.payload.body
-            )
-            dist_payload_file_path = (
-                    self.payload_path(
-                        dest_space, dest_subpath, class_type
-                    )
-                    / meta_obj.payload.body
-            )
+        if meta_obj.payload and meta_obj.payload.content_type != ContentType.text and isinstance(meta_obj.payload.body, str):
+            src_payload_file_path = self.payload_path(src_space, src_subpath, class_type) / meta_obj.payload.body
+            dist_payload_file_path = self.payload_path(dest_space, dest_subpath, class_type) / meta_obj.payload.body
             copy_file(src=src_payload_file_path, dst=dist_payload_file_path)
 
     async def is_entry_exist(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            resource_type: ResourceType,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        resource_type: ResourceType,
+        schema_shortname: str | None = None,
     ) -> bool:
         """Check if an entry with the given name already exist or not in the given path
 
@@ -1023,35 +993,41 @@ class FileAdapter(BaseDataAdapter):
         if subpath[0] == "/":
             subpath = f".{subpath}"
 
-        payload_file = settings.spaces_folder / space_name / \
-                       subpath / f"{shortname}.json"
+        payload_file = settings.spaces_folder / space_name / subpath / f"{shortname}.json"
         if payload_file.is_file():
             return True
 
+        # Try the known resource type first to avoid iterating all types
+        resource_cls = getattr(sys_modules["models.core"], camel_case(resource_type.value), None)
+        if resource_cls:
+            meta_path, meta_file = self.metapath(space_name, subpath, shortname, resource_cls, schema_shortname)
+            if (meta_path / meta_file).is_file():
+                return True
+
+        # Fall back to checking all other resource types
         for r_type in ResourceType:
+            if r_type == resource_type:
+                continue  # Already checked above
             # Spaces compared with each others only
             if r_type == ResourceType.space and r_type != resource_type:
                 continue
-            resource_cls = getattr(
-                sys.modules["models.core"], camel_case(r_type.value), None
-            )
-            if not resource_cls:
+            r_cls = getattr(sys_modules["models.core"], camel_case(r_type.value), None)
+            if not r_cls:
                 continue
-            meta_path, meta_file = self.metapath(
-                space_name, subpath, shortname, resource_cls, schema_shortname)
+            meta_path, meta_file = self.metapath(space_name, subpath, shortname, r_cls, schema_shortname)
             if (meta_path / meta_file).is_file():
                 return True
 
         return False
 
     async def delete(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
     ):
 
         path, filename = self.metapath(
@@ -1059,30 +1035,25 @@ class FileAdapter(BaseDataAdapter):
             subpath,
             meta.shortname,
             meta.__class__,
-
             schema_shortname,
         )
         if not path.is_dir() or not (path / filename).is_file():
             raise api.Exception(
                 status_code=status.HTTP_404_NOT_FOUND,
                 error=api.Error(
-                    type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),
+                    type="delete", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"
+                ),
             )
         if retrieve_lock_status:
             async with RedisServices() as redis_services:
-                if await redis_services.is_entry_locked(
-                        space_name, subpath, meta.shortname, user_shortname
-                ):
+                if await redis_services.is_entry_locked(space_name, subpath, meta.shortname, user_shortname):
                     raise api.Exception(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        error=api.Error(
-                            type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
+                        error=api.Error(type="delete", code=InternalErrorCode.LOCKED_ENTRY, message="This entry is locked"),
                     )
                 else:
                     # if the current can release the lock that means he is the right user
-                    await redis_services.delete_lock_doc(
-                        space_name, subpath, meta.shortname
-                    )
+                    await redis_services.delete_lock_doc(space_name, subpath, meta.shortname)
 
         pathname = path / filename
         if pathname.is_file():
@@ -1090,22 +1061,13 @@ class FileAdapter(BaseDataAdapter):
 
             # Delete payload file
             if meta.payload and meta.payload.content_type not in ContentType.inline_types():
-                payload_file_path = self.payload_path(
-                    space_name, subpath, meta.__class__
-                ) / str(meta.payload.body)
+                payload_file_path = self.payload_path(space_name, subpath, meta.__class__) / str(meta.payload.body)
                 if payload_file_path.exists() and payload_file_path.is_file():
                     os.remove(payload_file_path)
 
-        history_path = f"{settings.spaces_folder}/{space_name}" + \
-                       f"{subpath}/.dm/{meta.shortname}"
+        history_path = f"{settings.spaces_folder}/{space_name}" + f"{subpath}/.dm/{meta.shortname}"
 
-        if (
-                path.is_dir()
-                and (
-                not isinstance(meta, core.Attachment)
-                or len(os.listdir(path)) == 0
-        )
-        ):
+        if path.is_dir() and (not isinstance(meta, core.Attachment) or len(os.listdir(path)) == 0):
             shutil.rmtree(path)
             # in case of folder the path = {folder_name}/.dm
             if isinstance(meta, core.Folder) and path.parent.is_dir():
@@ -1113,8 +1075,9 @@ class FileAdapter(BaseDataAdapter):
             if isinstance(meta, core.Folder) and Path(history_path).is_dir():
                 shutil.rmtree(history_path)
 
-    async def lock_handler(self, space_name: str, subpath: str, shortname: str, user_shortname: str,
-                           action: LockAction) -> dict | None:
+    async def lock_handler(
+        self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
+    ) -> dict | None:
         match action:
             case LockAction.lock:
                 async with RedisServices() as redis_services:
@@ -1128,31 +1091,36 @@ class FileAdapter(BaseDataAdapter):
                     return {lock_type: lock_type}
             case LockAction.fetch:
                 async with RedisServices() as redis_services:
-                    lock_payload = await redis_services.get_lock_doc(
-                        space_name, subpath, shortname
-                    )
-                    return dict(lock_payload)
+                    lock_payload = await redis_services.get_lock_doc(space_name, subpath, shortname)
+                    return dict(lock_payload) if lock_payload else None
             case LockAction.unlock:
                 async with RedisServices() as redis_services:
-                    await redis_services.delete_lock_doc(
-                        space_name, subpath, shortname
-                    )
+                    await redis_services.delete_lock_doc(space_name, subpath, shortname)
         return None
 
     async def fetch_space(self, space_name: str) -> core.Space | None:
-        spaces = await self.get_spaces()
-        if space_name not in spaces:
+        """Fetch a single space by name from Redis without loading all spaces."""
+        async with RedisServices() as redis_services:
+            try:
+                result = await redis_services.get_space_by_name(space_name)
+            except Exception:
+                return None
+        if not result:
             return None
-        return core.Space.model_validate_json(spaces[space_name])
+        if isinstance(result, str):
+            return core.Space.model_validate_json(result)
+        elif isinstance(result, dict):
+            return core.Space.model_validate(result)
+        return None
 
     async def get_entry_attachments(
-            self,
-            subpath: str,
-            attachments_path: Path,
-            filter_types: list | None = None,
-            include_fields: list | None = None,
-            filter_shortnames: list | None = None,
-            retrieve_json_payload: bool = False,
+        self,
+        subpath: str,
+        attachments_path: Path,
+        filter_types: list | None = None,
+        include_fields: list | None = None,
+        filter_shortnames: list | None = None,
+        retrieve_json_payload: bool = False,
     ) -> dict:
         if not attachments_path.is_dir():
             return {}
@@ -1178,32 +1146,23 @@ class FileAdapter(BaseDataAdapter):
                     if filter_types and ResourceType(attach_resource_name) not in filter_types:
                         continue
 
-                    resource_class = getattr(
-                        sys.modules["models.core"], camel_case(attach_resource_name)
-                    )
+                    resource_class = getattr(sys.modules["models.core"], camel_case(attach_resource_name))
                     resource_obj = None
-                    async with aiofiles.open(attachments_file, "r") as meta_file:
+                    async with aiofiles.open(attachments_file) as meta_file:
                         try:
                             resource_obj = resource_class.model_validate_json(await meta_file.read())
                         except Exception as e:
-                            raise Exception(
-                                f"Bad attachment ... {attachments_file=}"
-                            ) from e
+                            raise Exception(f"Bad attachment ... {attachments_file=}") from e
 
-                    resource_record_obj = resource_obj.to_record(
-                        subpath, attach_shortname, include_fields
-                    )
+                    resource_record_obj = resource_obj.to_record(subpath, attach_shortname, include_fields)
                     if is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
                         async with aiofiles.open(
-                                f"{attachment_entry.path}/{resource_obj.payload.body}", "r"
+                            f"{attachment_entry.path}/{resource_obj.payload.body}"
                         ) as payload_file_content:
-                            resource_record_obj.attributes["payload"].body = json.loads(
-                                await payload_file_content.read()
-                            )
+                            resource_record_obj.attributes["payload"].body = json.loads(await payload_file_content.read())
 
                     if attach_resource_name in attachments_dict:
-                        attachments_dict[ResourceType(attach_resource_name)].append(
-                            resource_record_obj)
+                        attachments_dict[ResourceType(attach_resource_name)].append(resource_record_obj)
                     else:
                         attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
                 attachments_files.close()
@@ -1214,7 +1173,7 @@ class FileAdapter(BaseDataAdapter):
 
             return attachments_dict
         except Exception as e:
-            print(e)
+            logger.error(f"Failed to get entry attachments: {e}")
             return {}
 
     async def get_spaces(self) -> dict:
@@ -1225,34 +1184,28 @@ class FileAdapter(BaseDataAdapter):
             return {}
 
     async def validate_uniqueness(
-            self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
+        self, space_name: str, record: core.Record, action: str = api.RequestType.create, user_shortname=None
     ) -> bool:
         """
         Get list of unique fields from entry's folder meta data
         ensure that each sub-list in the list is unique across all entries
         """
         folder_meta_path = (
-                settings.spaces_folder
-                / space_name
-                / f"{record.subpath[1:] if record.subpath[0] == '/' else record.subpath}.json"
+            settings.spaces_folder / space_name / f"{record.subpath[1:] if record.subpath[0] == '/' else record.subpath}.json"
         )
 
         if not folder_meta_path.is_file():
             return True
 
-        async with aiofiles.open(folder_meta_path, "r") as file:
+        async with aiofiles.open(folder_meta_path) as file:
             content = await file.read()
         folder_meta = json.loads(content)
 
         if not isinstance(folder_meta.get("unique_fields", None), list):
             return True
 
-        entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(
-            flatten_dict(record.attributes)
-        )
-        redis_escape_chars = str.maketrans(
-            {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
-        )
+        entry_dict_flattened: dict[Any, Any] = flatten_list_of_dicts_in_dict(flatten_dict(record.attributes))
+        redis_escape_chars = str.maketrans({".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})
         redis_replace_chars: dict[int, str] = str.maketrans(
             {".": r".", "@": r".", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
         )
@@ -1265,64 +1218,52 @@ class FileAdapter(BaseDataAdapter):
                     unique_key = unique_key.replace("_unescaped", "")
                 if unique_key.endswith("_replace_specials"):
                     unique_key = unique_key.replace("_replace_specials", "")
-                if not entry_dict_flattened.get(unique_key, None):
+                if not entry_dict_flattened.get(unique_key):
                     continue
 
                 redis_column = unique_key.split("payload.body.")[-1].replace(".", "_")
 
                 # construct redis search string
-                if (
-                        base_unique_key.endswith("_unescaped")
-                ):
+                if base_unique_key.endswith("_unescaped"):
                     redis_search_str += (
-                            " @"
-                            + base_unique_key
-                            + ":{"
-                            + entry_dict_flattened[unique_key]
-                            .translate(redis_escape_chars)
-                            .replace("\\\\", "\\")
-                            + "}"
+                        " @"
+                        + base_unique_key
+                        + ":{"
+                        + entry_dict_flattened[unique_key].translate(redis_escape_chars).replace("\\\\", "\\")
+                        + "}"
                     )
-                elif (
-                        base_unique_key.endswith("_replace_specials") or unique_key.endswith('email')
-                ):
+                elif base_unique_key.endswith("_replace_specials") or unique_key.endswith("email"):
                     redis_search_str += (
-                            " @"
-                            + redis_column
-                            + ":"
-                            + entry_dict_flattened[unique_key]
-                            .translate(redis_replace_chars)
-                            .replace("\\\\", "\\")
+                        " @"
+                        + redis_column
+                        + ":"
+                        + entry_dict_flattened[unique_key].translate(redis_replace_chars).replace("\\\\", "\\")
                     )
 
-                elif (
-                        isinstance(entry_dict_flattened[unique_key], list)
-                ):
+                elif isinstance(entry_dict_flattened[unique_key], list):
                     redis_search_str += (
-                            " @"
-                            + redis_column
-                            + ":{"
-                            + "|".join([
-                        item.translate(redis_escape_chars).replace("\\\\", "\\") for item in
-                        entry_dict_flattened[unique_key]
-                    ])
-                            + "}"
+                        " @"
+                        + redis_column
+                        + ":{"
+                        + "|".join(
+                            [
+                                item.translate(redis_escape_chars).replace("\\\\", "\\")
+                                for item in entry_dict_flattened[unique_key]
+                            ]
+                        )
+                        + "}"
                     )
                 elif isinstance(entry_dict_flattened[unique_key], (str, bool)):  # booleans are indexed as TextField
                     redis_search_str += (
-                            " @"
-                            + redis_column
-                            + ":"
-                            + entry_dict_flattened[unique_key]
-                            .translate(redis_escape_chars)
-                            .replace("\\\\", "\\")
+                        " @"
+                        + redis_column
+                        + ":"
+                        + entry_dict_flattened[unique_key].translate(redis_escape_chars).replace("\\\\", "\\")
                     )
 
                 elif isinstance(entry_dict_flattened[unique_key], int):
                     redis_search_str += (
-                            " @"
-                            + redis_column
-                            + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
+                        " @" + redis_column + f":[{entry_dict_flattened[unique_key]} {entry_dict_flattened[unique_key]}]"
                     )
                 else:
                     continue
@@ -1371,10 +1312,10 @@ class FileAdapter(BaseDataAdapter):
         return True
 
     async def validate_payload_with_schema(
-            self,
-            payload_data: UploadFile | dict,
-            space_name: str,
-            schema_shortname: str,
+        self,
+        payload_data: UploadFile | dict,
+        space_name: str,
+        schema_shortname: str,
     ):
         if not isinstance(payload_data, (dict, UploadFile)):
             raise API_Exception(
@@ -1391,7 +1332,10 @@ class FileAdapter(BaseDataAdapter):
             schema_shortname=f"{schema_shortname}.json",
         )
 
-        schema = json.loads(FSPath(schema_path).read_text())
+        # Use cached validator: keyed by path + mtime so cache auto-invalidates on schema change
+        schema_file = FSPath(schema_path)
+        mtime_ns = schema_file.stat().st_mtime_ns
+        validator = _get_cached_validator(str(schema_path), mtime_ns)
 
         if not isinstance(payload_data, dict):
             data = json.load(payload_data.file)
@@ -1399,7 +1343,7 @@ class FileAdapter(BaseDataAdapter):
         else:
             data = payload_data
 
-        Draft7Validator(schema).validate(data)  # type: ignore
+        validator.validate(data)  # type: ignore
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         async with RedisServices() as redis_services:
@@ -1420,15 +1364,12 @@ class FileAdapter(BaseDataAdapter):
     async def get_invitation(self, invitation_token: str):
         async with RedisServices() as redis_services:
             # FIXME invitation_token = await redis_services.getdel_key(
-            token = await redis_services.get_key(
-                f"users:login:invitation:{invitation_token}"
-            )
+            token = await redis_services.get_key(f"users:login:invitation:{invitation_token}")
 
         if not token:
-            raise Exception(
+            raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
-                api.Error(
-                    type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
+                api.Error(type="jwtauth", code=InternalErrorCode.INVALID_INVITATION, message="Invalid invitation"),
             )
 
         return token
@@ -1447,27 +1388,27 @@ class FileAdapter(BaseDataAdapter):
             return await redis_services.get_key(f"short/{token_uuid}")
 
     async def get_latest_history(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
     ) -> Any | None:
         history_path = settings.spaces_folder / space_name
 
         if subpath == "/" or subpath == "":
-             path1 = history_path / ".dm" / "history.jsonl"
-             path2 = history_path / ".dm" / shortname / "history.jsonl"
-             
-             if path2.is_file():
-                 path = path2
-             elif path1.is_file():
-                 path = path1
-             else:
-                 return None
+            path1 = history_path / ".dm" / "history.jsonl"
+            path2 = history_path / ".dm" / shortname / "history.jsonl"
+
+            if path2.is_file():
+                path = path2
+            elif path1.is_file():
+                path = path1
+            else:
+                return None
         else:
             path1 = history_path / subpath / ".dm" / shortname / "history.jsonl"
             path2 = history_path / ".dm" / subpath / "history.jsonl"
-            
+
             if path1.is_file():
                 path = path1
             elif path2.is_file():
@@ -1476,11 +1417,7 @@ class FileAdapter(BaseDataAdapter):
                 return None
 
         try:
-            _, result = await process_jsonl_file(
-                path,
-                limit=1,
-                reverse=True
-            )
+            _, result = await process_jsonl_file(path, limit=1, reverse=True)
             if result:
                 return json.loads(result[0].strip())
         except Exception:
@@ -1504,48 +1441,38 @@ class FileAdapter(BaseDataAdapter):
 
         records = []
         for data in r_search["data"]:
-            records.append(
-                json.loads(data)
-            )
+            records.append(json.loads(data))
         return records[0] if len(records) > 0 else None
 
     async def get_media_attachment(self, space_name: str, subpath: str, shortname: str) -> io.BytesIO | None:
         pass
 
-    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         async with RedisServices() as redis:
-            return 1, await redis.get_key(
-                f"user_session:{user_shortname}"
-            )
+            return 1, await redis.get_key(f"user_session:{user_shortname}")
 
     async def remove_user_session(self, user_shortname: str) -> bool:
         async with RedisServices() as redis:
-            return bool(
-                await redis.del_keys([f"user_session:{user_shortname}"])
-            )
+            return bool(await redis.del_keys([f"user_session:{user_shortname}"]))
 
     async def set_invitation(self, invitation_token: str, invitation_value):
         async with RedisServices() as redis_services:
-            await redis_services.set_key(
-                f"users:login:invitation:{invitation_token}",
-                invitation_value
-            )
+            await redis_services.set_key(f"users:login:invitation:{invitation_token}", invitation_value)
 
     async def set_user_session(
         self, user_shortname: str, token: str, firebase_token: str | None = None
     ) -> bool:
         async with RedisServices() as redis:
-            if settings.max_sessions_per_user == 1:
-                if await redis.get_key(
-                        f"user_session:{user_shortname}"
-                ):
-                    await redis.del_keys([f"user_session:{user_shortname}"])
+            if settings.max_sessions_per_user == 1 and await redis.get_key(f"user_session:{user_shortname}"):
+                await redis.del_keys([f"user_session:{user_shortname}"])
 
-            return bool(await redis.set_key(
-                key=f"user_session:{user_shortname}",
-                value=hash_password(token),
-                ex=settings.session_inactivity_ttl,
-            ))
+            return bool(
+                await redis.set_key(
+                    key=f"user_session:{user_shortname}",
+                    value=hash_password(token),
+                    ex=settings.session_inactivity_ttl,
+                )
+            )
 
     async def set_url_shortner(self, token_uuid: str, url: str):
         async with RedisServices() as redis_services:
@@ -1558,21 +1485,14 @@ class FileAdapter(BaseDataAdapter):
 
     async def delete_url_shortner(self, token_uuid: str) -> bool:
         async with RedisServices() as redis_services:
-            return bool(
-                await redis_services.del_keys([f"short/{token_uuid}"])
-            )
-
+            return bool(await redis_services.del_keys([f"short/{token_uuid}"]))
 
     async def delete_url_shortner_by_token(self, invitation_token: str) -> bool:
-        #TODO: implement this method
+        # TODO: implement this method
         return True
 
-
     async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
-        schema_path = (
-                self.payload_path(space_name, "schema", core.Schema)
-                / f"{schema_shortname}.json"
-        )
+        schema_path = self.payload_path(space_name, "schema", core.Schema) / f"{schema_shortname}.json"
         with open(schema_path) as schema_file:
             schema_content = json.load(schema_file)
 
@@ -1618,7 +1538,7 @@ class FileAdapter(BaseDataAdapter):
 
         for permission_doc in permissions_search["data"]:
             permission_doc = json.loads(permission_doc)
-            if permission_doc['resource_type'] == 'permission':
+            if permission_doc["resource_type"] == "permission":
                 permission = core.Permission.model_validate(permission_doc)
                 role_permissions.append(permission)
 
@@ -1626,7 +1546,7 @@ class FileAdapter(BaseDataAdapter):
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
         user_meta: core.User = await self.load_user_meta(user_shortname)
-        user_associated_roles = user_meta.roles
+        user_associated_roles = list(user_meta.roles)
         user_associated_roles.append("logged_in")
         async with RedisServices() as redis_services:
             roles_search = await redis_services.search(
@@ -1686,14 +1606,11 @@ class FileAdapter(BaseDataAdapter):
             user_permissions: dict = {}
 
             user_roles = await self.get_user_roles(user_shortname)
+            permission_world_record = await self.load_or_none(
+                settings.management_space, "permissions", "world", core.Permission
+            )
             for _, role in user_roles.items():
                 role_permissions = await self.get_role_permissions(role)
-                permission_world_record = await self.load_or_none(
-                    settings.management_space,
-                    'permissions',
-                    "world",
-                    core.Permission
-                )
                 if permission_world_record:
                     role_permissions.append(permission_world_record)
 
@@ -1705,10 +1622,7 @@ class FileAdapter(BaseDataAdapter):
                             for permission_resource_types in permission.resource_types:
                                 actions = set(permission.actions)
                                 conditions = set(permission.conditions)
-                                if (
-                                        f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                        in user_permissions
-                                ):
+                                if f"{space_name}:{permission_subpath}:{permission_resource_types}" in user_permissions:
                                     old_perm = user_permissions[
                                         f"{space_name}:{permission_subpath}:{permission_resource_types}"
                                     ]
@@ -1721,18 +1635,14 @@ class FileAdapter(BaseDataAdapter):
                                         conditions = set(conditions)
                                     conditions |= set(old_perm["conditions"])
 
-                                user_permissions[
-                                    f"{space_name}:{permission_subpath}:{permission_resource_types}"
-                                ] = {
+                                user_permissions[f"{space_name}:{permission_subpath}:{permission_resource_types}"] = {
                                     "allowed_actions": list(actions),
                                     "conditions": list(conditions),
                                     "restricted_fields": permission.restricted_fields,
-                                    "allowed_fields_values": permission.allowed_fields_values
+                                    "allowed_fields_values": permission.allowed_fields_values,
                                 }
             async with RedisServices() as redis_services:
-                await redis_services.save_doc(
-                    f"users_permissions_{user_shortname}", user_permissions
-                )
+                await redis_services.save_doc(f"users_permissions_{user_shortname}", user_permissions)
             return user_permissions
         except Exception as e:
             logger.error(f"Error generating user permissions: {e}")
@@ -1743,13 +1653,11 @@ class FileAdapter(BaseDataAdapter):
                     code=InternalErrorCode.UNPROCESSABLE_ENTITY,
                     message=str(e),
                 ),
-            )
+            ) from e
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
         async with RedisServices() as redis_services:
-            user_permissions: dict = await redis_services.get_doc_by_id(
-                f"users_permissions_{user_shortname}"
-            )
+            user_permissions: dict = await redis_services.get_doc_by_id(f"users_permissions_{user_shortname}")
 
             if not user_permissions:
                 return await self.generate_user_permissions(user_shortname)
@@ -1807,7 +1715,7 @@ class FileAdapter(BaseDataAdapter):
                             space_name=settings.management_space,
                             schema_shortname="meta",
                             shortname=role_shortname,
-                            subpath="roles"
+                            subpath="roles",
                         )
                     )
                     if role:
@@ -1826,9 +1734,7 @@ class FileAdapter(BaseDataAdapter):
 
     async def initialize_spaces(self) -> None:
         if not settings.spaces_folder.is_dir():
-            raise NotADirectoryError(
-                f"{settings.spaces_folder} directory does not exist!"
-            )
+            raise NotADirectoryError(f"{settings.spaces_folder} directory does not exist!")
 
         spaces: dict[str, str] = {}
         for one in settings.spaces_folder.glob("*/.dm/meta.space.json"):
@@ -1854,7 +1760,7 @@ class FileAdapter(BaseDataAdapter):
                     definition=IndexDefinition(
                         prefix=["users_permissions"],
                         index_type=IndexType.JSON,
-                    )
+                    ),
                 )
 
     async def store_modules_to_redis(self, roles, groups, permissions) -> None:
@@ -1865,10 +1771,10 @@ class FileAdapter(BaseDataAdapter):
         ]
         async with RedisServices() as redis_services:
             for module in modules:
-                for _, object in module['value'].items():
+                for _, object in module["value"].items():
                     await redis_services.save_meta_doc(
                         space_name=settings.management_space,
-                        subpath=module['subpath'],
+                        subpath=module["subpath"],
                         meta=object,
                     )
 
@@ -1882,13 +1788,7 @@ class FileAdapter(BaseDataAdapter):
                 if len(keys) > 0:
                     await redis_services.del_keys(keys)
 
-    async def internal_save_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload: dict | None = None
-    ):
+    async def internal_save_model(self, space_name: str, subpath: str, meta: core.Meta, payload: dict | None = None):
         await self.save(
             space_name=space_name,
             subpath=subpath,
@@ -1910,34 +1810,28 @@ class FileAdapter(BaseDataAdapter):
                     payload_data=payload,
                 )
                 payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
-                await redis.save_payload_doc(
-                    space_name,
-                    subpath,
-                    meta,
-                    payload,
-                    ResourceType(snake_case(type(meta).__name__))
-                )
+                await redis.save_payload_doc(space_name, subpath, meta, payload, ResourceType(snake_case(type(meta).__name__)))
 
     async def internal_sys_update_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            updates: dict,
-            sync_redis: bool = True,
-            payload_dict: dict[str, Any] = {},
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        updates: dict,
+        sync_redis: bool = True,
+        payload_dict: dict[str, Any] | None = None,
     ):
         meta.updated_at = datetime.now()
         meta_updated = False
         payload_updated = False
 
-        if not payload_dict:
+        resolved_payload: dict[str, Any] = payload_dict if payload_dict is not None else {}
+        if not resolved_payload:
             try:
                 body = str(meta.payload.body) if meta and meta.payload else ""
-                mydict = await self.load_resource_payload(
-                    space_name, subpath, body, core.Content
-                )
-                payload_dict = mydict if mydict else {}
+                loaded = await self.load_resource_payload(space_name, subpath, body, core.Content)
+                if loaded:
+                    resolved_payload = loaded
             except Exception:
                 pass
 
@@ -1954,30 +1848,20 @@ class FileAdapter(BaseDataAdapter):
             if key in restricted_fields:
                 continue
 
-            if key in meta.model_fields.keys():
+            if key in meta.model_fields:
                 meta_updated = True
                 meta.__setattr__(key, value)
-            elif payload_dict:
-                payload_dict[key] = value
+            elif resolved_payload:
+                resolved_payload[key] = value
                 payload_updated = True
 
         if meta_updated:
             await self.update(
-                space_name,
-                subpath,
-                meta,
-                old_version_flattend,
-                {**meta.model_dump()},
-                list(updates.keys()),
-                meta.shortname
+                space_name, subpath, meta, old_version_flattend, {**meta.model_dump()}, list(updates.keys()), meta.shortname
             )
         if payload_updated and meta.payload and meta.payload.schema_shortname:
-            await self.validate_payload_with_schema(
-                payload_dict, space_name, meta.payload.schema_shortname
-            )
-            await self.save_payload_from_json(
-                space_name, subpath, meta, payload_dict
-            )
+            await self.validate_payload_with_schema(resolved_payload, space_name, meta.payload.schema_shortname)
+            await self.save_payload_from_json(space_name, subpath, meta, resolved_payload)
 
         if not sync_redis:
             return
@@ -1985,24 +1869,23 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.save_meta_doc(space_name, subpath, meta)
             if payload_updated:
-                payload_dict.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                resolved_payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
                 await redis_services.save_payload_doc(
                     space_name,
                     subpath,
                     meta,
-                    payload_dict,
+                    resolved_payload,
                     ResourceType(snake_case(type(meta).__name__)),
                 )
 
-
     async def get_entry_by_var(
-            self,
-            key: str,
-            val: str,
-            logged_in_user,
-            retrieve_json_payload: bool = False,
-            retrieve_attachments: bool = False,
-            retrieve_lock_status: bool = False,
+        self,
+        key: str,
+        val: str,
+        logged_in_user,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
     ) -> core.Record | None:
         spaces = await self.get_spaces()
         entry_doc = None
@@ -2010,7 +1893,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             for space_name, space in spaces.items():
                 space = json.loads(space)
-                if not space['indexing_enabled']:
+                if not space["indexing_enabled"]:
                     continue
                 search_res = await redis_services.search(
                     space_name=space_name,
@@ -2033,16 +1916,17 @@ class FileAdapter(BaseDataAdapter):
             )
 
         from utils.access_control import access_control
+
         if not await access_control.check_access(
-                user_shortname=logged_in_user,
-                space_name=entry_space,
-                subpath=entry_doc["subpath"],
-                resource_type=entry_doc["resource_type"],
-                action_type=core.ActionType.view,
-                resource_is_active=entry_doc["is_active"],
-                resource_owner_shortname=entry_doc.get("owner_shortname"),
-                resource_owner_group=entry_doc.get("owner_group_shortname"),
-                entry_shortname=entry_doc.get("shortname")
+            user_shortname=logged_in_user,
+            space_name=entry_space,
+            subpath=entry_doc["subpath"],
+            resource_type=entry_doc["resource_type"],
+            action_type=core.ActionType.view,
+            resource_is_active=entry_doc["is_active"],
+            resource_owner_shortname=entry_doc.get("owner_shortname"),
+            resource_owner_group=entry_doc.get("owner_group_shortname"),
+            entry_shortname=entry_doc.get("shortname"),
         ):
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
@@ -2091,11 +1975,11 @@ class FileAdapter(BaseDataAdapter):
         shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
-            self,
-            space_name: str,
-            schema_names: list,
-            retrieve_json_payload: bool,
-            logged_in_user: str,
+        self,
+        space_name: str,
+        schema_names: list,
+        retrieve_json_payload: bool,
+        logged_in_user: str,
     ):
         pass
 

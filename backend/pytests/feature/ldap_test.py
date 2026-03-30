@@ -1,24 +1,21 @@
 import json
+
 import pytest
 from httpx import AsyncClient
 
 from models.enums import RequestType, ResourceType
 from pytests.base_test import (
-    assert_code_and_status_success,
-    set_superman_cookie,
     MANAGEMENT_SPACE,
     USERS_SUBPATH,
+    assert_code_and_status_success,
+    set_superman_cookie,
 )
 from utils.settings import settings
 
-
-
-with open("../backend/plugins/ldap_manager/config.json", "r") as plugin_conf:
+with open("../backend/plugins/ldap_manager/config.json") as plugin_conf:
     ldap_plugin_config = json.load(plugin_conf)
 
-with open(
-    f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/.dm/meta.space.json", "r"
-) as space_conf:
+with open(f"{settings.spaces_folder}/{MANAGEMENT_SPACE}/.dm/meta.space.json") as space_conf:
     management_space_config = json.load(space_conf)
 
 
@@ -119,10 +116,7 @@ async def test_ldap_user_updated(client: AsyncClient):
     assert_code_and_status_success(response)
 
     ldap_entry = ldap_get_first_entry("ldap_user_100100")
-    assert (
-        ldap_entry.get("attributes", {}).get("givenName", [])[0]
-        == "en='En User' ar='Ar User' ku='Ku User'"
-    )
+    assert ldap_entry.get("attributes", {}).get("givenName", [])[0] == "en='En User' ar='Ar User' ku='Ku User'"
 
 
 @pytest.mark.run(order=4)

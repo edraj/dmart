@@ -186,7 +186,7 @@
                 await getSpaces();
             }
             const currentSpace = $spaces.find((e) => e.shortname === space_name);
-            const hideFolders = currentSpace.attributes.hide_folders;
+            const hideFolders = currentSpace?.attributes?.hide_folders;
 
             if (hideFolders.length) {
                 _search += ` -@shortname:${hideFolders.join("|")}`;
@@ -250,7 +250,7 @@
             open = true;
 
             const blacklist = ["sec", "content-type", "accept", "host", "connection"];
-            modalData = JSON.parse(JSON.stringify(record));
+            modalData = structuredClone(record);
 
             if (modalData?.attributes?.attributes?.request_headers) {
                 modalData.attributes.attributes.request_headers = Object.keys(
@@ -354,8 +354,12 @@
                 localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
             }
             (async () => {
-                await fetchPageRecords(true, {});
-                handleAllBulk(null, isAllBulkChecked);
+                try {
+                    await fetchPageRecords(true, {});
+                    handleAllBulk(null, isAllBulkChecked);
+                } catch (e) {
+                    showToast(Level.warn, "Failed to fetch records after changing page size");
+                }
             })();
         }
     });
@@ -366,11 +370,6 @@
                 ...$params,
                 page: objectDatatable.numberActivePage.toString(),
             });
-            // numberActivePage = objectDatatable.numberActivePage;
-            // (async() => {
-            //     await fetchPageRecords(false,{},false);
-            //     handleAllBulk(null, false);
-            // })();
         }
     });
 
@@ -436,7 +435,7 @@
     }
 
     function handleSortRendered(node) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             const spanButton = node.querySelector(
                 'span[role="button"][style*="cursor:pointer"][style*="white-space: nowrap"]',
             );
@@ -458,6 +457,7 @@
 
         return {
             destroy() {
+                clearTimeout(timer);
             },
         };
     }

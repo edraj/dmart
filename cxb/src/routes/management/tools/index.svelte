@@ -10,6 +10,7 @@
         ChartPieOutline,
         DatabaseSolid,
         ChartLineUpOutline,
+        TrashBinOutline,
     } from "flowbite-svelte-icons";
     import { goto } from "@roxi/routify";
     import { Dmart } from "@edraj/tsdmart";
@@ -126,6 +127,21 @@
                 <h3 class="text-xl font-bold mb-2">Statistics</h3>
                 <p class="text-gray-600">
                     View application usage and space statistics.
+                </p>
+            </div>
+        </Card>
+
+        <Card
+            class="p-4 hover:shadow-lg transition-shadow cursor-pointer"
+            onclick={() => $goto("/management/tools/trash")}
+        >
+            <div class="flex flex-col items-center text-center">
+                <div class="p-3 bg-red-100 rounded-full mb-4">
+                    <TrashBinOutline class="w-12 h-12 text-red-600" />
+                </div>
+                <h3 class="text-xl font-bold mb-2">Trash</h3>
+                <p class="text-gray-600">
+                    View and manage your deleted items.
                 </p>
             </div>
         </Card>

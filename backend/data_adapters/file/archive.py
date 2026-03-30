@@ -1,17 +1,18 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
 
+import argparse
 import asyncio
-from datetime import datetime
 import json
-from time import time
 import os
 import shutil
 import sys
-import argparse
-from utils.helpers import camel_case
+from collections.abc import Awaitable
+from datetime import datetime
+from time import time
+
 from data_adapters.file.redis_services import RedisServices
+from utils.helpers import camel_case
 from utils.settings import settings
-from typing import Awaitable
 
 
 def redis_doc_to_meta(doc: dict):
@@ -21,14 +22,10 @@ def redis_doc_to_meta(doc: dict):
         camel_case(doc["resource_type"]),
     )
     for key, value in doc.items():
-        if key in resource_class.model_fields.keys():
+        if key in resource_class.model_fields:
             meta_doc_content[key] = value
-    meta_doc_content["created_at"] = datetime.fromtimestamp(
-        meta_doc_content["created_at"]
-    )
-    meta_doc_content["updated_at"] = datetime.fromtimestamp(
-        meta_doc_content["updated_at"]
-    )
+    meta_doc_content["created_at"] = datetime.fromtimestamp(meta_doc_content["created_at"])
+    meta_doc_content["updated_at"] = datetime.fromtimestamp(meta_doc_content["updated_at"])
     return resource_class.model_validate(meta_doc_content)
 
 
@@ -60,13 +57,12 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                 exact_subpath=True,
                 limit=limit,
                 offset=0,
-
             )
             if not redis_res or redis_res["total"] == 0:
                 print(f"No more data left. {redis_res=}")
                 break
             counter += redis_res["total"]
-            
+
             search_res = redis_res["data"]
 
             for redis_document in search_res:
@@ -88,13 +84,10 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                     if record["resource_type"] != "folder":
                         meta_folder += "/.dm"
                         dest_folder += "/.dm"
-                        
-                        
-                    os.makedirs(
-                        f"{dest_folder}", exist_ok=True
-                    )
+
+                    os.makedirs(f"{dest_folder}", exist_ok=True)
                     shutil.move(
-                        src = f"{meta_folder}/{record.get('shortname')}",
+                        src=f"{meta_folder}/{record.get('shortname')}",
                         dst=f"{dest_folder}",
                     )
 
@@ -119,13 +112,12 @@ async def archive(space: str, subpath: str, schema: str, olderthan: int):
                 except Exception as e:
                     print(f"Error archiving {record.get('shortname')}: {e} at line {sys.exc_info()[-1]}")
                     continue
-            print(f'Processed {counter}')
+            print(f"Processed {counter}")
     await RedisServices().close_pool()
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Script for archiving records from different spaces and subpaths."
-    )
+    parser = argparse.ArgumentParser(description="Script for archiving records from different spaces and subpaths.")
     parser.add_argument("space", type=str, help="The name of the space")
     parser.add_argument("subpath", type=str, help="The subpath within the space")
     parser.add_argument(

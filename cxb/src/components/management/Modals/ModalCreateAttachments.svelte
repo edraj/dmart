@@ -302,9 +302,9 @@
                 showToast(Level.warn);
             }
         } catch (e) {
-            console.log(e)
-            showToast(Level.warn, e.response.data);
-            errorContent = e.response.data;
+            const errorData = e?.response?.data || e?.message || "An unexpected error occurred";
+            showToast(Level.warn, errorData);
+            errorContent = errorData;
         } finally {
             isLoading = false;
         }

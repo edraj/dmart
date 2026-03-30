@@ -4,22 +4,22 @@ from fastapi import status
 def check_repeated_shortname(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "failed" == json_response.get("status")
-    assert "request" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "request"
 
 
 def check_not_found(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "failed" == json_response.get("status")
-    assert "db" == json_response.get("error").get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error").get("type") == "db"
 
 
 def check_unauthorized(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "failed" == json_response.get("status")
-    assert "auth" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "auth"
 
 
 def assert_code_and_status_success(response):

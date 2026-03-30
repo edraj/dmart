@@ -1,13 +1,15 @@
 import json
-from utils.settings import settings
+
 from fastapi import status
+
 from models.api import Query
-from models.enums import QueryType, ResourceType, RequestType
+from models.enums import QueryType, RequestType, ResourceType
+from utils.settings import settings
 
 superman = {}
 alibaba = {}
 
-with open("./login_creds.sh", "r") as file:
+with open("./login_creds.sh") as file:
     for line in file.readlines():
         if line.strip().startswith("export SUPERMAN"):
             superman = json.loads(str(line.strip().split("'")[1]))
@@ -29,6 +31,7 @@ async def get_superman_cookie(client) -> str:
     assert response.status_code == status.HTTP_200_OK
     # client.cookies.set("auth_token", response.cookies["auth_token"])
     return str(response.cookies["auth_token"])
+
 
 async def set_superman_cookie(client):
     response = await client.post(
@@ -102,33 +105,29 @@ async def delete_space(client) -> None:
         ],
     }
 
-    assert_code_and_status_success(
-        await client.post(endpoint, json=request_data, headers=headers)
-    )
-    check_not_found(
-        await client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}")
-    )
+    assert_code_and_status_success(await client.post(endpoint, json=request_data, headers=headers))
+    check_not_found(await client.get(f"/managed/entry/space/{DEMO_SPACE}/__root__/{DEMO_SPACE}"))
 
 
 def check_repeated_shortname(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "failed" == json_response.get("status")
-    assert "request" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "request"
 
 
 def check_not_found(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert "failed" == json_response.get("status")
-    assert "db" == json_response.get("error").get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error").get("type") == "db"
 
 
 def check_unauthorized(response):
     json_response = response.json()
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "failed" == json_response.get("status")
-    assert "auth" == json_response.get("error", {}).get("type")
+    assert json_response.get("status") == "failed"
+    assert json_response.get("error", {}).get("type") == "auth"
 
 
 def assert_code_and_status_success(response):
@@ -142,7 +141,7 @@ def assert_code_and_status_success(response):
     print(f"{json_response=}")
     assert response.status_code == status.HTTP_200_OK
     assert json_response.get("status") == "success"
-    
+
 
 def assert_bad_request(response):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -178,16 +177,11 @@ async def assert_resource_created(
 
         json_response["records"][0]["attributes"].pop("created_at", None)
         json_response["records"][0]["attributes"].pop("updated_at", None)
-        assert (
-            json_response["records"][0]["attributes"]["payload"]["body"]
-            == res_attributes["payload"]["body"]
-        )
+        assert json_response["records"][0]["attributes"]["payload"]["body"] == res_attributes["payload"]["body"]
 
     # Assert correct attachments number for each attachment type returned
     if res_attachments:
-        for attachment_key, attachments in json_response["records"][0][
-            "attachments"
-        ].items():
+        for attachment_key, attachments in json_response["records"][0]["attachments"].items():
             if attachment_key in res_attachments:
                 assert len(attachments) == res_attachments[attachment_key]
 
@@ -217,9 +211,7 @@ async def upload_resource_with_payload(
     attachment=False,
     is_fail=False,
 ):
-    with open(record_path, "rb") as request_file, open(
-        payload_path, "rb"
-    ) as media_file:
+    with open(record_path, "rb") as request_file, open(payload_path, "rb") as media_file:
         files = {
             "request_record": ("record.json", request_file, "application/json"),
             "payload_file": (media_file.name.split("/")[-1], media_file, payload_type),
@@ -237,9 +229,9 @@ async def upload_resource_with_payload(
         assert_code_and_status_success(response)
 
     if attachment:
-        with open(record_path, 'r') as record_file:
+        with open(record_path) as record_file:
             record_data = json.loads(record_file.read())
-            subpath_parts = record_data["subpath"].split('/')
+            subpath_parts = record_data["subpath"].split("/")
             attach_parent_subpath, attach_parent_shortname = "/".join(subpath_parts[:-1]), subpath_parts[-1]
         await assert_resource_created(
             client,
@@ -280,9 +272,9 @@ async def delete_resource(client, resource_type: str, del_subpath: str, del_shor
 
 async def retrieve_content_folder(client):
     response = await client.get(f"managed/entry/folder/{DEMO_SPACE}/{settings.root_subpath_mw}/{DEMO_SUBPATH}")
-    
+
     assert response.status_code == status.HTTP_200_OK
-     
+
     await assert_resource_created(
         client,
         query=Query(

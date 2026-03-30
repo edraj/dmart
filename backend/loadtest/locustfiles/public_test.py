@@ -2,6 +2,7 @@ from locust import HttpUser, between, task
 
 SPACE_NAME = "applications"
 
+
 class WebsitePublic(HttpUser):
     wait_time = between(1, 2)
     host = "http://0.0.0.0:8282"
@@ -26,10 +27,9 @@ class WebsitePublic(HttpUser):
             "type": "search",
             "subpath": "/queries",
             "filter_schema_names": ["query"],
-            "retrieve_json_payload": True
+            "retrieve_json_payload": True,
         }
         self.client.post("/public/query", json=request_data)
-
 
     # Saved Query
     # @task
@@ -45,17 +45,12 @@ class WebsitePublic(HttpUser):
     #     }
     #     self.client.post("/public/excute/query/products", json=request_data)
 
-
     # # retrieve entry
     # @task
     # def retrieve_entry(self):
     #     self.client.get("/managed/entry/content/applications/queries/order?retrieve_json_payload=true")
 
-
     # retrieve media
     # @task
     # def retrieve_payload(self):
     #     self.client.get("/public/payload/media/products/banners/banner2/en.png")
-
-
-

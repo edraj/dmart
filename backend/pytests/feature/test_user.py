@@ -1,20 +1,18 @@
 import pytest
-from httpx import AsyncClient
 from fastapi import status
-from utils.internal_error_code import InternalErrorCode
+from httpx import AsyncClient
+
+from models.api import Query
+from models.enums import QueryType, ResourceType
 from pytests.base_test import (
+    MANAGEMENT_SPACE,
+    USERS_SUBPATH,
     assert_code_and_status_success,
     assert_resource_created,
     set_superman_cookie,
-    MANAGEMENT_SPACE,
-    USERS_SUBPATH,
-    superman
+    superman,
 )
-from models.api import Query
-from models.enums import QueryType, ResourceType
-from fastapi import status
 from utils.internal_error_code import InternalErrorCode
-
 
 new_user_data = {
     "shortname": "test_user_100100",
@@ -31,12 +29,11 @@ async def test_user_does_not_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is True
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_request_email_otp(client: AsyncClient):
-    request_body = {
-        "email": new_user_data["email"]
-    }
+    request_body = {"email": new_user_data["email"]}
     response = await client.post("/user/otp-request", json=request_body)
     json_response = response.json()
     if response.status_code == status.HTTP_200_OK:
@@ -44,19 +41,19 @@ async def test_request_email_otp(client: AsyncClient):
     elif response.status_code == status.HTTP_403_FORBIDDEN:
         assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_request_msisdn_otp(client: AsyncClient):
-    request_body = {
-        "msisdn": new_user_data["msisdn"]
-    }
+    request_body = {"msisdn": new_user_data["msisdn"]}
     response = await client.post("/user/otp-request", json=request_body)
     json_response = response.json()
     if response.status_code == status.HTTP_200_OK:
         assert json_response.get("status") == "success"
     elif response.status_code == status.HTTP_403_FORBIDDEN:
         assert json_response.get("error", {}).get("code") == InternalErrorCode.OTP_RESEND_BLOCKED
-    
+
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_create_user(client: AsyncClient):
@@ -69,7 +66,7 @@ async def test_create_user(client: AsyncClient):
             "email": new_user_data["email"],
             "email_otp": "123456",
             "msisdn": new_user_data["msisdn"],
-            "msisdn_otp": "123456"
+            "msisdn_otp": "123456",
         },
     }
 
@@ -91,7 +88,8 @@ async def test_create_user(client: AsyncClient):
         res_subpath=USERS_SUBPATH,
         res_attributes={},
     )
-    
+
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_the_new_user(client: AsyncClient):
@@ -127,7 +125,7 @@ async def test_login_with_the_new_user(client: AsyncClient):
 async def test_get_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
-    assert response.json()['records'][0]['shortname'] == new_user_data['shortname']
+    assert response.json()["records"][0]["shortname"] == new_user_data["shortname"]
 
 
 @pytest.mark.run(order=1)
@@ -137,12 +135,11 @@ async def test_user_already_exist(client: AsyncClient):
     assert_code_and_status_success(response)
     assert response.json()["attributes"]["unique"] is False
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_otp_request_login_success(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"]
-    }
+    payload = {"email": new_user_data["email"]}
 
     response = await client.post("/user/otp-request-login", json=payload)
     assert_code_and_status_success(response)
@@ -153,19 +150,17 @@ async def test_otp_request_login_success(client: AsyncClient):
 async def test_otp_validation_success(client: AsyncClient):
     request_body = {
         "email": new_user_data["email"],
-        "otp": "123456",  
+        "otp": "123456",
     }
 
     response = await client.post("/user/login", json=request_body)
     assert_code_and_status_success(response)
 
+
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_otp_login_invalid_otp(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"],
-        "otp": "000000"  
-    }
+    payload = {"email": new_user_data["email"], "otp": "000000"}
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
@@ -188,11 +183,12 @@ async def test_login_with_otp_both_email_and_msisdn_error(client: AsyncClient):
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
-    
+
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert json_response["error"]["type"] == "general"
     assert json_response["error"]["code"] == 99
     assert "Too many input has been passed" in json_response["error"]["message"]
+
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
@@ -209,14 +205,10 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
 
 
-
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_empty_otp_field(client: AsyncClient):
-    payload = {
-        "email": new_user_data["email"],
-        "otp": ""  
-    }
+    payload = {"email": new_user_data["email"], "otp": ""}
 
     response = await client.post("/user/login", json=payload)
     json_response = response.json()
@@ -239,6 +231,29 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
 
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
+async def test_validate_password_correct(client: AsyncClient) -> None:
+    """Validate the current user's password with the correct password."""
+    response = await client.post(
+        "/user/validate_password",
+        json={"password": "Test1234"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_validate_password_wrong(client: AsyncClient) -> None:
+    """Validate password with a wrong password should return 401."""
+    response = await client.post(
+        "/user/validate_password",
+        json={"password": "WrongPassword999"},
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json()["status"] == "failed"
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
 async def test_update_profile(client: AsyncClient) -> None:
     request_data = {
         "resource_type": ResourceType.user,
@@ -257,7 +272,6 @@ async def test_delete_new_user_profile(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
 
 
-
 @pytest.mark.run(order=1)
 @pytest.mark.anyio
 async def test_login_with_superman(client: AsyncClient):
@@ -269,5 +283,97 @@ async def test_login_with_superman(client: AsyncClient):
 async def test_get_superman_profile(client: AsyncClient) -> None:
     response = await client.get("/user/profile")
     assert_code_and_status_success(response)
-    assert response.json()['records'][0]['shortname'] == superman['shortname']
+    assert response.json()["records"][0]["shortname"] == superman["shortname"]
 
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_password_reset_request_with_email(client: AsyncClient) -> None:
+    """Password reset request always returns success (anti-enumeration)."""
+    response = await client.post(
+        "/user/password-reset-request",
+        json={"email": "nonexistent_user@test.com"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_password_reset_request_with_msisdn(client: AsyncClient) -> None:
+    """Password reset request via MSISDN also always returns success."""
+    response = await client.post(
+        "/user/password-reset-request",
+        json={"msisdn": "1234567890"},
+    )
+    assert_code_and_status_success(response)
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_create_user_for_reset(client: AsyncClient) -> None:
+    """Admin creates a user to test the admin reset endpoint."""
+    request_data = {
+        "space_name": MANAGEMENT_SPACE,
+        "request_type": "create",
+        "records": [
+            {
+                "resource_type": ResourceType.user,
+                "subpath": USERS_SUBPATH,
+                "shortname": "reset_target",
+                "attributes": {
+                    "roles": [],
+                    "msisdn": "1112223334",
+                    "email": "reset_target@test.com",
+                },
+            }
+        ],
+    }
+    assert_code_and_status_success(await client.post("/managed/request", json=request_data))
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_reset_user(client: AsyncClient) -> None:
+    """Admin resets a user account via POST /user/reset."""
+    response = await client.post(
+        "/user/reset",
+        json={"shortname": "reset_target"},
+    )
+    assert_code_and_status_success(response)
+    json_response = response.json()
+    assert "sms_sent" in json_response.get("attributes", {}) or "email_sent" in json_response.get("attributes", {})
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_reset_nonexistent_user(client: AsyncClient) -> None:
+    """Admin reset for a non-existent user should fail."""
+    response = await client.post(
+        "/user/reset",
+        json={"shortname": "totally_nonexistent_user"},
+    )
+    assert response.status_code in [
+        status.HTTP_404_NOT_FOUND,
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    ]
+    assert response.json()["status"] == "failed"
+
+
+@pytest.mark.run(order=1)
+@pytest.mark.anyio
+async def test_admin_delete_reset_target_user(client: AsyncClient) -> None:
+    """Cleanup: admin deletes the user created for reset tests."""
+    request_data = {
+        "space_name": MANAGEMENT_SPACE,
+        "request_type": "delete",
+        "records": [
+            {
+                "resource_type": ResourceType.user,
+                "subpath": USERS_SUBPATH,
+                "shortname": "reset_target",
+                "attributes": {},
+            }
+        ],
+    }
+    assert_code_and_status_success(await client.post("/managed/request", json=request_data))

@@ -1,8 +1,9 @@
-const downloadFile = (data: any, fileName: string, fileType: string) => {
+const downloadFile = (data: BlobPart, fileName: string, fileType: string) => {
   const blob = new Blob([data], { type: fileType });
+  const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.download = fileName;
-  a.href = window.URL.createObjectURL(blob);
+  a.href = url;
   const clickEvt = new MouseEvent("click", {
     view: window,
     bubbles: true,
@@ -10,6 +11,7 @@ const downloadFile = (data: any, fileName: string, fileType: string) => {
   });
   a.dispatchEvent(clickEvt);
   a.remove();
+  window.URL.revokeObjectURL(url);
 };
 
 export default downloadFile;

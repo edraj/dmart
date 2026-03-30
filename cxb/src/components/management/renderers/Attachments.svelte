@@ -196,17 +196,6 @@
 
   function editAttachment(attachment) {
     selectedAttachment = attachment;
-
-    // Only update payload for json, text, comment, markdown, html types
-    // if (attachment.resource_type === ResourceType.json
-    //     || [ContentType.text, ContentType.json, ContentType.markdown, ContentType.html].includes(attachment.attributes?.payload?.content_type)
-    //     || attachment.resource_type === ResourceType.comment) {
-    //   handleContentEditModal(attachment);
-    // } else {
-    //   // For all other types, only update metadata
-    //   handleMetaEditModal(attachment);
-    // }
-
     handleEditModal(selectedAttachment);
   }
 

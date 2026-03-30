@@ -1,49 +1,52 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-""" Main module """
-import socket
-from starlette.datastructures import UploadFile
-from contextlib import asynccontextmanager
+"""Main module"""
+
 import asyncio
 import json
 import os
-from os import getpid
+import socket
 import sys
 import time
 import traceback
+from contextlib import asynccontextmanager
 from datetime import datetime
+from os import getpid
+from pathlib import Path
 from typing import Any, cast
-from urllib.parse import urlparse, quote
-from jsonschema.exceptions import ValidationError as SchemaValidationError
-from pydantic import ValidationError
-from starlette.middleware.gzip import GZipMiddleware
+from urllib.parse import quote
 
-from languages.loader import load_langs
-from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
-from utils.jwt import JWTBearer
-from utils.plugin_manager import plugin_manager
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import Depends, FastAPI, Request, Response, status
-from utils.logger import logging_schema
-from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from utils.access_control import access_control
-from fastapi.responses import ORJSONResponse, FileResponse, RedirectResponse
+from fastapi.logger import logger
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
+from jsonschema.exceptions import ValidationError as SchemaValidationError
+from pydantic import ValidationError
 from starlette.concurrency import iterate_in_threadpool
+from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.staticfiles import StaticFiles
+
 import models.api as api
-from utils.settings import settings
-from asgi_correlation_id import CorrelationIdMiddleware
-from data_adapters.adapter import data_adapter as db
+from api.info.router import git_info
+from api.info.router import router as info
 from api.managed.router import router as managed
-from api.qr.router import router as qr
 from api.public.router import router as public
+from api.qr.router import router as qr
 from api.user.router import router as user
-from api.info.router import router as info, git_info
+from data_adapters.adapter import data_adapter as db
+from languages.loader import load_langs
+from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
-from pathlib import Path
+from utils.jwt import JWTBearer
+from utils.logger import logging_schema
+from utils.middleware import ChannelMiddleware, CustomRequestMiddleware
+from utils.plugin_manager import plugin_manager
+from utils.settings import settings
 
 
 class SPAStaticFiles(StaticFiles):
@@ -77,7 +80,6 @@ async def lifespan(app: FastAPI):
     await access_control.load_permissions_and_roles()
     # await plugin_manager.load_plugins(app, capture_body)
     yield
-
 
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
@@ -113,23 +115,20 @@ app = FastAPI(
             "description": "Public api for query and GET access to media",
         },
     ],
-    default_response_class=ORJSONResponse,
+    default_response_class=JSONResponse,
 )
 
 
 async def capture_body(request: Request):
     request.state.request_body = {}
 
-    if (
-            request.method == "POST"
-            and "application/json" in request.headers.get("content-type", "")
-    ):
+    if request.method == "POST" and "application/json" in request.headers.get("content-type", ""):
         request.state.request_body = await request.json()
 
     if (
-            request.method == "POST"
-            and request.headers.get("content-type")
-            and "multipart/form-data" in request.headers.get("content-type", [])
+        request.method == "POST"
+        and request.headers.get("content-type")
+        and "multipart/form-data" in request.headers.get("content-type", [])
     ):
         form = await request.form()
         for field in form:
@@ -149,7 +148,7 @@ async def capture_body(request: Request):
 
 @app.exception_handler(StarletteHTTPException)
 async def my_exception_handler(_, exception):
-    return ORJSONResponse(content=exception.detail, status_code=exception.status_code)
+    return JSONResponse(content=exception.detail, status_code=exception.status_code)
 
 
 @app.exception_handler(RequestValidationError)
@@ -201,45 +200,52 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
     return extra
 
 
-
 def set_middleware_response_headers(request, response):
-    referer = request.headers.get(
-        "referer",
-        request.headers.get("origin",
-                            request.headers.get("x-forwarded-proto", "http")
-                            + "://"
-                            + request.headers.get(
-                                "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-                            )),
-    )
-    origin = urlparse(referer)
-    response.headers[
-        "Access-Control-Allow-Origin"
-    ] = f"{origin.scheme}://{origin.netloc}"
+    request_origin = request.headers.get("origin", "")
 
+    if settings.allowed_cors_origins:
+        if request_origin in settings.allowed_cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        # If origin not in allowlist, do not set CORS headers (browser will block)
+    else:
+        # Fallback: allow same-host origin only (no open reflection)
+        default_origin = f"http://{settings.listening_host}:{settings.listening_port}"
+        response.headers["Access-Control-Allow-Origin"] = request_origin if request_origin == default_origin else default_origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
 
-    response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
     response.headers["Access-Control-Max-Age"] = "600"
-    response.headers[
-        "Access-Control-Allow-Methods"
-    ] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
+    response.headers["Access-Control-Allow-Methods"] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
 
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     response.headers["x-server-time"] = datetime.now().isoformat()
     response.headers["Access-Control-Expose-Headers"] = "x-server-time"
+
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
     return response
 
 
 def mask_sensitive_data(data):
     if isinstance(data, dict):
-        return {k: mask_sensitive_data(v) if k not in ['password', 'access_token', 'refresh_token', 'auth_token', 'jwt', 'otp', 'code', 'token'] else '******' for k, v in data.items()}
+        return {
+            k: mask_sensitive_data(v)
+            if k not in ["password", "access_token", "refresh_token", "auth_token", "jwt", "otp", "code", "token"]
+            else "******"
+            for k, v in data.items()
+        }
     elif isinstance(data, list):
         return [mask_sensitive_data(item) for item in data]
-    elif isinstance(data, str) and 'auth_token' in data:
-        return '******'
+    elif isinstance(data, str) and "auth_token" in data:
+        return "******"
     return data
 
 
@@ -250,7 +256,9 @@ def set_logging(response, extra, request, exception_data):
             logger.warning("Served request", extra=_extra)
         elif response.status_code >= 500 or exception_data is not None:
             logger.error("Served request", extra=_extra)
-        elif request.method != "OPTIONS" and not request.url.path.startswith(settings.cxb_url):  # Do not log OPTIONS request, to reduce excessive logging
+        elif request.method != "OPTIONS" and not request.url.path.startswith(
+            settings.cxb_url
+        ):  # Do not log OPTIONS request, to reduce excessive logging
             logger.info("Served request", extra=_extra)
 
 
@@ -264,6 +272,7 @@ def set_stack(e):
         for frame, lineno in traceback.walk_tb(e.__traceback__)
         if "site-packages" not in frame.f_code.co_filename
     ]
+
 
 @app.middleware("http")
 async def middle(request: Request, call_next):
@@ -279,53 +288,54 @@ async def middle(request: Request, call_next):
     response_body: str | dict = {}
     exception_data: dict[str, Any] | None = None
 
-
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
-        raw_response = [section async for section in response.body_iterator]
-        response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        raw_data = b"".join(raw_response)
-        if raw_data and "application/json" in response.headers.get("content-type", ""):
-            try:
-                response_body = json.loads(raw_data)
-            except Exception:
-                response_body = {}
-    except asyncio.TimeoutError:
-        response = ORJSONResponse(content={'status':'failed',
-            'error': {"code":504, "message": 'Request processing time excedeed limit'}},
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT)
-        response_body = json.loads(str(response.body, 'utf8'))
+        content_type = response.headers.get("content-type", "")
+        # Only buffer response body for JSON responses (for logging).
+        # Skip buffering for file downloads, images, streams, etc. to avoid
+        # loading large binary data into memory.
+        if "application/json" in content_type:
+            raw_response = [section async for section in response.body_iterator]
+            response.body_iterator = iterate_in_threadpool(iter(raw_response))
+            raw_data = b"".join(raw_response)
+            if raw_data:
+                try:
+                    response_body = json.loads(raw_data)
+                except Exception:
+                    response_body = {}
+    except TimeoutError:
+        response = JSONResponse(
+            content={"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        )
+        response_body = json.loads(str(response.body, "utf8"))
     except api.Exception as e:
-        if settings.active_data_db == 'sql':
-            if e.error.message.startswith('(sqlalchemy.dialects.postgresql'):
-                response = ORJSONResponse(
+        if settings.active_data_db == "sql":
+            if e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
+                response = JSONResponse(
                     status_code=500,
                     content={
                         "status": "failed",
-                        "error": 'Something went wrong',
+                        "error": "Something went wrong",
                     },
                 )
             else:
-                response = ORJSONResponse(
+                response = JSONResponse(
                     status_code=e.status_code,
-                    content=jsonable_encoder(
-                        api.Response(status=api.Status.failed, error=e.error)
-                    ),
+                    content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
                 )
         else:
-            response = ORJSONResponse(
+            response = JSONResponse(
                 status_code=e.status_code,
-                content=jsonable_encoder(
-                    api.Response(status=api.Status.failed, error=e.error)
-                ),
+                content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
             )
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response_body = json.loads(str(response.body, 'utf8'))
+        response_body = json.loads(str(response.body, "utf8"))
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=422,
             content={
                 "status": "failed",
@@ -337,11 +347,11 @@ async def middle(request: Request, call_next):
                 },
             },
         )
-        response_body = json.loads(str(response.body, 'utf8'))
+        response_body = json.loads(str(response.body, "utf8"))
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=400,
             content={
                 "status": "failed",
@@ -349,14 +359,11 @@ async def middle(request: Request, call_next):
                     "type": "validation",
                     "code": 422,
                     "message": "Validation error [3]",
-                    "info": [{
-                        "loc": list(e.path),
-                        "msg": e.message
-                    }],
+                    "info": [{"loc": list(e.path), "msg": e.message}],
                 },
             },
         )
-        response_body = json.loads(str(response.body, 'utf8'))
+        response_body = json.loads(str(response.body, "utf8"))
     except Exception:
         exception_message = ""
         stack = None
@@ -368,14 +375,14 @@ async def middle(request: Request, call_next):
         error_log = {"type": "general", "code": 99, "message": exception_message}
         if settings.debug_enabled:
             error_log["stack"] = stack
-        response = ORJSONResponse(
+        response = JSONResponse(
             status_code=500,
             content={
                 "status": "failed",
                 "error": error_log,
             },
         )
-        response_body = json.loads(str(response.body, 'utf8'))
+        response_body = json.loads(str(response.body, "utf8"))
 
     response = set_middleware_response_headers(request, response)
 
@@ -395,33 +402,36 @@ async def middle(request: Request, call_next):
         except Exception:
             user_shortname = "guest"
 
-
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
     set_logging(response, extra, request, exception_data)
 
-    #TODO: CHECK THIS
-    # if settings.hide_stack_trace:
-    #     if (
-    #         response_body and isinstance(response_body, dict)
-    #         and "error" in response_body
-    #         and "stack" in response_body["error"]
-    #     ):
-    #         response_body["error"].pop("stack", None)
-    #
-    #     response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
+    if settings.hide_stack_trace and (
+        response_body
+        and isinstance(response_body, dict)
+        and "error" in response_body
+        and isinstance(response_body["error"], dict)
+        and "stack" in response_body["error"]
+    ):
+        response_body["error"].pop("stack", None)
+        response = JSONResponse(
+            status_code=response.status_code,
+            content=response_body,
+            headers=dict(response.headers),
+        )
 
     return response
 
 
 app.add_middleware(
     CorrelationIdMiddleware,
-    header_name='X-Correlation-ID',
+    header_name="X-Correlation-ID",
     update_request_header=False,
     validator=None,
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=10000)
+
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -458,12 +468,8 @@ async def space_backup(key: str):
     return api.Response(status=api.Status.success, attributes=attributes)
 """
 
-app.include_router(
-    user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]
-)
-app.include_router(
-    managed, prefix="/managed", tags=["managed"], dependencies=[Depends(capture_body)]
-)
+app.include_router(user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)])
+app.include_router(managed, prefix="/managed", tags=["managed"], dependencies=[Depends(capture_body)])
 app.include_router(
     qr,
     prefix="/qr",
@@ -471,13 +477,9 @@ app.include_router(
     dependencies=[Depends(capture_body)],
 )
 
-app.include_router(
-    public, prefix="/public", tags=["public"], dependencies=[Depends(capture_body)]
-)
+app.include_router(public, prefix="/public", tags=["public"], dependencies=[Depends(capture_body)])
 
-app.include_router(
-    info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)]
-)
+app.include_router(info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)])
 
 # load plugins
 asyncio.run(plugin_manager.load_plugins(app, capture_body))
@@ -494,11 +496,12 @@ if not os.path.exists(os.path.join(cxb_path, "index.html")):
         cxb_path = cxb_dist_path
 
 if os.path.isdir(cxb_path):
+
     @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
     async def get_cxb_config():
         if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
             return FileResponse(settings.cxb_config_path)
-            
+
         if os.path.exists("config.json"):
             return FileResponse("config.json")
 
@@ -521,13 +524,18 @@ if os.path.isdir(cxb_path):
             "display_name": "dmart",
             "description": "dmart unified data platform",
             "default_language": "en",
-            "languages": { "ar": "العربية", "en": "English" },
-            "backend": f"{settings.app_url}" if settings.app_url else f"http://{settings.listening_host}:{settings.listening_port}",
-            "websocket": settings.websocket_url if settings.websocket_url else f"ws://{settings.listening_host}:{settings.websocket_port}/ws",
-            "cxb_url": settings.cxb_url
+            "languages": {"ar": "العربية", "en": "English"},
+            "backend": f"{settings.app_url}"
+            if settings.app_url
+            else f"http://{settings.listening_host}:{settings.listening_port}",
+            "websocket": settings.websocket_url
+            if settings.websocket_url
+            else f"ws://{settings.listening_host}:{settings.websocket_port}/ws",
+            "cxb_url": settings.cxb_url,
         }
 
     app.mount(settings.cxb_url, SPAStaticFiles(directory=cxb_path, html=True), name="cxb")
+
 
 @app.options("/{x:path}", include_in_schema=False)
 async def myoptions():
@@ -544,10 +552,9 @@ async def catchall(x):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        error=api.Error(
-            type="catchall", code=InternalErrorCode.INVALID_ROUTE, message=f"Requested method or path is invalid : {x}"
-        ),
+        error=api.Error(type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"),
     )
+
 
 load_langs()
 

@@ -1,15 +1,15 @@
 <script lang="ts">
     import {encode} from "plantuml-encoder";
-    import {jsonTOplantUML} from "@/utils/renderer/workflowRendererUtils";
+    import {jsonToPlantUML} from "@/utils/renderer/workflowRendererUtils";
 
     let { shortname, workflowContent } : {
     shortname: string,
-    workflowContent: string
+    workflowContent: any
   } = $props();
 
   let currentDiagram = {
     name: shortname,
-    content: jsonTOplantUML(workflowContent),
+    content: jsonToPlantUML(workflowContent),
     encodedContent: function () {
       return encode(this.content);
     },

@@ -1,19 +1,21 @@
-import os
-import shutil
-import re
-import sys
 import asyncio
 import json
+import os
+import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
 from fastapi import status
+
 import models.api as api
 import models.core as core
 import utils.regex as regex
-from models.enums import ContentType, Language
 from data_adapters.adapter import data_adapter as db
+from models.enums import ContentType, Language
 from utils.helpers import (
     camel_case,
     jq_dict_parser,
@@ -22,9 +24,8 @@ from utils.internal_error_code import InternalErrorCode
 from utils.jwt import generate_jwt
 from utils.settings import settings
 
-async def serve_query(
-        query: api.Query, logged_in_user: str
-) -> tuple[int, list[core.Record]]:
+
+async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[core.Record]]:
     records: list[core.Record] = []
     total: int = 0
 
@@ -40,6 +41,7 @@ async def serve_query(
 
     if query.jq_filter:
         try:
+
             def _run_jq_subprocess() -> list:
                 _input_local = [record.model_dump() for record in records]
                 _input_local = jq_dict_parser(_input_local)
@@ -49,14 +51,13 @@ async def serve_query(
 
                 try:
                     completed = subprocess.run(
-                        cmd, # type: ignore
+                        cmd,  # type: ignore
                         input=input_json.encode("utf-8"),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
+                        capture_output=True,
                         timeout=settings.jq_timeout,
                         check=False,
                     )
-                except subprocess.TimeoutExpired:
+                except subprocess.TimeoutExpired as e:
                     raise api.Exception(
                         status.HTTP_400_BAD_REQUEST,
                         api.Error(
@@ -64,7 +65,7 @@ async def serve_query(
                             code=InternalErrorCode.JQ_TIMEOUT,
                             message="jq filter took too long to execute",
                         ),
-                    )
+                    ) from e
 
                 if completed.returncode != 0:
                     raise api.Exception(
@@ -94,7 +95,7 @@ async def serve_query(
                 timeout=settings.jq_timeout,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise api.Exception(
                 status.HTTP_400_BAD_REQUEST,
                 api.Error(
@@ -102,16 +103,16 @@ async def serve_query(
                     code=InternalErrorCode.NOT_ALLOWED,
                     message="jq is not installed!",
                 ),
-            )
+            ) from e
 
     return total, records
 
 
 async def get_last_updated_entry(
-        space_name: str,
-        schema_names: list,
-        retrieve_json_payload: bool,
-        logged_in_user: str,
+    space_name: str,
+    schema_names: list,
+    retrieve_json_payload: bool,
+    logged_in_user: str,
 ):
     report_query = api.Query(
         type=api.QueryType.search,
@@ -130,15 +131,14 @@ async def get_last_updated_entry(
 
 
 async def get_resource_obj_or_none(
-        *,
-        space_name: str,
-        subpath: str,
-        shortname: str,
-        resource_type: str,
-        user_shortname: str,
+    *,
+    space_name: str,
+    subpath: str,
+    shortname: str,
+    resource_type: str,
+    user_shortname: str,
 ):
-    resource_cls = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load(
             space_name=space_name,
@@ -152,14 +152,13 @@ async def get_resource_obj_or_none(
 
 
 async def get_payload_obj_or_none(
-        *,
-        space_name: str,
-        subpath: str,
-        filename: str,
-        resource_type: str,
+    *,
+    space_name: str,
+    subpath: str,
+    filename: str,
+    resource_type: str,
 ):
-    resource_cls = getattr(
-        sys.modules["models.core"], camel_case(resource_type))
+    resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
     try:
         return await db.load_resource_payload(
             space_name=space_name,
@@ -172,8 +171,7 @@ async def get_payload_obj_or_none(
 
 
 async def folder_meta_content_check(
-        space_name, subpath, folder_name, spaces_path_parts,
-        user_shortname, folder_name_index, invalid_folders
+    space_name, subpath, folder_name, spaces_path_parts, user_shortname, folder_name_index, invalid_folders
 ):
     try:
         folder_meta_content = await db.load(
@@ -183,15 +181,11 @@ async def folder_meta_content_check(
             class_type=core.Folder,
             user_shortname=user_shortname,
         )
-        if (
-            folder_meta_content.payload
-            and folder_meta_content.payload.content_type == ContentType.json
-        ):
+        if folder_meta_content.payload and folder_meta_content.payload.content_type == ContentType.json:
             payload_path = "/"
             subpath_parts = subpath.split("/")
             if len(subpath_parts) > (len(spaces_path_parts) + 2):
-                payload_path = "/".join(
-                    subpath_parts[folder_name_index:-1])
+                payload_path = "/".join(subpath_parts[folder_name_index:-1])
             folder_meta_payload = await db.load_resource_payload(
                 space_name,
                 payload_path,
@@ -209,8 +203,15 @@ async def folder_meta_content_check(
 
 
 async def health_check_entry_vsd(
-        space_name, folder_name, entry_shortname, entry_resource_type, user_shortname,
-        folder, folders_report, max_invalid_size, entry_meta_obj
+    space_name,
+    folder_name,
+    entry_shortname,
+    entry_resource_type,
+    user_shortname,
+    folder,
+    folders_report,
+    max_invalid_size,
+    entry_meta_obj,
 ):
     await health_check_entry(
         space_name=space_name,
@@ -232,12 +233,12 @@ async def health_check_entry_vsd(
         for attachment_folder_file in attachment_folder_files:
             # i.e. attachment_folder_file = meta.*.json or *.png
             if (
-                    not attachment_folder_file.is_file()
-                    or not os.access(attachment_folder_file.path, os.W_OK)
-                    or not os.access(attachment_folder_file.path, os.R_OK)
+                not attachment_folder_file.is_file()
+                or not os.access(attachment_folder_file.path, os.W_OK)
+                or not os.access(attachment_folder_file.path, os.R_OK)
             ):
                 raise Exception(
-                    f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)):]}"
+                    f"can't access this attachment {attachment_folder_file.path[len(str(settings.spaces_folder)) :]}"
                 )
 
             attachment_match = regex.ATTACHMENT_PATTERN.search(attachment_folder_file.path)
@@ -261,13 +262,13 @@ async def health_check_entry_vsd(
 
 
 async def validate_subpath_data(
-        space_name: str,
-        subpath: str,
-        user_shortname: str,
-        invalid_folders: list[str],
-        folders_report: dict[str, dict[str, Any]],
-        meta_folders_health: list[str],
-        max_invalid_size: int,
+    space_name: str,
+    subpath: str,
+    user_shortname: str,
+    invalid_folders: list[str],
+    folders_report: dict[str, dict[str, Any]],
+    meta_folders_health: list[str],
+    max_invalid_size: int,
 ):
     """
     Params:
@@ -309,14 +310,11 @@ async def validate_subpath_data(
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
         if not folder_meta.is_file():
-            meta_folders_health.append(
-                str(folder_meta)[len(str(settings.spaces_folder)):]
-            )
+            meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)) :])
             continue
 
         await folder_meta_content_check(
-            space_name, subpath, folder_name, spaces_path_parts,
-            user_shortname, folder_name_index, invalid_folders
+            space_name, subpath, folder_name, spaces_path_parts, user_shortname, folder_name_index, invalid_folders
         )
 
         folders_report.setdefault(folder_name, {})
@@ -342,19 +340,15 @@ async def validate_subpath_data(
                     "issues": ["meta"],
                     "uuid": "",
                     "shortname": entry.name,
-                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)):]}/{entry.name}",
+                    "exception": f"Can't access this meta {subpath[len(str(settings.spaces_folder)) :]}/{entry.name}",
                 }
 
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    if (
-                            len(folders_report[folder_name]["invalid_entries"])
-                            >= max_invalid_size
-                    ):
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
                         break
-                    folders_report[folder_name]["invalid_entries"].append(
-                        issue)
+                    folders_report[folder_name]["invalid_entries"].append(issue)
                 continue
 
             entry_shortname = entry_match.group(1)
@@ -368,8 +362,15 @@ async def validate_subpath_data(
             entry_meta_obj = None
             try:
                 await health_check_entry_vsd(
-                    space_name, folder_name, entry_shortname, entry_resource_type, user_shortname,
-                    folder, folders_report, max_invalid_size, entry_meta_obj
+                    space_name,
+                    folder_name,
+                    entry_shortname,
+                    entry_resource_type,
+                    user_shortname,
+                    folder,
+                    folders_report,
+                    max_invalid_size,
+                    entry_meta_obj,
                 )
             except Exception as e:
                 issue_type = "payload"
@@ -377,8 +378,7 @@ async def validate_subpath_data(
                 if not entry_meta_obj:
                     issue_type = "meta"
                 else:
-                    uuid = str(
-                        entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
+                    uuid = str(entry_meta_obj.uuid) if entry_meta_obj.uuid else ""
 
                 issue = {
                     "issues": [issue_type],
@@ -391,78 +391,59 @@ async def validate_subpath_data(
                 if "invalid_entries" not in folders_report[folder_name]:
                     folders_report[folder_name]["invalid_entries"] = [issue]
                 else:
-                    if (
-                            len(folders_report[folder_name]["invalid_entries"])
-                            >= max_invalid_size
-                    ):
+                    if len(folders_report[folder_name]["invalid_entries"]) >= max_invalid_size:
                         break
-                    folders_report[folder_name]["invalid_entries"].append(
-                        issue
-                    )
+                    folders_report[folder_name]["invalid_entries"].append(issue)
 
         if not folders_report.get(folder_name, {}):
             del folders_report[folder_name]
 
 
 async def health_check_entry(
-        space_name: str,
-        subpath: str,
-        resource_type: str,
-        shortname: str,
-        user_shortname: str,
+    space_name: str,
+    subpath: str,
+    resource_type: str,
+    shortname: str,
+    user_shortname: str,
 ):
-    resource_class = getattr(
-        sys.modules["models.core"], camel_case(resource_type)
-    )
-    entry_meta_obj = resource_class.model_validate(await db.load(
-        space_name=space_name,
-        subpath=subpath,
-        shortname=shortname,
-        class_type=resource_class,
-        user_shortname=user_shortname,
-    ))
-    if entry_meta_obj.shortname != shortname:
-        raise Exception(
-            "the shortname which got from the folder path doesn't match the shortname in the meta file."
+    resource_class = getattr(sys.modules["models.core"], camel_case(resource_type))
+    entry_meta_obj = resource_class.model_validate(
+        await db.load(
+            space_name=space_name,
+            subpath=subpath,
+            shortname=shortname,
+            class_type=resource_class,
+            user_shortname=user_shortname,
         )
+    )
+    if entry_meta_obj.shortname != shortname:
+        raise Exception("the shortname which got from the folder path doesn't match the shortname in the meta file.")
     payload_file_path = None
-    if (
-            entry_meta_obj.payload
-            and entry_meta_obj.payload.content_type in ContentType.image_types()
-    ):
+    if entry_meta_obj.payload and entry_meta_obj.payload.content_type in ContentType.image_types():
         payload_file_path = Path(f"{subpath}/{entry_meta_obj.payload.body}")
         if (
-                not payload_file_path.is_file()
-                or not bool(
-            re.match(
-                regex.IMG_EXT,
-                entry_meta_obj.payload.body.split(".")[-1],
+            not payload_file_path.is_file()
+            or not bool(
+                re.match(
+                    regex.IMG_EXT,
+                    entry_meta_obj.payload.body.split(".")[-1],
+                )
             )
-        )
-                or not os.access(payload_file_path, os.R_OK)
-                or not os.access(payload_file_path, os.W_OK)
+            or not os.access(payload_file_path, os.R_OK)
+            or not os.access(payload_file_path, os.W_OK)
         ):
             if payload_file_path:
-                raise Exception(
-                    f"can't access this payload {payload_file_path}"
-                )
+                raise Exception(f"can't access this payload {payload_file_path}")
             else:
-                raise Exception(
-                    f"can't access this payload {subpath}"
-                    f"/{entry_meta_obj.shortname}"
-                )
+                raise Exception(f"can't access this payload {subpath}/{entry_meta_obj.shortname}")
     elif (
-            entry_meta_obj.payload
-            and isinstance(entry_meta_obj.payload.body, str)
-            and entry_meta_obj.payload.content_type == ContentType.json
+        entry_meta_obj.payload
+        and isinstance(entry_meta_obj.payload.body, str)
+        and entry_meta_obj.payload.content_type == ContentType.json
     ):
         payload_file_path = db.payload_path(space_name, subpath, resource_class)
-        if not entry_meta_obj.payload.body.endswith(
-                ".json"
-        ) or not os.access(payload_file_path, os.W_OK):
-            raise Exception(
-                f"can't access this payload {payload_file_path}"
-            )
+        if not entry_meta_obj.payload.body.endswith(".json") or not os.access(payload_file_path, os.W_OK):
+            raise Exception(f"can't access this payload {payload_file_path}")
         payload_file_content = await db.load_resource_payload(
             space_name,
             subpath,
@@ -477,13 +458,13 @@ async def health_check_entry(
             )
 
     if (
-            entry_meta_obj.payload.checksum and
-            entry_meta_obj.payload.client_checksum and
-            entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
+        entry_meta_obj.payload
+        and entry_meta_obj.payload.checksum
+        and entry_meta_obj.payload.client_checksum
+        and entry_meta_obj.payload.checksum != entry_meta_obj.payload.client_checksum
     ):
-        raise Exception(
-            f"payload.checksum not equal payload.client_checksum {subpath}/{entry_meta_obj.shortname}"
-        )
+        raise Exception(f"payload.checksum not equal payload.client_checksum {subpath}/{entry_meta_obj.shortname}")
+
 
 async def url_shortner(url: str) -> str:
     token_uuid = str(uuid4())[:8]
@@ -492,7 +473,7 @@ async def url_shortner(url: str) -> str:
 
 
 async def store_user_invitation_token(user: core.User, channel: str) -> str | None:
-    """Generate and Store an invitation token 
+    """Generate and Store an invitation token
 
     Returns:
         invitation link or None if the user is not eligible
@@ -513,18 +494,18 @@ async def store_user_invitation_token(user: core.User, channel: str) -> str | No
 
     await db.set_invitation(invitation_token, invitation_value)
 
-    return core.User.invitation_url_template() \
-        .replace("{url}", settings.invitation_link) \
-        .replace("{token}", invitation_token) \
-        .replace("{lang}", Language.code(user.language)) \
+    return (
+        core.User.invitation_url_template()
+        .replace("{url}", settings.invitation_link)
+        .replace("{token}", invitation_token)
+        .replace("{lang}", Language.code(user.language))
         .replace("{user_type}", user.type)
+    )
 
 
 async def delete_space(space_name, record, owner_shortname):
     if settings.active_data_db == "sql":
-        resource_obj = core.Meta.from_record(
-            record=record, owner_shortname=owner_shortname
-        )
+        resource_obj = core.Meta.from_record(record=record, owner_shortname=owner_shortname)
         await db.delete(space_name, record.subpath, resource_obj, owner_shortname)
 
     shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
