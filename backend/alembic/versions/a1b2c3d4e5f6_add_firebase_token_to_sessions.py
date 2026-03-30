@@ -5,12 +5,13 @@ Revises: 2338186ee676
 Create Date: 2026-03-09
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel.sql.sqltypes
 
+from alembic import op
 
 revision: str = 'a1b2c3d4e5f6'
 down_revision: Union[str, None] = '2338186ee676'

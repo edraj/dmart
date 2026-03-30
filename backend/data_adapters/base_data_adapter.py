@@ -277,7 +277,7 @@ class BaseDataAdapter(ABC):
 
     async def get_user_session_firebase_tokens(self, user_shortname: str) -> list[str]:
         return []
-        
+
     @abstractmethod
     async def remove_user_session(self, user_shortname: str) -> bool:
         pass

@@ -190,9 +190,9 @@ async def create_user(response: Response, record: core.Record, http_request: Req
         await db.update_payload(
             MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
         )
-        
+
     response_record = await process_user_login(user, response, {}, request_headers=http_request.headers)
-    
+
     await plugin_manager.after_action(
         core.Event(
             space_name=MANAGEMENT_SPACE,

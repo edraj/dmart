@@ -1,11 +1,10 @@
 from firebase_admin import credentials, initialize_app, messaging  # type: ignore
 
+from data_adapters.adapter import data_adapter as db
 from models.core import NotificationData
 from utils.helpers import lang_code
 from utils.notification import Notifier
 from utils.settings import settings
-from models.core import NotificationData
-from data_adapters.adapter import data_adapter as db
 
 
 class FirebaseNotifier(Notifier):
@@ -45,9 +44,9 @@ class FirebaseNotifier(Notifier):
         web_push = messaging.WebpushConfig(headers={"image": image_url})
         for fcm_token in firebase_tokens:
             message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body), 
-                token=fcm_token, 
-                apns=apns, 
+                notification=messaging.Notification(title=title, body=body),
+                token=fcm_token,
+                apns=apns,
                 android=android_config,
                 webpush=web_push,
                 data={**data.deep_link, "id": data.entry_id or ""}
