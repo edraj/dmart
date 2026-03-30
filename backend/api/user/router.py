@@ -55,6 +55,7 @@ from .service import (
     set_user_profile,
     update_user_payload,
 )
+from data_adapters.sql.create_tables import Users as UsersTable
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -1341,16 +1342,13 @@ if settings.social_login_allowed:
         )
         if user:
             return user
-        
-        attributes: dict[str, bool] = await db.check_uniqueness(
-            {"email_unescaped": email}, f"@subpath:{USERS_SUBPATH}"
-        )
-        if not attributes.get("unique", False):
-            raise api.Exception(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                error=api.Error(type="create", code=InternalErrorCode.NOT_UNIQUE, message="A user with the same email already exists"),
-            )
 
+        user: core.User | None = await db.get_entry_by_criteria(
+            {"email": email}, UsersTable
+        )
+        if user:
+            return user
+        
         user = core.User(
             shortname=shortname,
             owner_shortname="dmart",
