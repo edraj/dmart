@@ -1,10 +1,11 @@
 import sys
-from models.core import Meta, ACL, ActionType, ConditionType, Group, Permission, Role, User
+
+from data_adapters.adapter import data_adapter as db
+from models.core import ACL, ActionType, ConditionType, Group, Meta, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
-from utils.settings import settings
-from data_adapters.adapter import data_adapter as db
 from utils.regex import FILE_PATTERN
+from utils.settings import settings
 
 
 class AccessControl:
@@ -17,15 +18,12 @@ class AccessControl:
         if settings.active_data_db == "file":
             management_path = settings.spaces_folder / settings.management_space
 
-            management_modules: dict[str, type[Meta]] = {
-                "groups": Group,
-                "roles": Role,
-                "permissions": Permission
-            }
+            management_modules: dict[str, type[Meta]] = {"groups": Group, "roles": Role, "permissions": Permission}
 
             for module_name, module_value in management_modules.items():
-                self_module = getattr(self, module_name)
-                self_module = {}
+                # Clear and repopulate the module dict on the instance
+                module_dict: dict = getattr(self, module_name)
+                module_dict.clear()
                 path = management_path / module_name
                 entries_glob = ".dm/*/meta.*.json"
                 if path.exists():
@@ -43,44 +41,34 @@ class AccessControl:
                                 "anonymous",
                             )
                             if resource_obj.is_active:
-                                self_module[shortname] = resource_obj  # store in redis doc
+                                module_dict[shortname] = resource_obj
                         except Exception as ex:
-                            # print(f"Error processing @{settings.management_space}/{module_name}/{shortname} ... ", ex)
                             raise ex
 
             await db.create_user_premission_index()
             await db.store_modules_to_redis(self.roles, self.groups, self.permissions)
             await db.delete_user_permissions_map_in_redis()
 
-
     async def check_access(
-            self,
-            user_shortname: str,
-            space_name: str,
-            subpath: str,
-            resource_type: ResourceType,
-            action_type: ActionType,
-            resource_is_active: bool = False,
-            resource_owner_shortname: str | None = None,
-            resource_owner_group: str | None = None,
-            record_attributes: dict = {},
-            entry_shortname: str | None = None
+        self,
+        user_shortname: str,
+        space_name: str,
+        subpath: str,
+        resource_type: ResourceType,
+        action_type: ActionType,
+        resource_is_active: bool = False,
+        resource_owner_shortname: str | None = None,
+        resource_owner_group: str | None = None,
+        record_attributes: dict | None = None,
+        entry_shortname: str | None = None,
     ):
-        effective_space = (
-            entry_shortname
-            if (resource_type == ResourceType.space and entry_shortname)
-            else space_name
-        )
+        record_attributes = record_attributes or {}
+        effective_space = entry_shortname if (resource_type == ResourceType.space and entry_shortname) else space_name
 
         if entry_shortname:
             acl_space, acl_subpath = (effective_space, "/") if resource_type == ResourceType.space else (space_name, subpath)
             acl_access = await self.check_access_control_list(
-                acl_space,
-                acl_subpath,
-                resource_type,
-                entry_shortname,
-                action_type,
-                user_shortname
+                acl_space, acl_subpath, resource_type, entry_shortname, action_type, user_shortname
             )
             if acl_access:
                 return True
@@ -112,7 +100,7 @@ class AccessControl:
                 action_type,
                 resource_type,
                 resource_achieved_conditions,
-                record_attributes
+                record_attributes,
             )
             if global_access:
                 return True
@@ -130,25 +118,29 @@ class AccessControl:
                     user_permissions[permission_key]["restricted_fields"],
                     user_permissions[permission_key]["allowed_fields_values"],
                     action_type,
-                    record_attributes
+                    record_attributes,
                 )
             ):
                 return True
             elif settings.debug_perm and permission_key in user_permissions:
                 print(f"Debug Access: Permission found for {permission_key} but access denied.")
                 if action_type not in user_permissions[permission_key]["allowed_actions"]:
-                    print(f"Debug Access: Action {action_type} not in allowed actions: {user_permissions[permission_key]['allowed_actions']}")
+                    print(
+                        f"Debug Access: Action {action_type} not in allowed actions: {user_permissions[permission_key]['allowed_actions']}"
+                    )
                 if not self.check_access_conditions(
                     set(user_permissions[permission_key]["conditions"]),
                     set(resource_achieved_conditions),
                     action_type,
                 ):
-                    print(f"Debug Access: Conditions check failed. Required: {user_permissions[permission_key]['conditions']}, Achieved: {resource_achieved_conditions}")
+                    print(
+                        f"Debug Access: Conditions check failed. Required: {user_permissions[permission_key]['conditions']}, Achieved: {resource_achieved_conditions}"
+                    )
                 if not self.check_access_restriction(
                     user_permissions[permission_key]["restricted_fields"],
                     user_permissions[permission_key]["allowed_fields_values"],
                     action_type,
-                    record_attributes
+                    record_attributes,
                 ):
                     print("Debug Access: Restrictions check failed.")
 
@@ -158,32 +150,27 @@ class AccessControl:
                 search_subpath += "/"
 
         if settings.debug_perm:
-            print(f"Debug Access: No valid permission found for user {user_shortname} accessing {effective_space}/{subpath} ({resource_type})")
+            print(
+                f"Debug Access: No valid permission found for user {user_shortname} accessing {effective_space}/{subpath} ({resource_type})"
+            )
         return False
 
     async def check_access_control_list(
-            self,
-            space_name: str,
-            subpath: str,
-            resource_type: ResourceType,
-            entry_shortname: str,
-            action_type: ActionType,
-            user_shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        resource_type: ResourceType,
+        entry_shortname: str,
+        action_type: ActionType,
+        user_shortname: str,
     ) -> bool:
-        resource_cls = getattr(
-            sys.modules["models.core"], camel_case(resource_type)
-        )
-        
+        resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
+
         try:
-            entry = await db.load(
-                space_name=space_name,
-                subpath=subpath,
-                shortname=entry_shortname,
-                class_type=resource_cls
-            )
+            entry = await db.load(space_name=space_name, subpath=subpath, shortname=entry_shortname, class_type=resource_cls)
         except Exception:
             return False
-            
+
         if not entry.acl:
             return False
 
@@ -199,14 +186,14 @@ class AccessControl:
         return action_type in user_acl.allowed_actions
 
     def has_global_access(
-            self,
-            space_name: str,
-            user_permissions: dict,
-            search_subpath: str,
-            action_type: ActionType,
-            resource_type: str,
-            resource_achieved_conditions: set,
-            record_attributes: dict
+        self,
+        space_name: str,
+        user_permissions: dict,
+        search_subpath: str,
+        action_type: ActionType,
+        resource_type: str,
+        resource_achieved_conditions: set,
+        record_attributes: dict,
     ) -> bool:
         """
         check if has access to global subpath by replacing the following
@@ -234,7 +221,6 @@ class AccessControl:
         if f"{space_name}:{search_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{space_name}:{search_subpath}:{resource_type}"
 
-
         # check if has access to current subpath
         if f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}" in user_permissions:
             permission_key = f"{settings.all_spaces_mw}:{original_subpath}:{resource_type}"
@@ -242,29 +228,26 @@ class AccessControl:
         if not permission_key:
             return False
 
-        if (
-                action_type in user_permissions[permission_key]["allowed_actions"]
-                and self.check_access_conditions(
-            set(user_permissions[permission_key]["conditions"]),
-            set(resource_achieved_conditions),
-            action_type,
+        return (
+            action_type in user_permissions[permission_key]["allowed_actions"]
+            and self.check_access_conditions(
+                set(user_permissions[permission_key]["conditions"]),
+                set(resource_achieved_conditions),
+                action_type,
+            )
+            and self.check_access_restriction(
+                user_permissions[permission_key]["restricted_fields"],
+                user_permissions[permission_key]["allowed_fields_values"],
+                action_type,
+                record_attributes,
+            )
         )
-                and self.check_access_restriction(
-            user_permissions[permission_key]["restricted_fields"],
-            user_permissions[permission_key]["allowed_fields_values"],
-            action_type,
-            record_attributes
-        )
-        ):
-            return True
-
-        return False
 
     def check_access_conditions(
-            self,
-            premission_conditions: set,
-            resource_achieved_conditions: set,
-            action_type: ActionType,
+        self,
+        premission_conditions: set,
+        resource_achieved_conditions: set,
+        action_type: ActionType,
     ):
         # actions of type query will be handled in the query function
         # actions of type create shouldn't check for permission conditions
@@ -274,11 +257,7 @@ class AccessControl:
         return premission_conditions.issubset(resource_achieved_conditions)
 
     def check_access_restriction(
-            self,
-            restricted_fields: list,
-            allowed_fields_values: dict,
-            action_type: ActionType,
-            record_attributes: dict
+        self, restricted_fields: list, allowed_fields_values: dict, action_type: ActionType, record_attributes: dict
     ):
         """
         in case of create or update action, check access for the record fields
@@ -292,7 +271,7 @@ class AccessControl:
         for restricted_field in restricted_fields:
             if restricted_field in flattened_attributes:
                 return False
-            for flattened_key in flattened_attributes.keys():
+            for flattened_key in flattened_attributes:
                 if flattened_key == restricted_field or flattened_key.startswith(f"{restricted_field}."):
                     return False
 
@@ -300,17 +279,17 @@ class AccessControl:
             if field_name not in flattened_attributes:
                 continue
             if (
-                    isinstance(flattened_attributes[field_name], list) and
-                    isinstance(field_values[0], list) and
-                    not any(all(i in allowed_values for i in flattened_attributes[field_name]) for allowed_values in field_values)
-            ):
-                return False
-            elif (
-                    not isinstance(flattened_attributes[field_name], list) and
-                    flattened_attributes[field_name] not in field_values
+                isinstance(flattened_attributes[field_name], list)
+                and isinstance(field_values[0], list)
+                and not any(
+                    all(i in allowed_values for i in flattened_attributes[field_name]) for allowed_values in field_values
+                )
+            ) or (
+                not isinstance(flattened_attributes[field_name], list) and flattened_attributes[field_name] not in field_values
             ):
                 return False
 
         return True
+
 
 access_control = AccessControl()

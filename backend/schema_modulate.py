@@ -1,17 +1,17 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
+import argparse
 import asyncio
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import update
-from typing import Any
+from sqlmodel import col, select
+
 from data_adapters.sql.adapter import SQLAdapter
-from data_adapters.sql.create_tables import Users, Roles, Permissions, Entries, Spaces, Attachments
+from data_adapters.sql.create_tables import Attachments, Entries, Permissions, Roles, Spaces, Users
 from utils.settings import settings
-import argparse
-from sqlmodel import select, col
 
-
-'''
+"""
 --space and --subpath are optional
 
 # add new key to the records
@@ -25,7 +25,8 @@ from sqlmodel import select, col
 
 # update key in the records
 ./schema_modulate.py --space management --subpath users -t payload.body.xxx -v yyy
-'''
+"""
+
 
 class ResourceType(StrEnum):
     add = "add"
@@ -46,9 +47,7 @@ async def handle_sql_modulation(args):
                     spaces = [Users]
                 elif args.subpath == "roles":
                     spaces = [Roles]
-                elif args.subpath == "permissions":
-                    spaces = [Permissions]
-                elif args.subpath == "~spaces":
+                elif args.subpath == "permissions" or args.subpath == "~spaces":
                     spaces = [Permissions]
                 else:
                     spaces = [Entries]
@@ -77,7 +76,7 @@ async def handle_sql_modulation(args):
         if args.value:
             print("[warn] flag -v --value is not required for removing key")
     else:
-        print(f"[info] Altering the key '{targets[0]}' fo records")\
+        print(f"[info] Altering the key '{targets[0]}' fo records")
 
     if targets[0] not in ["description", "displayname", "payload"]:
         raise Exception("target must be either 'description', 'displayname' or 'payload'")
@@ -147,16 +146,13 @@ async def handle_sql_modulation(args):
                             print(obj)
                             setattr(record, targets[0], obj)
 
-                stmt = update(space).where(col(space.uuid )== record.uuid).values(
-                    **{targets[0]: getattr(record, targets[0])})
-                await session.execute(stmt)  #type: ignore
+                stmt = update(space).where(col(space.uuid) == record.uuid).values(**{targets[0]: getattr(record, targets[0])})
+                await session.execute(stmt)  # type: ignore
             await session.commit()
-
 
 
 def handle_file_modulation(args):
     pass
-
 
 
 if __name__ == "__main__":
@@ -165,28 +161,14 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument(
-        "--space",
-        required=True
-    )
-    parser.add_argument(
-        "--subpath",
-        default=None
-    )
-    parser.add_argument(
-        "-t", "--target",
-        required=True
-    )
-    parser.add_argument(
-        "-v", "--value",
-        default=None
-    )
+    parser.add_argument("--space", required=True)
+    parser.add_argument("--subpath", default=None)
+    parser.add_argument("-t", "--target", required=True)
+    parser.add_argument("-v", "--value", default=None)
 
     args = parser.parse_args()
 
     if settings.active_data_db == "sql":
-        asyncio.run(
-            handle_sql_modulation(args)
-        )
+        asyncio.run(handle_sql_modulation(args))
     else:
         handle_file_modulation(args)

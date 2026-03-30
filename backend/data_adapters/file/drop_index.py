@@ -1,11 +1,13 @@
-import asyncio
 import argparse
-from typing import Awaitable
+import asyncio
+from collections.abc import Awaitable
+
 from data_adapters.file.redis_services import RedisServices
 
 #!/usr/bin/env python
 
 # Your code goes here
+
 
 async def drop_index(space: str, schema: str) -> None:
     try:
@@ -18,7 +20,7 @@ async def drop_index(space: str, schema: str) -> None:
                 if x and isinstance(x, Awaitable):
                     await x
                 print(f"Deleted: {id}")
-                    
+
             # Drop the index and delete it's docs
             print("Dropping The Index")
             await redis_services.drop_index(f"{space}:{schema}", True)
@@ -33,7 +35,7 @@ if __name__ == "__main__":
     parser.add_argument("schema", help="Schema name to drop index for.")
 
     args = parser.parse_args()
-    
+
     if args.schema == "meta":
         print("Cannot drop index for schema 'meta'")
 

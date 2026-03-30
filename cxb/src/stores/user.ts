@@ -70,11 +70,19 @@ export async function signin(username: string, password: string) {
 }
 
 export async function signout() {
-  if (typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(KEY))?.signedin) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (stored?.signedin) {
+      localStorage.removeItem("rowPerPage");
+      user.set(signedout);
+      localStorage.removeItem(KEY);
+      await Dmart.logout();
+    }
+  } catch {
+    localStorage.removeItem(KEY);
     localStorage.removeItem("rowPerPage");
     user.set(signedout);
-    localStorage.removeItem(KEY);
-    await Dmart.logout();
   }
 }
 

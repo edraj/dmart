@@ -1,11 +1,11 @@
 import argparse
 import hashlib
 import json
+
 import requests
 
 from models.enums import RequestType
 from utils.settings import settings
-
 
 local_username = "dmart"
 local_password = "Test1234"
@@ -18,7 +18,7 @@ target_headers = {
     **headers,
 }
 local_headers = {
-     **headers,
+    **headers,
 }
 
 body = {
@@ -38,7 +38,11 @@ def login(username, password, target):
         "password": password,
     }
 
-    response = requests.post(f"{target}/user/login", headers=headers, json=body,)
+    response = requests.post(
+        f"{target}/user/login",
+        headers=headers,
+        json=body,
+    )
 
     if response.ok:
         return response.json()["records"][0]["attributes"]["access_token"]
@@ -84,6 +88,8 @@ def hash_records(local_records, target_records):
 
 local_records = []
 target_records = []
+
+
 def fetch_locators(space, subpath, target):
     global local_records
     global target_records
@@ -91,18 +97,26 @@ def fetch_locators(space, subpath, target):
     body["space_name"] = space
     body["subpath"] = subpath
 
-    response_target = requests.post(f"{target}/managed/query", headers=target_headers, json=body,)
-    response_local = requests.post(f"http://{settings.listening_host}:{settings.listening_port}/managed/query", headers=local_headers, json=body,)
+    response_target = requests.post(
+        f"{target}/managed/query",
+        headers=target_headers,
+        json=body,
+    )
+    response_local = requests.post(
+        f"http://{settings.listening_host}:{settings.listening_port}/managed/query",
+        headers=local_headers,
+        json=body,
+    )
 
     if response_target.ok:
         target_records = response_target.json()["records"]
-        print('# target records:', len(target_records))
+        print("# target records:", len(target_records))
     else:
         print(f"Error: {response_target.status_code}, {response_target.text}")
 
     if response_local.ok:
         local_records = response_local.json()["records"]
-        print('# local records:', len(local_records))
+        print("# local records:", len(local_records))
     else:
         print(f"Error: {response_local.status_code}, {response_local.text}")
 
@@ -112,7 +126,9 @@ def fetch_locators(space, subpath, target):
 def get_diff(hashed_local_records, hashed_target_records):
     added_records = {k: v for k, v in hashed_local_records.items() if k not in hashed_target_records}
     removed_records = {k: v for k, v in hashed_target_records.items() if k not in hashed_local_records}
-    different_records = {k: v for k, v in hashed_local_records.items() if k in hashed_target_records and hashed_target_records[k] != v}
+    different_records = {
+        k: v for k, v in hashed_local_records.items() if k in hashed_target_records and hashed_target_records[k] != v
+    }
 
     print(f"Added records: {added_records}")
     print(f"Removed records: {removed_records}")
@@ -134,9 +150,13 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         "request_type": RequestType.create,
         "records": added_records_shortnames,
     }
-    response = requests.post(f"{target}/managed/request", headers=target_headers, json=request_data,)
+    response = requests.post(
+        f"{target}/managed/request",
+        headers=target_headers,
+        json=request_data,
+    )
     if response.ok:
-        print('records:', response.json())
+        print("records:", response.json())
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
@@ -145,9 +165,13 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         "request_type": RequestType.delete,
         "records": removed_records_shortnames,
     }
-    response = requests.post(f"{target}/managed/request", headers=target_headers, json=request_data,)
+    response = requests.post(
+        f"{target}/managed/request",
+        headers=target_headers,
+        json=request_data,
+    )
     if response.ok:
-        print('records:', response.json())
+        print("records:", response.json())
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
@@ -156,22 +180,26 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         "request_type": RequestType.update,
         "records": different_records_shortnames,
     }
-    response = requests.post(f"{target}/managed/request", headers=target_headers, json=request_data,)
+    response = requests.post(
+        f"{target}/managed/request",
+        headers=target_headers,
+        json=request_data,
+    )
     if response.ok:
-        print('records:', response.json())
+        print("records:", response.json())
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Process some arguments.")
-    parser.add_argument('-u', required=True, help='The username argument')
-    parser.add_argument('-p', required=True, help='The password argument')
-    parser.add_argument('-sp', required=True, help='The space argument')
-    parser.add_argument('-su', required=True, help='The subpath argument')
-    parser.add_argument('-t', required=True, help='The target argument')
-    parser.add_argument('-l', required=False, help='The limit argument')
-    parser.add_argument('-o', required=False, help='The offset argument')
+    parser.add_argument("-u", required=True, help="The username argument")
+    parser.add_argument("-p", required=True, help="The password argument")
+    parser.add_argument("-sp", required=True, help="The space argument")
+    parser.add_argument("-su", required=True, help="The subpath argument")
+    parser.add_argument("-t", required=True, help="The target argument")
+    parser.add_argument("-l", required=False, help="The limit argument")
+    parser.add_argument("-o", required=False, help="The offset argument")
 
     args = parser.parse_args()
 
@@ -195,7 +223,6 @@ def main():
     hashed_local_records, hashed_target_records = hash_records(local_records, target_records)
     added_records, removed_records, different_records = get_diff(hashed_local_records, hashed_target_records)
     apply_changes(args.sp, args.t, added_records, removed_records, different_records)
-
 
 
 if __name__ == "__main__":

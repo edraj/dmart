@@ -1,13 +1,13 @@
 import os
 from html import escape
-from locust import events
-from flask import Blueprint, render_template, jsonify
+
 import psutil
+from flask import Blueprint, jsonify, render_template
+from locust import events
 
-
-stats : dict= {}
-min_cpu : float = 999999999
-max_cpu : float = 0
+stats: dict = {}
+min_cpu: float = 999999999
+max_cpu: float = 0
 min_memory = 999999999
 max_memory = 0
 min_used_memory = 99999999999
@@ -45,9 +45,7 @@ def locust_init(environment, **kwargs):
                 stats_tmp = []
 
                 for name, inner_stats in stats.items():
-                    stats_tmp.append(
-                        {"name": name, "safe_name": escape(name, quote=False), "percentage": inner_stats}
-                    )
+                    stats_tmp.append({"name": name, "safe_name": escape(name, quote=False), "percentage": inner_stats})
 
                     # Truncate the total number of stats and errors displayed since a large number of rows will cause the app
                     # to render extremely slowly.
@@ -98,7 +96,7 @@ def on_request(request_type, name, response_time, response_length, exception, co
     #     max_used_memory = memory_used
     # if memory_used < min_used_memory:
     #     min_used_memory = memory_used
-    
+
     stats["CPU_PERCENTAGE"] = cpu_percentage
     stats["CPU_MAX"] = max_cpu
     stats["CPU_MIN"] = min_cpu

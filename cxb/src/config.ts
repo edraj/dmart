@@ -57,6 +57,6 @@ export let website: WebsiteConfig = {
   delay_total_count: false
 };
 
-loadConfig().then(config => {
+export const configReady: Promise<void> = loadConfig().then(config => {
   website = config;
 });

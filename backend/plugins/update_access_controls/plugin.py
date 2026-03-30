@@ -1,4 +1,4 @@
-from models.core import PluginBase, Event
+from models.core import Event, PluginBase
 from utils.access_control import access_control
 from utils.settings import settings
 

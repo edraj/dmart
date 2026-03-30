@@ -1,14 +1,15 @@
-from models.enums import ResourceType, ConditionType
+from models.enums import ConditionType, ResourceType
 from utils.settings import settings
 
+
 def generate_query_policies(
-        space_name: str,
-        subpath: str,
-        resource_type: str,
-        is_active: bool,
-        owner_shortname: str,
-        owner_group_shortname: str | None,
-        entry_shortname: str | None = None,
+    space_name: str,
+    subpath: str,
+    resource_type: str,
+    is_active: bool,
+    owner_shortname: str,
+    owner_group_shortname: str | None,
+    entry_shortname: str | None = None,
 ) -> list:
     subpath_parts = ["/"]
     subpath_parts += subpath.strip("/").split("/")
@@ -24,9 +25,7 @@ def generate_query_policies(
             f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_shortname}"
         )
         if owner_group_shortname is None:
-            query_policies.append(
-                f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}"
-            )
+            query_policies.append(f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}")
         else:
             query_policies.append(
                 f"{space_name}:{full_subpath.strip('/')}:{resource_type}:{str(is_active).lower()}:{owner_group_shortname}"
@@ -34,9 +33,7 @@ def generate_query_policies(
 
         full_subpath_parts = full_subpath.split("/")
         if len(full_subpath_parts) > 1:
-            subpath_with_magic_keyword = (
-                    "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
-            )
+            subpath_with_magic_keyword = "/".join(full_subpath_parts[:1]) + "/" + settings.all_subpaths_mw
             if len(full_subpath_parts) > 2:
                 subpath_with_magic_keyword += "/" + "/".join(full_subpath_parts[2:])
             query_policies.append(
@@ -60,10 +57,7 @@ def matches_subpath(perm_key: str, space_name: str, query_subpath: str) -> bool:
         return False
 
     perm_subpath = parts[1].lstrip("/")
-    return (
-        query_subpath == perm_subpath
-        or query_subpath.startswith(perm_subpath + "/")
-    )
+    return query_subpath == perm_subpath or query_subpath.startswith(perm_subpath + "/")
 
 
 async def get_user_query_policies(
@@ -92,11 +86,11 @@ async def get_user_query_policies(
     filtered_permissions = {
         perm_key: permission
         for perm_key, permission in user_permissions.items()
-        if 'query' in permission.get('allowed_actions', [])
+        if "query" in permission.get("allowed_actions", [])
         and (
             is_space
             or perm_key.startswith(settings.all_spaces_mw)
-            or perm_key.startswith(f'{space_name}:__all_subpaths__')
+            or perm_key.startswith(f"{space_name}:__all_subpaths__")
             or matches_subpath(perm_key, space_name, query_subpath)
         )
     }
@@ -105,20 +99,15 @@ async def get_user_query_policies(
         perm_key = perm_key.replace(settings.all_spaces_mw, space_name)
         perm_key = perm_key.replace(settings.all_subpaths_mw, subpath.strip("/"))
         perm_key = perm_key.strip("/")
-        if (
-                ConditionType.is_active in permission["conditions"]
-                and ConditionType.own in permission["conditions"]
-        ):
+        if ConditionType.is_active in permission["conditions"] and ConditionType.own in permission["conditions"]:
             for user_group in user_groups:
                 sql_query_policies.append(f"{perm_key}:true:{user_group}")
         elif ConditionType.is_active in permission["conditions"]:
             sql_query_policies.append(f"{perm_key}:true:*")
         elif ConditionType.own in permission["conditions"]:
             for user_group in user_groups:
-                if settings.active_data_db == 'file':
-                    sql_query_policies.append(
-                        f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}"
-                    )
+                if settings.active_data_db == "file":
+                    sql_query_policies.append(f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}")
                 else:
                     sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
                     sql_query_policies.append(f"{perm_key}:false:{user_shortname}")

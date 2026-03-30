@@ -1,12 +1,11 @@
-from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
 
 
 def generate_email_from_template(template, data):
     templates_dir = Path(__file__).resolve().parent / "templates"
-    environment = Environment(
-        loader=FileSystemLoader(str(templates_dir))
-    )
+    environment = Environment(loader=FileSystemLoader(str(templates_dir)))
     match template:
         case "activation":
             template = environment.get_template("activation.html.j2")

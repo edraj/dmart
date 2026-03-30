@@ -1,15 +1,17 @@
 import sys
-from models.core import ActionType, Attachment, PluginBase, Event, Space
-from utils.helpers import camel_case
-from data_adapters.file.adapter_helpers import generate_payload_string
-from data_adapters.adapter import data_adapter as db
-from models import core
-from models.enums import ContentType, ResourceType
-from data_adapters.file.redis_services import RedisServices
-from fastapi.logger import logger
-from data_adapters.file.create_index import main as reload_redis
-from utils.settings import settings
 from typing import Any
+
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
+from data_adapters.file.adapter_helpers import generate_payload_string
+from data_adapters.file.create_index import main as reload_redis
+from data_adapters.file.redis_services import RedisServices
+from models import core
+from models.core import ActionType, Attachment, Event, PluginBase, Space
+from models.enums import ContentType, ResourceType
+from utils.helpers import camel_case
+from utils.settings import settings
 
 
 class Plugin(PluginBase):
@@ -28,10 +30,7 @@ class Plugin(PluginBase):
             return
 
         spaces = await db.get_spaces()
-        if (
-            data.space_name not in spaces
-            or not Space.model_validate_json(spaces[data.space_name]).indexing_enabled
-        ):
+        if data.space_name not in spaces or not Space.model_validate_json(spaces[data.space_name]).indexing_enabled:
             return
 
         class_type = getattr(
@@ -68,11 +67,7 @@ class Plugin(PluginBase):
                 # Delete payload doc
                 await redis_services.delete_doc(
                     data.space_name,
-                    (
-                        meta_doc.get("payload", {}).get("schema_shortname", "meta")
-                        if meta_doc
-                        else "meta"
-                    ),
+                    (meta_doc.get("payload", {}).get("schema_shortname", "meta") if meta_doc else "meta"),
                     data.shortname,
                     data.subpath,
                 )
@@ -93,15 +88,9 @@ class Plugin(PluginBase):
                 ActionType.update,
                 ActionType.progress_ticket,
             ]:
-                meta_doc_id, meta_json = redis_services.prepare_meta_doc(
-                    data.space_name, data.subpath, meta
-                )
+                meta_doc_id, meta_json = redis_services.prepare_meta_doc(data.space_name, data.subpath, meta)
                 payload: dict[str, Any] = {}
-                if (
-                    meta.payload
-                    and meta.payload.content_type == ContentType.json
-                    and meta.payload.body is not None
-                ):
+                if meta.payload and meta.payload.content_type == ContentType.json and meta.payload.body is not None:
                     mypayload = await db.load_resource_payload(
                         space_name=data.space_name,
                         subpath=data.subpath,
@@ -110,13 +99,17 @@ class Plugin(PluginBase):
                     )
                     payload = mypayload if mypayload else {}
 
-                meta_json["payload_string"] = await generate_payload_string(
-                    db,
-                    space_name=data.space_name,
-                    subpath=meta_json["subpath"],
-                    shortname=meta_json["shortname"],
-                    payload=payload,
-                ) if settings.store_payload_string else ""
+                meta_json["payload_string"] = (
+                    await generate_payload_string(
+                        db,
+                        space_name=data.space_name,
+                        subpath=meta_json["subpath"],
+                        shortname=meta_json["shortname"],
+                        payload=payload,
+                    )
+                    if settings.store_payload_string
+                    else ""
+                )
 
                 await redis_services.save_doc(meta_doc_id, meta_json)
                 if meta.payload:
@@ -165,24 +158,26 @@ class Plugin(PluginBase):
             )
             meta_doc: dict = await redis_services.get_doc_by_id(doc_id)
 
-            if meta_doc is None:
+            if not meta_doc:
                 raise Exception("Meta doc not found")
 
             payload = {}
             if meta_doc.get("payload_doc_id"):
-                payload_doc = await redis_services.get_doc_by_id(
-                    meta_doc["payload_doc_id"]
-                )
+                payload_doc = await redis_services.get_doc_by_id(meta_doc["payload_doc_id"])
                 payload = {k: v for k, v in payload_doc.items() if k not in meta_doc}
 
             # generate the payload string
-            meta_doc["payload_string"] = await generate_payload_string(
-                db,
-                space_name=self.data.space_name,
-                subpath=parent_subpath,
-                shortname=parent_shortname,
-                payload=payload,
-            ) if settings.store_payload_string else ""
+            meta_doc["payload_string"] = (
+                await generate_payload_string(
+                    db,
+                    space_name=self.data.space_name,
+                    subpath=parent_subpath,
+                    shortname=parent_shortname,
+                    payload=payload,
+                )
+                if settings.store_payload_string
+                else ""
+            )
 
             # update parent meta doc
             await redis_services.save_doc(doc_id, meta_doc)

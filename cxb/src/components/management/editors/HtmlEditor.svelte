@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {createEventDispatcher, onMount} from "svelte";
+    import {createEventDispatcher, onMount, onDestroy} from "svelte";
     import {Editor, format, h} from 'typewriter-editor';
     import {Card} from "flowbite-svelte";
 
@@ -15,6 +15,8 @@
 
     let maindiv;
     let editor = null;
+    let toolbarElement: HTMLDivElement | null = null;
+    let buttonCleanups: Array<{ button: HTMLButtonElement; action: () => void }> = [];
 
     const underline = format({
         name: 'underline',
@@ -83,11 +85,11 @@
             types: {
                 // Line formats
                 lines: [
-                    'paragraph', 
-                    'header', 
-                    'list', 
-                    'blockquote', 
-                    'code-block', 
+                    'paragraph',
+                    'header',
+                    'list',
+                    'blockquote',
+                    'code-block',
                     'hr',
                     alignLeft,
                     alignCenter,
@@ -96,18 +98,18 @@
                 ],
                 // Text formats
                 formats: [
-                    'bold', 
-                    'italic', 
-                    underline, 
-                    strike, 
-                    superscript, 
-                    subscript, 
-                    'code', 
+                    'bold',
+                    'italic',
+                    underline,
+                    strike,
+                    superscript,
+                    subscript,
+                    'code',
                     'link',
                     'clear'
                 ],
                 embeds: [
-                    'image', 
+                    'image',
                     'br'
                 ]
             }
@@ -122,82 +124,83 @@
     });
 
     function setupToolbar() {
-            const toolbar = document.createElement('div');
-            toolbar.id = `toolbar-${uid}`;
-            toolbar.className = 'editor-toolbar';
+        const toolbar = document.createElement('div');
+        toolbar.id = `toolbar-${uid}`;
+        toolbar.className = 'editor-toolbar';
+        toolbarElement = toolbar;
 
-            const textFormatGroup = document.createElement('div');
-            textFormatGroup.className = 'toolbar-group';
-            
-            const lineFormatGroup = document.createElement('div');
-            lineFormatGroup.className = 'toolbar-group';
-            
-            const alignmentGroup = document.createElement('div');
-            alignmentGroup.className = 'toolbar-group';
-            
-            const insertGroup = document.createElement('div');
-            insertGroup.className = 'toolbar-group';
-            
-            const historyGroup = document.createElement('div');
-            historyGroup.className = 'toolbar-group';
-            
-            const directionGroup = document.createElement('div');
-            directionGroup.className = 'toolbar-group';
+        const textFormatGroup = document.createElement('div');
+        textFormatGroup.className = 'toolbar-group';
 
-            addToolbarButton(textFormatGroup, 'Bold', 'B', () => editor.formatText('bold'));
-            addToolbarButton(textFormatGroup, 'Italic', 'I', () => editor.formatText('italic'));
-            addToolbarButton(textFormatGroup, 'Underline', 'U', () => editor.formatText('underline'));
-            addToolbarButton(textFormatGroup, 'Strike', 'S', () => editor.formatText('strike'));
-            addToolbarButton(textFormatGroup, 'Superscript', 'x²', () => editor.formatText('superscript'));
-            addToolbarButton(textFormatGroup, 'Subscript', 'x₂', () => editor.formatText('subscript'));
-            addToolbarButton(textFormatGroup, 'Remove Format', 'X', () => editor.removeFormat());
+        const lineFormatGroup = document.createElement('div');
+        lineFormatGroup.className = 'toolbar-group';
 
-            addToolbarButton(lineFormatGroup, 'Heading 1', 'H1', () => editor.formatLine({ header: 1 }));
-            addToolbarButton(lineFormatGroup, 'Heading 2', 'H2', () => editor.formatLine({ header: 2 }));
-            addToolbarButton(lineFormatGroup, 'Paragraph', '¶', () => editor.formatLine('paragraph'));
-            addToolbarButton(lineFormatGroup, 'Blockquote', '""', () => editor.formatLine('blockquote'));
-            addToolbarButton(lineFormatGroup, 'Ordered List', '1.', () => editor.formatLine({ list: 'ordered' }));
-            addToolbarButton(lineFormatGroup, 'Unordered List', '•', () => editor.formatLine({ list: 'bullet' }));
-            addToolbarButton(lineFormatGroup, 'Horizontal Rule', '—', () => editor.formatLine('hr'));
+        const alignmentGroup = document.createElement('div');
+        alignmentGroup.className = 'toolbar-group';
 
-            addToolbarButton(alignmentGroup, 'Align Left', '↤', () => editor.formatLine('align-left'));
-            addToolbarButton(alignmentGroup, 'Align Center', '↔', () => editor.formatLine('align-center'));
-            addToolbarButton(alignmentGroup, 'Align Right', '↦', () => editor.formatLine('align-right'));
-            addToolbarButton(alignmentGroup, 'Justify', '☰', () => editor.formatLine('align-justify'));
+        const insertGroup = document.createElement('div');
+        insertGroup.className = 'toolbar-group';
 
-            addToolbarButton(insertGroup, 'Link', '🔗', () => {
-                const url = prompt('Enter URL:');
-                if (url) editor.formatText({ link: url });
-            });
+        const historyGroup = document.createElement('div');
+        historyGroup.className = 'toolbar-group';
 
-            addToolbarButton(insertGroup, 'Image', '🖼', () => {
-                const url = prompt('Enter image URL:');
-                if (url) editor.insert({ image: url });
-            });
+        const directionGroup = document.createElement('div');
+        directionGroup.className = 'toolbar-group';
 
-            addToolbarButton(historyGroup, 'Undo', '↶', () => editor.modules.history.undo());
-            addToolbarButton(historyGroup, 'Redo', '↷', () => editor.modules.history.redo());
+        addToolbarButton(textFormatGroup, 'Bold', 'B', () => editor.formatText('bold'));
+        addToolbarButton(textFormatGroup, 'Italic', 'I', () => editor.formatText('italic'));
+        addToolbarButton(textFormatGroup, 'Underline', 'U', () => editor.formatText('underline'));
+        addToolbarButton(textFormatGroup, 'Strike', 'S', () => editor.formatText('strike'));
+        addToolbarButton(textFormatGroup, 'Superscript', 'x²', () => editor.formatText('superscript'));
+        addToolbarButton(textFormatGroup, 'Subscript', 'x₂', () => editor.formatText('subscript'));
+        addToolbarButton(textFormatGroup, 'Remove Format', 'X', () => editor.removeFormat());
 
+        addToolbarButton(lineFormatGroup, 'Heading 1', 'H1', () => editor.formatLine({ header: 1 }));
+        addToolbarButton(lineFormatGroup, 'Heading 2', 'H2', () => editor.formatLine({ header: 2 }));
+        addToolbarButton(lineFormatGroup, 'Paragraph', '¶', () => editor.formatLine('paragraph'));
+        addToolbarButton(lineFormatGroup, 'Blockquote', '""', () => editor.formatLine('blockquote'));
+        addToolbarButton(lineFormatGroup, 'Ordered List', '1.', () => editor.formatLine({ list: 'ordered' }));
+        addToolbarButton(lineFormatGroup, 'Unordered List', '•', () => editor.formatLine({ list: 'bullet' }));
+        addToolbarButton(lineFormatGroup, 'Horizontal Rule', '—', () => editor.formatLine('hr'));
 
+        addToolbarButton(alignmentGroup, 'Align Left', '↤', () => editor.formatLine('align-left'));
+        addToolbarButton(alignmentGroup, 'Align Center', '↔', () => editor.formatLine('align-center'));
+        addToolbarButton(alignmentGroup, 'Align Right', '↦', () => editor.formatLine('align-right'));
+        addToolbarButton(alignmentGroup, 'Justify', '☰', () => editor.formatLine('align-justify'));
+
+        addToolbarButton(insertGroup, 'Link', '🔗', () => {
+            const url = prompt('Enter URL:');
+            if (url) editor.formatText({ link: url });
+        });
+
+        addToolbarButton(insertGroup, 'Image', '🖼', () => {
+            const url = prompt('Enter image URL:');
+            if (url) editor.insert({ image: url });
+        });
+
+        addToolbarButton(historyGroup, 'Undo', '↶', () => editor.modules.history.undo());
+        addToolbarButton(historyGroup, 'Redo', '↷', () => editor.modules.history.redo());
 
 
-            addToolbarButton(directionGroup, 'LTR', 'LTR', () => {
-                maindiv.dir = 'ltr';
-                editor.formatLine({ direction: 'ltr' });
-            });
-            addToolbarButton(directionGroup, 'RTL', 'RTL', () => {
-                maindiv.dir = 'rtl';
-                editor.formatLine({ direction: 'rtl' });
-            });
 
-            toolbar.appendChild(textFormatGroup);
-            toolbar.appendChild(lineFormatGroup);
-            toolbar.appendChild(alignmentGroup);
-            toolbar.appendChild(insertGroup);
-            toolbar.appendChild(historyGroup);
-            toolbar.appendChild(directionGroup);
 
-            maindiv.parentNode.insertBefore(toolbar, maindiv);
+        addToolbarButton(directionGroup, 'LTR', 'LTR', () => {
+            maindiv.dir = 'ltr';
+            editor.formatLine({ direction: 'ltr' });
+        });
+        addToolbarButton(directionGroup, 'RTL', 'RTL', () => {
+            maindiv.dir = 'rtl';
+            editor.formatLine({ direction: 'rtl' });
+        });
+
+        toolbar.appendChild(textFormatGroup);
+        toolbar.appendChild(lineFormatGroup);
+        toolbar.appendChild(alignmentGroup);
+        toolbar.appendChild(insertGroup);
+        toolbar.appendChild(historyGroup);
+        toolbar.appendChild(directionGroup);
+
+        maindiv.parentNode.insertBefore(toolbar, maindiv);
     }
 
     function addToolbarButton(toolbar, title, icon, action) {
@@ -207,8 +210,28 @@
         button.textContent = icon;
 
         button.addEventListener('click', action);
+        buttonCleanups.push({ button, action });
         toolbar.appendChild(button);
     }
+
+    onDestroy(() => {
+        // Clean up all event listeners from toolbar buttons
+        for (const { button, action } of buttonCleanups) {
+            button.removeEventListener('click', action);
+        }
+        buttonCleanups = [];
+
+        // Remove the toolbar DOM element
+        if (toolbarElement && toolbarElement.parentNode) {
+            toolbarElement.parentNode.removeChild(toolbarElement);
+        }
+
+        // Destroy the editor instance
+        if (editor) {
+            editor.destroy?.();
+            editor = null;
+        }
+    });
 
     $effect(() => {
         if (editor && typeof editor.setHTML === 'function') {
@@ -283,7 +306,7 @@
     :global(.toolbar-button:active) {
         background-color: #e2e8f0;
     }
-    
+
     :global(.toolbar-button.active) {
         background-color: #e2e8f0;
         border-color: #cbd5e1;

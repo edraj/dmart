@@ -1,13 +1,14 @@
+import io
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Tuple, Type, TypeVar
+from typing import Any, TypeVar
+
 from starlette.datastructures import UploadFile
+
 import models.api as api
 import models.core as core
-from models.enums import LockAction
-import io
 from models.core import Record
-from models.enums import RequestType
+from models.enums import LockAction, RequestType
 
 MetaChild = TypeVar("MetaChild", bound=core.Meta)
 
@@ -33,7 +34,7 @@ class BaseDataAdapter(ABC):
         otp: str,
     ):
         pass
-    
+
     @abstractmethod
     async def otp_created_since(self, key: str) -> int | None:
         pass
@@ -51,46 +52,46 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     def metapath(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> tuple[Path, str]:
         """Construct the full path of the meta file"""
         pass
 
     @abstractmethod
     def payload_path(
-            self,
-            space_name: str,
-            subpath: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> Path:
         """Construct the full path of the meta file"""
         pass
 
     @abstractmethod
     async def load_or_none(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> MetaChild | None:
         """Load a Meta Json according to the reuqested Class type"""
         pass
 
     @abstractmethod
     async def get_latest_history(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
     ) -> Any | None:
         pass
 
@@ -99,113 +100,105 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def query(self, query: api.Query, user_shortname: str | None = None) \
-            -> Tuple[int, list[core.Record]]:
+    async def query(self, query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
         pass
 
     @abstractmethod
     async def load(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            class_type: Type[MetaChild],
-            user_shortname: str | None = None,
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        class_type: type[MetaChild],
+        user_shortname: str | None = None,
+        schema_shortname: str | None = None,
     ) -> MetaChild:
         pass
 
     @abstractmethod
     async def load_resource_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            filename: str,
-            class_type: Type[MetaChild],
-            schema_shortname: str | None = None,
+        self,
+        space_name: str,
+        subpath: str,
+        filename: str,
+        class_type: type[MetaChild],
+        schema_shortname: str | None = None,
     ) -> dict[str, Any] | None:
         pass
 
     @abstractmethod
-    async def save(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    async def save(self, space_name: str, subpath: str, meta: core.Meta):
         """Save Meta Json to respectiv file"""
         pass
 
     @abstractmethod
-    async def create(
-            self, space_name: str, subpath: str, meta: core.Meta
-    ):
+    async def create(self, space_name: str, subpath: str, meta: core.Meta):
         pass
 
     @abstractmethod
-    async def save_payload(
-            self, space_name: str, subpath: str, meta: core.Meta, attachment
-    ):
+    async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
         pass
 
     @abstractmethod
     async def save_payload_from_json(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
     ):
         pass
 
     @abstractmethod
     async def update(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
     ) -> dict:
         pass
 
-
     @abstractmethod
     async def update_payload(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload_data: dict[str, Any],
-            owner_shortname: str,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        payload_data: dict[str, Any],
+        owner_shortname: str,
     ):
         pass
 
     @abstractmethod
     async def store_entry_diff(
-            self,
-            space_name: str,
-            subpath: str,
-            shortname: str,
-            owner_shortname: str,
-            old_version_flattend: dict,
-            new_version_flattend: dict,
-            updated_attributes_flattend: list,
-            resource_type,
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        owner_shortname: str,
+        old_version_flattend: dict,
+        new_version_flattend: dict,
+        updated_attributes_flattend: list,
+        resource_type,
     ) -> dict:
         pass
 
     @abstractmethod
     async def move(
-            self,
-            src_space_name: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_space_name: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            meta: core.Meta,
+        self,
+        src_space_name: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_space_name: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        meta: core.Meta,
     ):
         """Move the file that match the criteria given, remove source folder if empty"""
         pass
@@ -216,43 +209,44 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     async def clone(
-            self,
-            src_space: str,
-            dest_space: str,
-            src_subpath: str,
-            src_shortname: str,
-            dest_subpath: str,
-            dest_shortname: str,
-            class_type: Type[MetaChild],
+        self,
+        src_space: str,
+        dest_space: str,
+        src_subpath: str,
+        src_shortname: str,
+        dest_subpath: str,
+        dest_shortname: str,
+        class_type: type[MetaChild],
     ):
         pass
 
-
     @abstractmethod
-    async def is_entry_exist(self,
-                       space_name: str,
-                       subpath: str,
-                       shortname: str,
-                       resource_type: core.ResourceType,
-                       schema_shortname: str | None = None, ) -> bool:
+    async def is_entry_exist(
+        self,
+        space_name: str,
+        subpath: str,
+        shortname: str,
+        resource_type: core.ResourceType,
+        schema_shortname: str | None = None,
+    ) -> bool:
         pass
 
     @abstractmethod
     async def delete(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            user_shortname: str,
-            schema_shortname: str | None = None,
-            retrieve_lock_status: bool | None = False,
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        user_shortname: str,
+        schema_shortname: str | None = None,
+        retrieve_lock_status: bool | None = False,
     ):
         pass
 
     @abstractmethod
     async def lock_handler(
-            self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
-    ) -> dict|None:
+        self, space_name: str, subpath: str, shortname: str, user_shortname: str, action: LockAction
+    ) -> dict | None:
         pass
 
     @abstractmethod
@@ -261,13 +255,13 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     async def get_entry_attachments(
-            self,
-            subpath: str,
-            attachments_path: Path,
-            filter_types: list | None = None,
-            include_fields: list | None = None,
-            filter_shortnames: list | None = None,
-            retrieve_json_payload: bool = False,
+        self,
+        subpath: str,
+        attachments_path: Path,
+        filter_types: list | None = None,
+        include_fields: list | None = None,
+        filter_shortnames: list | None = None,
+        retrieve_json_payload: bool = False,
     ) -> dict:
         return {}
 
@@ -276,7 +270,7 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def get_user_session(self, user_shortname: str, token: str) -> Tuple[int, str | None]:
+    async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         pass
 
     @abstractmethod
@@ -408,35 +402,29 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     async def get_entry_by_var(
-            self,
-            key: str,
-            val: str,
-            logged_in_user,
-            retrieve_json_payload: bool = False,
-            retrieve_attachments: bool = False,
-            retrieve_lock_status: bool = False,
+        self,
+        key: str,
+        val: str,
+        logged_in_user,
+        retrieve_json_payload: bool = False,
+        retrieve_attachments: bool = False,
+        retrieve_lock_status: bool = False,
     ) -> core.Record | None:
         pass
 
     @abstractmethod
-    async def internal_save_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            payload: dict | None = None
-    ):
+    async def internal_save_model(self, space_name: str, subpath: str, meta: core.Meta, payload: dict | None = None):
         pass
 
     @abstractmethod
     async def internal_sys_update_model(
-            self,
-            space_name: str,
-            subpath: str,
-            meta: core.Meta,
-            updates: dict,
-            sync_redis: bool = True,
-            payload_dict: dict[str, Any] = {},
+        self,
+        space_name: str,
+        subpath: str,
+        meta: core.Meta,
+        updates: dict,
+        sync_redis: bool = True,
+        payload_dict: dict[str, Any] | None = None,
     ):
         pass
 
@@ -446,11 +434,11 @@ class BaseDataAdapter(ABC):
 
     @abstractmethod
     async def get_last_updated_entry(
-            self,
-            space_name: str,
-            schema_names: list,
-            retrieve_json_payload: bool,
-            logged_in_user: str,
+        self,
+        space_name: str,
+        schema_names: list,
+        retrieve_json_payload: bool,
+        logged_in_user: str,
     ):
         pass
 

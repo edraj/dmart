@@ -1,13 +1,15 @@
 import json
 from sys import modules as sys_modules
 
+from fastapi.logger import logger
+
+from data_adapters.adapter import data_adapter as db
 from models import api
-from models.core import Notification, NotificationData, PluginBase, Event, Translation
+from models.core import Event, Notification, NotificationData, PluginBase, Translation
 from utils.helpers import camel_case
 from utils.notification import NotificationManager
 from utils.settings import settings
-from fastapi.logger import logger
-from data_adapters.adapter import data_adapter as db
+
 
 class Plugin(PluginBase):
     async def hook(self, data: Event):
@@ -20,9 +22,7 @@ class Plugin(PluginBase):
 
         # Type narrowing for PyRight
         if not isinstance(data.shortname, str):
-            logger.warning(
-                "data.shortname is None and str is required at system_notification_sender"
-            )
+            logger.warning("data.shortname is None and str is required at system_notification_sender")
             return
 
         notification_request_meta = await db.load(
@@ -43,18 +43,20 @@ class Plugin(PluginBase):
             return
 
         # Get msisdns users
-        search_criteria = notification_dict.get('search_string', '')
+        search_criteria = notification_dict.get("search_string", "")
         if not search_criteria:
-            search_criteria = '@msisdn:' + '|'.join(notification_dict.get('msisdns', ''))
+            search_criteria = "@msisdn:" + "|".join(notification_dict.get("msisdns", ""))
 
-        total, receivers = await db.query(api.Query(
-            space_name=data.space_name,
-            subpath=notification_dict['subpath'],
-            filters={},
-            search=search_criteria,
-            limit=10000,
-            offset=0
-        ))
+        total, receivers = await db.query(
+            api.Query(
+                space_name=data.space_name,
+                subpath=notification_dict["subpath"],
+                filters={},
+                search=search_criteria,
+                limit=10000,
+                offset=0,
+            )
+        )
         if total == 0:
             return
 
@@ -89,7 +91,6 @@ class Plugin(PluginBase):
                     ),
                 )
 
-
         notification_request_payload["status"] = "finished"
         await db.save_payload_from_json(
             space_name=data.space_name,
@@ -101,8 +102,7 @@ class Plugin(PluginBase):
     async def prepare_request(self, notification_dict) -> dict:
         # Get Notification Request Images
         attachments_path = (
-            settings.spaces_folder
-            / f"{settings.management_space}/"
+            settings.spaces_folder / f"{settings.management_space}/"
             f"{notification_dict['subpath']}/.dm/{notification_dict['shortname']}"
         )
         notification_attachments = await db.get_entry_attachments(
