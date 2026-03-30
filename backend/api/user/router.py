@@ -1196,9 +1196,13 @@ async def process_user_login(
         record.attributes["displayname"] = user.displayname
 
     if device_id:
+        if user_updates is None:
+            user_updates = {}
         user_updates["device_id"] = device_id
 
     if request_headers:
+        if user_updates is None:
+            user_updates = {}
         headers_dict = dict(request_headers)
         headers_dict.pop("authorization", None)
         headers_dict.pop("cookie", None)
