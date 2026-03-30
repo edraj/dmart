@@ -19,15 +19,12 @@ from api.user.service import (
 from data_adapters.adapter import data_adapter as db
 from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from languages.loader import languages
-from models.api import Error as API_Error
-from models.api import Exception as API_Exception
 from models.enums import (
     ContentType,
     DataAssetType,
     RequestType,
     ResourceType,
 )
-from utils import password_hashing
 from utils.access_control import access_control
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.helpers import (
@@ -495,28 +492,6 @@ async def serve_request_update(request, owner_shortname: str):
                 else:
                     new_resource_payload_data = None
             else:
-                if "password" in record.attributes:
-                    if "old_password" not in record.attributes:
-                        raise API_Exception(
-                            status.HTTP_403_FORBIDDEN,
-                            API_Error(
-                                type="auth",
-                                code=InternalErrorCode.PASSWORD_RESET_ERROR,
-                                message="missing old_password!",
-                            ),
-                        )
-                    else:
-                        if not password_hashing.verify_password(
-                            record.attributes.get("old_password"), old_resource_obj.password
-                        ):
-                            raise API_Exception(
-                                status.HTTP_403_FORBIDDEN,
-                                API_Error(
-                                    type="auth",
-                                    code=InternalErrorCode.PASSWORD_RESET_ERROR,
-                                    message="Wrong password have been provided!",
-                                ),
-                            )
                 new_resource_payload_data = resource_obj.update_from_record(
                     record=record,
                     old_body=old_resource_payload_body,
