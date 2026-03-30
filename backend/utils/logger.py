@@ -23,6 +23,7 @@ COMBINED_SENSITIVE_PATTERN = re.compile(
     r'("authorization"\s*:\s*)"[^"]*"|'
     r'("auth_token"\s*:\s*)"[^"]*"|'
     r'("firebase_token"\s*:\s*)"[^"]*"|'
+    r'("device_id"\s*:\s*)"[^"]*"|'
     r'("evd-device-id"\s*:\s*)"[^"]*"|'
     r'("access_token"\s*:\s*)"[^"]*"|'
     r'("cookie"\s*:\s*)"[^"]*"|'
@@ -31,7 +32,8 @@ COMBINED_SENSITIVE_PATTERN = re.compile(
 )
 
 
-SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cookie", "auth", "firebase_token", "evd-device-id")
+SENSITIVE_KEYWORDS = ("authorization", "token", "password", "otp", "pin", "cookie", "auth", "firebase_token", "device_id",
+                      "evd-device-id")
 
 
 def mask_replacement(match):

@@ -134,8 +134,12 @@ def test_json_to_db_migration(setup_environment):
         json.dump({"state": "open", "is_open": True, "reporter": "user1", "subpath": "/dir1/ticket"}, f)
 
     # Create user meta file
-    with open("/tmp/test_space/.dm/meta.user.json", "w") as f:
-        json.dump({"resource_type": "user", "firebase_token": "firebase_token", "language": "en"}, f)
+    with open('/tmp/test_space/.dm/meta.user.json', 'w') as f:
+        json.dump({
+            "resource_type": "user",
+            "device_id": "device_id",
+            "language": "en"
+        }, f)
 
     # Create role meta file
     with open("/tmp/test_space/.dm/meta.role.json", "w") as f:

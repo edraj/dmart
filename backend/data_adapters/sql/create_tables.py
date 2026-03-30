@@ -174,7 +174,7 @@ class Users(Metas, table=True):
     is_email_verified: bool = False
     is_msisdn_verified: bool = False
     force_password_change: bool = True
-    firebase_token: str | None = None
+    device_id: str | None = None
     google_id: str | None = None
     facebook_id: str | None = None
     social_avatar_url: str | None = None
@@ -367,6 +367,7 @@ class Sessions(SQLModel, table=True):
     uuid: UUID = Field(default_factory=UUID, primary_key=True)
     token: str = Field(...)
     timestamp: datetime = Field(default_factory=datetime.now)
+    firebase_token: str | None = None
 
 
 class Invitations(SQLModel, table=True):

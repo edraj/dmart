@@ -122,6 +122,7 @@ class UserLoginRequest(BaseModel):
     password: str | None = Field(None)
     invitation: str | None = Field(None, pattern=rgx.INVITATION)
     firebase_token: str | None = Field(None)
+    device_id: str | None = Field(None)
     otp: str | None = Field(None)
 
     def check_fields(self) -> dict[str, str] | None:

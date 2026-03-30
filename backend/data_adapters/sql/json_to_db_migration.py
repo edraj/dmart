@@ -230,15 +230,15 @@ async def process_directory(root, dirs, space_name, subpath):
                                 owner_shortname=entry.get("owner_shortname", "dmart"),
                                 owner_group_shortname=entry.get("owner_group_shortname", None),
                             )
-                            entry["resource_type"] = "user"
-                            entry["firebase_token"] = entry.get("firebase_token", "")
-                            entry["type"] = entry.get("type", "web")
-                            entry["language"] = entry.get("language", "")
-                            entry["google_id"] = entry.get("google_id", "")
-                            entry["facebook_id"] = entry.get("facebook_id", "")
-                            entry["social_avatar_url"] = entry.get("social_avatar_url", "")
-                            entry["displayname"] = entry.get("displayname", {})
-                            entry["description"] = entry.get("description", {})
+                            entry['resource_type'] = 'user'
+                            entry['device_id'] = entry.get('device_id') or entry.get('firebase_token', '')
+                            entry['type'] = entry.get('type', 'web')
+                            entry['language'] = entry.get('language', '')
+                            entry['google_id'] = entry.get('google_id', '')
+                            entry['facebook_id'] = entry.get('facebook_id', '')
+                            entry['social_avatar_url'] = entry.get('social_avatar_url', '')
+                            entry['displayname'] = entry.get('displayname', {})
+                            entry['description'] = entry.get('description', {})
                             users.append(entry)
                         elif file.startswith("meta.role"):
                             entry["query_policies"] = generate_query_policies(

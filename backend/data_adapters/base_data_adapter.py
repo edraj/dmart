@@ -266,12 +266,17 @@ class BaseDataAdapter(ABC):
         return {}
 
     @abstractmethod
-    async def set_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(
+        self, user_shortname: str, token: str, firebase_token: str | None = None
+    ) -> bool:
         pass
 
     @abstractmethod
     async def get_user_session(self, user_shortname: str, token: str) -> tuple[int, str | None]:
         pass
+
+    async def get_user_session_firebase_tokens(self, user_shortname: str) -> list[str]:
+        return []
 
     @abstractmethod
     async def remove_user_session(self, user_shortname: str) -> bool:

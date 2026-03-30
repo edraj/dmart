@@ -65,11 +65,19 @@ async def trigger_admin_notifications() -> None:
                         meta=notification_obj,
                     )
 
+                receiver_dict = receiver_data.to_dict()
+                session_tokens = await db.get_user_session_firebase_tokens(
+                    receiver_data.shortname
+                )
+                receiver_dict["firebase_tokens"] = (
+                    session_tokens
+                    or ([receiver_dict["firebase_token"]] if receiver_dict.get("firebase_token") else [])
+                )
                 for platform in formatted_req["platforms"]:
                     await notification_manager.send(
                         platform=platform,
                         data=NotificationData(
-                            receiver=receiver_data.to_dict(),
+                            receiver=receiver_dict,
                             title=formatted_req["title"],
                             body=formatted_req["body"],
                             image_urls=formatted_req["images_urls"],

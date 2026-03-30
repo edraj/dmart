@@ -1459,7 +1459,9 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.set_key(f"users:login:invitation:{invitation_token}", invitation_value)
 
-    async def set_user_session(self, user_shortname: str, token: str) -> bool:
+    async def set_user_session(
+        self, user_shortname: str, token: str, firebase_token: str | None = None
+    ) -> bool:
         async with RedisServices() as redis:
             if settings.max_sessions_per_user == 1 and await redis.get_key(f"user_session:{user_shortname}"):
                 await redis.del_keys([f"user_session:{user_shortname}"])

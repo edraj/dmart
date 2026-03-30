@@ -187,9 +187,11 @@ async def create_user(response: Response, record: core.Record, http_request: Req
 
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
     if isinstance(separate_payload_data, dict) and separate_payload_data:
-        await db.update_payload(MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname)
+        await db.update_payload(
+            MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
+        )
 
-    response_record = await process_user_login(user, response, {}, None, http_request.headers)
+    response_record = await process_user_login(user, response, {}, request_headers=http_request.headers)
 
     await plugin_manager.after_action(
         core.Event(
@@ -327,12 +329,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                         type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
                     ),
                 )
-            if (
-                user.type == UserType.mobile
-                and user.locked_to_device
-                and user.firebase_token
-                and (not request.firebase_token or request.firebase_token != user.firebase_token)
-            ):
+            if user.type == UserType.mobile and user.locked_to_device and user.device_id and (not request.device_id or request.device_id != user.device_id):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
@@ -383,7 +380,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 if request.otp:
                     await db.delete_otp(key)
 
-                record = await process_user_login(user, response, {}, request.firebase_token, http_request.headers)
+                record = await process_user_login(user, response, {}, request.firebase_token, request.device_id, http_request.headers)
 
                 await plugin_manager.after_action(
                     core.Event(
@@ -453,14 +450,18 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 user_shortname=shortname,
             )
 
-        is_password_valid = password_hashing.verify_password(request.password or "", user.password or "")
-        if user and user.is_active and (request.invitation or is_password_valid):
-            if (
-                request.invitation is None
-                and user.type == UserType.mobile
-                and user.firebase_token
-                and (not request.firebase_token or request.firebase_token != user.firebase_token)
-            ):
+        is_password_valid = password_hashing.verify_password(
+            request.password or "", user.password or ""
+        )
+        if (
+            user
+            and user.is_active
+            and (
+                request.invitation
+                or is_password_valid
+            )
+        ):
+            if request.invitation is None and user.type == UserType.mobile and user.device_id and (not request.device_id or request.device_id != user.device_id):
                 if user.locked_to_device:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -479,7 +480,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     )
 
             await db.clear_failed_password_attempts(shortname)
-            record = await process_user_login(user, response, user_updates, request.firebase_token, http_request.headers)
+            record = await process_user_login(user, response, user_updates, request.firebase_token, request.device_id, http_request.headers)
             await reset_failed_login_attempt(user)
 
             await plugin_manager.after_action(
@@ -1165,11 +1166,14 @@ async def process_user_login(
     response: Response,
     user_updates: dict | None = None,
     firebase_token: str | None = None,
+    device_id: str | None = None,
     request_headers=None,
 ) -> core.Record:
-    if user_updates is None:
-        user_updates = {}
-    access_token = await sign_jwt({"shortname": user.shortname, "type": user.type}, settings.jwt_access_expires)
+    access_token = await sign_jwt(
+        {"shortname": user.shortname, "type": user.type},
+        settings.jwt_access_expires,
+        firebase_token=firebase_token,
+    )
 
     response.set_cookie(
         value=access_token,
@@ -1191,10 +1195,14 @@ async def process_user_login(
     if user.displayname:
         record.attributes["displayname"] = user.displayname
 
-    if firebase_token:
-        user_updates["firebase_token"] = firebase_token
+    if device_id:
+        if user_updates is None:
+            user_updates = {}
+        user_updates["device_id"] = device_id
 
     if request_headers:
+        if user_updates is None:
+            user_updates = {}
         headers_dict = dict(request_headers)
         headers_dict.pop("authorization", None)
         headers_dict.pop("cookie", None)
@@ -1417,7 +1425,6 @@ if settings.social_login_allowed:
         record = await process_user_login(
             user=user,
             response=response,
-            firebase_token=body.firebase_token,
             request_headers=request.headers,
         )
         return api.Response(status=api.Status.success, records=[record])
@@ -1491,7 +1498,6 @@ if settings.social_login_allowed:
         record = await process_user_login(
             user=user,
             response=response,
-            firebase_token=body.firebase_token,
             request_headers=request.headers,
         )
         return api.Response(status=api.Status.success, records=[record])
@@ -1536,7 +1542,6 @@ if settings.social_login_allowed:
         record = await process_user_login(
             user=user,
             response=response,
-            firebase_token=body.firebase_token,
             request_headers=request.headers,
         )
         return api.Response(status=api.Status.success, records=[record])
