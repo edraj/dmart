@@ -59,3 +59,4 @@ class InternalErrorCode:
     JQ_TIMEOUT = 120
     JQ_ERROR = 121
     PROTECTED_FIELD = 210
+    NOT_UNIQUE = 411

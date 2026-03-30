@@ -350,7 +350,14 @@ class BaseDataAdapter(ABC):
         pass
 
     @abstractmethod
-    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+    async def check_uniqueness(
+        self,
+        unique_fields,
+        search_str,
+        redis_escape_chars=str.maketrans(
+            {".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "}
+        ),
+    ) -> dict:
         pass
 
     @abstractmethod

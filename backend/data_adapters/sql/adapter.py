@@ -3119,7 +3119,7 @@ class SQLAdapter(BaseDataAdapter):
 
         return {}
 
-    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars = str.maketrans({".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})) -> dict:
         for key, value in unique_fields.items():
             if value is None:
                 continue
