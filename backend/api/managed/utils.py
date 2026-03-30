@@ -19,15 +19,12 @@ from api.user.service import (
 from data_adapters.adapter import data_adapter as db
 from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from languages.loader import languages
-from models.api import Error as API_Error
-from models.api import Exception as API_Exception
 from models.enums import (
     ContentType,
     DataAssetType,
     RequestType,
     ResourceType,
 )
-from utils import password_hashing
 from utils.access_control import access_control
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.helpers import (
