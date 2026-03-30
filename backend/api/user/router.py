@@ -22,6 +22,7 @@ import utils.password_hashing as password_hashing
 import utils.regex as rgx
 import utils.repository as repository
 from data_adapters.adapter import data_adapter as db
+from data_adapters.sql.create_tables import Users as UsersTable
 from languages.loader import languages
 from models.api import Status
 from models.enums import ActionType, ContentType, RequestType, ResourceType, UserType
@@ -55,7 +56,6 @@ from .service import (
     set_user_profile,
     update_user_payload,
 )
-from data_adapters.sql.create_tables import Users as UsersTable
 
 router = APIRouter(default_response_class=JSONResponse)
 
@@ -1343,12 +1343,19 @@ if settings.social_login_allowed:
         if user:
             return user
 
-        user: core.User | None = await db.get_entry_by_criteria(
+        userRecord: core.Record | None = await db.get_entry_by_criteria(
             {"email": email}, UsersTable
         )
-        if user:
-            return user
-        
+        userByEmail: core.User | None = (
+            core.User.from_record(
+                userRecord, userRecord.attributes.get("owner_shortname", "")
+            )
+            if userRecord and userRecord.attributes
+            else None
+        )
+        if userByEmail:
+            return userByEmail
+
         user = core.User(
             shortname=shortname,
             owner_shortname="dmart",
@@ -1370,6 +1377,7 @@ if settings.social_login_allowed:
                 user_shortname=shortname,
             )
         )
+        return user
 
     async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:
         provider_user: OpenID | None = await sso.verify_and_process(request)
