@@ -136,10 +136,10 @@ class Settings(BaseSettings):
     database_host: str = "localhost"
     database_port: int = 5432
     database_name: str = "dmart"
-    database_pool_size: int = 2
-    database_max_overflow: int = 2
+    database_pool_size: int = 10
+    database_max_overflow: int = 10
     database_pool_timeout: int = 30
-    database_pool_recycle: int = 30
+    database_pool_recycle: int = 1800
     allowed_cors_origins: list[str] = []
     user_profile_payload_protected_fields: list[str] = []
     hide_stack_trace: bool = True
@@ -222,6 +222,13 @@ class Settings(BaseSettings):
 
     @property
     def allowed_submit_models(self) -> dict[str, list[str]]:
+        # Use a cached result to avoid re-parsing the string on every access
+        cache_attr = "_cached_allowed_submit_models"
+        cache_key_attr = "_cached_allowed_submit_models_key"
+        cached_key = getattr(self, cache_key_attr, None)
+        if cached_key == self.raw_allowed_submit_models:
+            return getattr(self, cache_attr, {})
+
         allowed_models_str = self.raw_allowed_submit_models
         result: dict = {}
         if allowed_models_str:
@@ -233,15 +240,13 @@ class Settings(BaseSettings):
                     if space not in result:
                         result[space] = []
                     result[space].append(schema)
+        object.__setattr__(self, cache_attr, result)
+        object.__setattr__(self, cache_key_attr, self.raw_allowed_submit_models)
         return result
 
 
-# Create a single settings instance (avoid double instantiation)
+# Create a single settings instance
 settings = Settings()
-try:
-    Settings.model_validate(settings)
-except Exception as e:
-    logger.error(f"Failed to load settings.\nError: {e}")
 settings.load_config_files()
 
 

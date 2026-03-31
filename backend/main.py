@@ -42,7 +42,7 @@ from data_adapters.adapter import data_adapter as db
 from languages.loader import load_langs
 from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
-from utils.jwt import JWTBearer
+from utils.jwt import decode_jwt
 from utils.logger import logging_schema
 from utils.middleware import ChannelMiddleware, CustomRequestMiddleware
 from utils.plugin_manager import plugin_manager
@@ -120,26 +120,22 @@ app = FastAPI(
 
 
 async def capture_body(request: Request):
+    """Capture request body metadata for logging. Avoids re-parsing JSON
+    (FastAPI already parses it); only captures lightweight metadata for
+    multipart uploads."""
     request.state.request_body = {}
 
-    if request.method == "POST" and "application/json" in request.headers.get("content-type", ""):
-        request.state.request_body = await request.json()
+    content_type = request.headers.get("content-type", "")
+    if request.method != "POST":
+        return
 
-    if (
-        request.method == "POST"
-        and request.headers.get("content-type")
-        and "multipart/form-data" in request.headers.get("content-type", [])
-    ):
+    if "multipart/form-data" in content_type:
         form = await request.form()
         for field in form:
             one = form[field]
             if isinstance(one, str):
                 request.state.request_body[field] = form.get(field)
             elif isinstance(one, UploadFile):
-                # TODO try to find a way to capture .json file content without await exeption
-                # inner_json= form.get(field).file
-                # form_to_dict[field]["file_name"]=form.get(field).filename
-                # form_to_dict[field]["content_type"]=form.get(field).content_type
                 request.state.request_body[field] = {
                     "name": one.filename,
                     "content_type": one.content_type,
@@ -218,9 +214,14 @@ def set_middleware_response_headers(request, response):
     response.headers["Access-Control-Max-Age"] = "600"
     response.headers["Access-Control-Allow-Methods"] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
 
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Only set no-cache for API responses; static files should be cacheable
+    request_path = request.url.path
+    if request_path.startswith(settings.cxb_url) or request_path.endswith((".js", ".css", ".png", ".svg", ".ico", ".woff2")):
+        response.headers["Cache-Control"] = "public, max-age=86400"
+    else:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
     response.headers["x-server-time"] = datetime.now().isoformat()
     response.headers["Access-Control-Expose-Headers"] = "x-server-time"
 
@@ -234,16 +235,21 @@ def set_middleware_response_headers(request, response):
     return response
 
 
-def mask_sensitive_data(data):
+_SENSITIVE_KEYS = frozenset({"password", "access_token", "refresh_token", "auth_token", "jwt", "otp", "code", "token"})
+
+
+def mask_sensitive_data(data, _depth: int = 0):
+    """Mask sensitive keys in dicts/lists. Stops recursing beyond depth 4
+    to avoid deep-walking large query result payloads."""
+    if _depth > 4:
+        return data
     if isinstance(data, dict):
-        return {
-            k: mask_sensitive_data(v)
-            if k not in ["password", "access_token", "refresh_token", "auth_token", "jwt", "otp", "code", "token"]
-            else "******"
-            for k, v in data.items()
-        }
+        return {k: "******" if k in _SENSITIVE_KEYS else mask_sensitive_data(v, _depth + 1) for k, v in data.items()}
     elif isinstance(data, list):
-        return [mask_sensitive_data(item) for item in data]
+        # Only recurse into short lists to avoid walking thousands of records
+        if len(data) > 20:
+            return data
+        return [mask_sensitive_data(item, _depth + 1) for item in data]
     elif isinstance(data, str) and "auth_token" in data:
         return "******"
     return data
@@ -291,10 +297,10 @@ async def middle(request: Request, call_next):
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
         content_type = response.headers.get("content-type", "")
-        # Only buffer response body for JSON responses (for logging).
-        # Skip buffering for file downloads, images, streams, etc. to avoid
-        # loading large binary data into memory.
-        if "application/json" in content_type:
+        # Only buffer response body for error responses (for logging).
+        # Skip buffering for successful responses to avoid loading large
+        # query results into memory just for logging.
+        if "application/json" in content_type and response.status_code >= 400:
             raw_response = [section async for section in response.body_iterator]
             response.body_iterator = iterate_in_threadpool(iter(raw_response))
             raw_data = b"".join(raw_response)
@@ -304,66 +310,43 @@ async def middle(request: Request, call_next):
                 except Exception:
                     response_body = {}
     except TimeoutError:
-        response = JSONResponse(
-            content={"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}},
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        )
-        response_body = json.loads(str(response.body, "utf8"))
+        response_body = {"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}}
+        response = JSONResponse(content=response_body, status_code=status.HTTP_504_GATEWAY_TIMEOUT)
     except api.Exception as e:
-        if settings.active_data_db == "sql":
-            if e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
-                response = JSONResponse(
-                    status_code=500,
-                    content={
-                        "status": "failed",
-                        "error": "Something went wrong",
-                    },
-                )
-            else:
-                response = JSONResponse(
-                    status_code=e.status_code,
-                    content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
-                )
+        if settings.active_data_db == "sql" and e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
+            response_body = {"status": "failed", "error": "Something went wrong"}
+            response = JSONResponse(status_code=500, content=response_body)
         else:
-            response = JSONResponse(
-                status_code=e.status_code,
-                content=jsonable_encoder(api.Response(status=api.Status.failed, error=e.error)),
-            )
+            response_body = jsonable_encoder(api.Response(status=api.Status.failed, error=e.error))
+            response = JSONResponse(status_code=e.status_code, content=response_body)
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response_body = json.loads(str(response.body, "utf8"))
     except ValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = JSONResponse(
-            status_code=422,
-            content={
-                "status": "failed",
-                "error": {
-                    "type": "validation",
-                    "code": 422,
-                    "message": "Validation error [2]",
-                    "info": jsonable_encoder(e.errors()),
-                },
+        response_body = {
+            "status": "failed",
+            "error": {
+                "type": "validation",
+                "code": 422,
+                "message": "Validation error [2]",
+                "info": jsonable_encoder(e.errors()),
             },
-        )
-        response_body = json.loads(str(response.body, "utf8"))
+        }
+        response = JSONResponse(status_code=422, content=response_body)
     except SchemaValidationError as e:
         stack = set_stack(e)
         exception_data = {"props": {"exception": str(e), "stack": stack}}
-        response = JSONResponse(
-            status_code=400,
-            content={
-                "status": "failed",
-                "error": {
-                    "type": "validation",
-                    "code": 422,
-                    "message": "Validation error [3]",
-                    "info": [{"loc": list(e.path), "msg": e.message}],
-                },
+        response_body = {
+            "status": "failed",
+            "error": {
+                "type": "validation",
+                "code": 422,
+                "message": "Validation error [3]",
+                "info": [{"loc": list(e.path), "msg": e.message}],
             },
-        )
-        response_body = json.loads(str(response.body, "utf8"))
+        }
+        response = JSONResponse(status_code=400, content=response_body)
     except Exception:
         exception_message = ""
         stack = None
@@ -372,20 +355,17 @@ async def middle(request: Request, call_next):
             exception_message = str(ee)
             exception_data = {"props": {"exception": str(ee), "stack": stack}}
 
-        error_log = {"type": "general", "code": 99, "message": exception_message}
+        error_log: dict[str, Any] = {"type": "general", "code": 99, "message": exception_message}
         if settings.debug_enabled:
             error_log["stack"] = stack
-        response = JSONResponse(
-            status_code=500,
-            content={
-                "status": "failed",
-                "error": error_log,
-            },
-        )
-        response_body = json.loads(str(response.body, "utf8"))
+        response_body = {"status": "failed", "error": error_log}
+        response = JSONResponse(status_code=500, content=response_body)
 
     response = set_middleware_response_headers(request, response)
 
+    # Extract user_shortname for logging without re-decoding the JWT.
+    # For login requests, use the request body; for other requests, use
+    # a lightweight cookie/header peek instead of full JWTBearer validation.
     user_shortname = "guest"
     if request.url.path == "/user/login":
         try:
@@ -398,7 +378,11 @@ async def middle(request: Request, call_next):
             pass
     else:
         try:
-            user_shortname = str(await JWTBearer().__call__(request))
+            auth_header = request.headers.get("authorization", "")
+            auth_token = auth_header[7:] if auth_header.startswith("Bearer ") else request.cookies.get("auth_token")
+            if auth_token:
+                decoded = decode_jwt(auth_token)
+                user_shortname = decoded.get("shortname", "guest")
         except Exception:
             user_shortname = "guest"
 
@@ -481,8 +465,15 @@ app.include_router(public, prefix="/public", tags=["public"], dependencies=[Depe
 
 app.include_router(info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)])
 
-# load plugins
-asyncio.run(plugin_manager.load_plugins(app, capture_body))
+# Load plugins: use existing event loop if available, otherwise create one
+_background_plugin_tasks: set[asyncio.Task] = set()  # prevent GC of tasks
+try:
+    _loop = asyncio.get_running_loop()
+    _t = _loop.create_task(plugin_manager.load_plugins(app, capture_body))
+    _background_plugin_tasks.add(_t)
+    _t.add_done_callback(_background_plugin_tasks.discard)
+except RuntimeError:
+    asyncio.run(plugin_manager.load_plugins(app, capture_body))
 
 
 cxb_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cxb")
@@ -562,7 +553,8 @@ load_langs()
 async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
-    config.backlog = 200
+    config.backlog = 2000
+    config.workers = 2
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger

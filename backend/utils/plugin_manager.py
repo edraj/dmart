@@ -35,6 +35,9 @@ if CUSTOM_PLUGINS_PATH.parent.exists():
 
 class PluginManager:
     plugins_wrappers: dict[ActionType, list[PluginWrapper]] = {}  # {action_type: list_of_plugins_wrappers]}
+    # Pre-computed filtered lists to avoid filtering on every dispatch
+    _before_plugins: dict[ActionType, list[PluginWrapper]] = {}
+    _after_plugins: dict[ActionType, list[PluginWrapper]] = {}
 
     active_plugins: list[str] = []
 
@@ -128,10 +131,22 @@ class PluginManager:
                 self.plugins_wrappers.setdefault(action, []).append(plugin_wrapper)
 
     def sort_plugins(self):
-        """Sort plugins based on plugin_wrapper.ordinal"""
+        """Sort plugins based on plugin_wrapper.ordinal, then pre-compute
+        before/after lists to avoid filtering on every dispatch."""
 
         for action_type, plugins in self.plugins_wrappers.items():
             self.plugins_wrappers[action_type] = sorted(plugins, key=lambda x: x.ordinal)
+
+        # Pre-compute filtered lists so before_action/after_action don't create lists each call
+        self._before_plugins = {}
+        self._after_plugins = {}
+        for action_type, plugins in self.plugins_wrappers.items():
+            before = [p for p in plugins if p.listen_time == EventListenTime.before and p.filters]
+            after = [p for p in plugins if p.listen_time == EventListenTime.after and p.filters]
+            if before:
+                self._before_plugins[action_type] = before
+            if after:
+                self._after_plugins[action_type] = after
 
     def matched_filters(self, plugin_filters: EventFilter, event: Event):
         formats_of_subpath = [event.subpath]
@@ -165,12 +180,7 @@ class PluginManager:
             logger.error(f"Plugin:{plugin_model}:{e!s}")
 
     async def before_action(self, event: Event):
-        if event.action_type not in self.plugins_wrappers:
-            return
-
-        # Short-circuit: check if any plugin for this action listens to 'before'
-        plugins = self.plugins_wrappers[event.action_type]
-        before_plugins = [p for p in plugins if p.listen_time == EventListenTime.before and p.filters]
+        before_plugins = self._before_plugins.get(event.action_type)
         if not before_plugins:
             return
 
@@ -197,12 +207,7 @@ class PluginManager:
                     logger.error(f"Plugin:{plugin_model}:{e!s}")
 
     async def after_action(self, event: Event):
-        if event.action_type not in self.plugins_wrappers:
-            return
-
-        # Short-circuit: check if any plugin for this action listens to 'after'
-        plugins = self.plugins_wrappers[event.action_type]
-        after_plugins = [p for p in plugins if p.listen_time == EventListenTime.after and p.filters]
+        after_plugins = self._after_plugins.get(event.action_type)
         if not after_plugins:
             return
 

@@ -509,8 +509,7 @@ class RedisServices(Redis):
                 meta.shortname,
                 subpath,
             )
-        meta.model_rebuild()
-        meta_json = json.loads(meta.model_dump_json(serialize_as_any=False, exclude_none=True, warnings="error"))
+        meta_json = meta.model_dump(mode="json", exclude_none=True, warnings="error")
         meta_json["query_policies"] = generate_query_policies(
             space_name,
             subpath,

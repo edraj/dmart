@@ -1,5 +1,4 @@
 #!/usr/bin/env -S BACKEND_ENV=config.env python3
-import copy
 import sys
 from datetime import datetime
 from typing import Any
@@ -264,7 +263,7 @@ class Histories(SQLModel, table=True):
             if key == "_sa_instance_state":
                 continue
             if (not include or key in include) and key not in record_fields:
-                attributes[key] = copy.deepcopy(value)
+                attributes[key] = value
 
         record_fields["attributes"] = attributes
 
@@ -349,7 +348,7 @@ class Aggregated(SQLModel, table=False):
             if key == "_sa_instance_state":
                 continue
             if (not include or key in include) and key not in record_fields and value is not None:
-                attributes[key] = copy.deepcopy(value)
+                attributes[key] = value
 
         record_fields["attributes"] = {**attributes, **(extra if extra is not None else {})}
         return AggregatedRecord(**record_fields)
@@ -459,6 +458,47 @@ def generate_tables():
             ON mv_role_permissions (role_shortname, permission_shortname)
         """)
         )
+        conn.commit()
+
+    # Performance indexes — added to speed up common query patterns
+    with engine.connect() as conn:
+        perf_indexes = [
+            # Single-column indexes for common WHERE filters
+            "CREATE INDEX IF NOT EXISTS idx_entries_space_name ON entries (space_name)",
+            "CREATE INDEX IF NOT EXISTS idx_entries_subpath ON entries (subpath)",
+            "CREATE INDEX IF NOT EXISTS idx_entries_owner_shortname ON entries (owner_shortname)",
+            "CREATE INDEX IF NOT EXISTS idx_entries_resource_type ON entries (resource_type)",
+            "CREATE INDEX IF NOT EXISTS idx_attachments_space_name ON attachments (space_name)",
+            "CREATE INDEX IF NOT EXISTS idx_attachments_subpath ON attachments (subpath)",
+            "CREATE INDEX IF NOT EXISTS idx_attachments_owner_shortname ON attachments (owner_shortname)",
+            "CREATE INDEX IF NOT EXISTS idx_users_owner_shortname ON users (owner_shortname)",
+            "CREATE INDEX IF NOT EXISTS idx_roles_owner_shortname ON roles (owner_shortname)",
+            "CREATE INDEX IF NOT EXISTS idx_permissions_owner_shortname ON permissions (owner_shortname)",
+            # Sessions are looked up by shortname on every auth check
+            "CREATE INDEX IF NOT EXISTS idx_sessions_shortname ON sessions (shortname)",
+            # Histories composite index for get_latest_history
+            "CREATE INDEX IF NOT EXISTS idx_histories_lookup ON histories (space_name, subpath, shortname, timestamp DESC)",
+            # GIN indexes for JSONB containment queries
+            "CREATE INDEX IF NOT EXISTS idx_entries_payload_gin ON entries USING GIN (payload jsonb_path_ops)",
+            "CREATE INDEX IF NOT EXISTS idx_entries_tags_gin ON entries USING GIN (tags jsonb_path_ops)",
+            "CREATE INDEX IF NOT EXISTS idx_entries_acl_gin ON entries USING GIN (acl jsonb_path_ops)",
+            "CREATE INDEX IF NOT EXISTS idx_users_roles_gin ON users USING GIN (roles jsonb_path_ops)",
+            "CREATE INDEX IF NOT EXISTS idx_users_groups_gin ON users USING GIN (groups jsonb_path_ops)",
+            "CREATE INDEX IF NOT EXISTS idx_roles_permissions_gin ON roles USING GIN (permissions jsonb_path_ops)",
+            # Functional index for schema_shortname lookups in payload
+            "CREATE INDEX IF NOT EXISTS idx_entries_schema_shortname ON entries ((payload->>'schema_shortname'))",
+            # GIN index for query_policies ARRAY columns
+            "CREATE INDEX IF NOT EXISTS idx_entries_query_policies_gin ON entries USING GIN (query_policies)",
+            "CREATE INDEX IF NOT EXISTS idx_users_query_policies_gin ON users USING GIN (query_policies)",
+            "CREATE INDEX IF NOT EXISTS idx_roles_query_policies_gin ON roles USING GIN (query_policies)",
+            "CREATE INDEX IF NOT EXISTS idx_permissions_query_policies_gin ON permissions USING GIN (query_policies)",
+            "CREATE INDEX IF NOT EXISTS idx_spaces_query_policies_gin ON spaces USING GIN (query_policies)",
+        ]
+        import contextlib
+
+        for idx_sql in perf_indexes:
+            with contextlib.suppress(Exception):
+                conn.execute(text(idx_sql))
         conn.commit()
 
 

@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import os
@@ -1125,10 +1126,10 @@ class FileAdapter(BaseDataAdapter):
         if not attachments_path.is_dir():
             return {}
         try:
+            # Collect all attachment file paths first, then read in parallel
+            attachment_files_info: list[tuple] = []  # (file_path, attach_shortname, attach_resource_name, entry_path)
             attachments_iterator = os.scandir(attachments_path)
-            attachments_dict: dict[ResourceType, list] = {}
             for attachment_entry in attachments_iterator:
-                # TODO: Filter types on the parent attachment type folder layer
                 if not attachment_entry.is_dir():
                     continue
 
@@ -1142,31 +1143,47 @@ class FileAdapter(BaseDataAdapter):
                     attach_resource_name = match.group(1).lower()
                     if filter_shortnames and attach_shortname not in filter_shortnames:
                         continue
-
                     if filter_types and ResourceType(attach_resource_name) not in filter_types:
                         continue
 
-                    resource_class = getattr(sys.modules["models.core"], camel_case(attach_resource_name))
-                    resource_obj = None
-                    async with aiofiles.open(attachments_file) as meta_file:
-                        try:
-                            resource_obj = resource_class.model_validate_json(await meta_file.read())
-                        except Exception as e:
-                            raise Exception(f"Bad attachment ... {attachments_file=}") from e
-
-                    resource_record_obj = resource_obj.to_record(subpath, attach_shortname, include_fields)
-                    if is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, attachment_entry):
-                        async with aiofiles.open(
-                            f"{attachment_entry.path}/{resource_obj.payload.body}"
-                        ) as payload_file_content:
-                            resource_record_obj.attributes["payload"].body = json.loads(await payload_file_content.read())
-
-                    if attach_resource_name in attachments_dict:
-                        attachments_dict[ResourceType(attach_resource_name)].append(resource_record_obj)
-                    else:
-                        attachments_dict[ResourceType(attach_resource_name)] = [resource_record_obj]
+                    attachment_files_info.append(
+                        (attachments_file.path, attach_shortname, attach_resource_name, attachment_entry.path)
+                    )
                 attachments_files.close()
             attachments_iterator.close()
+
+            if not attachment_files_info:
+                return {}
+
+            # Read all meta files concurrently
+            async def _read_attachment(file_path, attach_shortname, attach_resource_name, entry_path):
+                resource_class = getattr(sys.modules["models.core"], camel_case(attach_resource_name))
+                async with aiofiles.open(file_path) as meta_file:
+                    try:
+                        resource_obj = resource_class.model_validate_json(await meta_file.read())
+                    except Exception as e:
+                        raise Exception(f"Bad attachment ... {file_path=}") from e
+
+                resource_record_obj = resource_obj.to_record(subpath, attach_shortname, include_fields)
+                if is_file_check(retrieve_json_payload, resource_obj, resource_record_obj, type("E", (), {"path": entry_path})):
+                    async with aiofiles.open(f"{entry_path}/{resource_obj.payload.body}") as payload_file_content:
+                        resource_record_obj.attributes["payload"].body = json.loads(await payload_file_content.read())
+
+                return attach_resource_name, resource_record_obj
+
+            results = await asyncio.gather(
+                *[_read_attachment(*info) for info in attachment_files_info],
+                return_exceptions=True,
+            )
+
+            attachments_dict: dict[ResourceType, list] = {}
+            for result in results:
+                if isinstance(result, BaseException):
+                    logger.error(f"Failed to read attachment: {result}")
+                    continue
+                res_resource_name: str = result[0]
+                res_record_obj = result[1]
+                attachments_dict.setdefault(ResourceType(res_resource_name), []).append(res_record_obj)
 
             # SORT ALTERATION ATTACHMENTS BY ALTERATION.CREATED_AT
             sort_alteration(attachments_dict, attachments_path)
@@ -1459,9 +1476,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.set_key(f"users:login:invitation:{invitation_token}", invitation_value)
 
-    async def set_user_session(
-        self, user_shortname: str, token: str, firebase_token: str | None = None
-    ) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str, firebase_token: str | None = None) -> bool:
         async with RedisServices() as redis:
             if settings.max_sessions_per_user == 1 and await redis.get_key(f"user_session:{user_shortname}"):
                 await redis.del_keys([f"user_session:{user_shortname}"])
@@ -1493,8 +1508,8 @@ class FileAdapter(BaseDataAdapter):
 
     async def get_schema(self, space_name: str, schema_shortname: str, owner_shortname: str) -> dict:
         schema_path = self.payload_path(space_name, "schema", core.Schema) / f"{schema_shortname}.json"
-        with open(schema_path) as schema_file:
-            schema_content = json.load(schema_file)
+        async with aiofiles.open(schema_path) as schema_file:
+            schema_content = json.loads(await schema_file.read())
 
         return resolve_schema_references(schema_content)
 
@@ -1809,7 +1824,7 @@ class FileAdapter(BaseDataAdapter):
                     meta=meta,
                     payload_data=payload,
                 )
-                payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                payload.update(meta.model_dump(mode="json", exclude_none=True, warnings="error"))
                 await redis.save_payload_doc(space_name, subpath, meta, payload, ResourceType(snake_case(type(meta).__name__)))
 
     async def internal_sys_update_model(
@@ -1869,7 +1884,7 @@ class FileAdapter(BaseDataAdapter):
         async with RedisServices() as redis_services:
             await redis_services.save_meta_doc(space_name, subpath, meta)
             if payload_updated:
-                resolved_payload.update(json.loads(meta.model_dump_json(exclude_none=True, warnings="error")))
+                resolved_payload.update(meta.model_dump(mode="json", exclude_none=True, warnings="error"))
                 await redis_services.save_payload_doc(
                     space_name,
                     subpath,

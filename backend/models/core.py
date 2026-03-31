@@ -64,7 +64,10 @@ class Payload(Resource):
     def __init__(self, **data):
         BaseModel.__init__(self, **data)
 
-        if not self.checksum:
+        # Only compute checksum when body is a dict (write path).
+        # When body is a filename string (read path), skip the expensive
+        # json.dumps + sha256 since the checksum is not meaningful.
+        if not self.checksum and isinstance(self.body, dict):
             self._calculate_checksum()
 
     def _calculate_checksum(self) -> None:

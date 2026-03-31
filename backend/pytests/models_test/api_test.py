@@ -139,7 +139,7 @@ def test_response_model():
     record = Record(resource_type="content", shortname="auto", subpath="/users", attributes={"is_active": True})
     response = Response(status=Status.success, error=None, records=[record], attributes={"key": "value"})
     assert response.status == Status.success
-    assert response.records[0].shortname == "auto"
+    assert response.records and response.records[0].shortname == "auto"
 
     # Test without records and attributes
     response_without_records = Response(status=Status.success, error=None)
