@@ -18,7 +18,7 @@ from uuid import uuid4
 from fastapi import status
 from fastapi.logger import logger
 from jsonschema import Draft7Validator
-from sqlalchemy import URL, String, Text, bindparam, cast, literal_column, or_
+from sqlalchemy import URL, String, Text, bindparam, cast, literal, literal_column, or_
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import defer, sessionmaker
 from sqlmodel import Boolean, Float, Integer, Session, col, delete, func, select, text, update
@@ -1888,11 +1888,21 @@ class SQLAdapter(BaseDataAdapter):
             var: dict = result.model_dump().get("payload", {}).get("body", {})
             return var
 
+    async def _batch_check_shortnames_exist(self, table, shortnames: list[str]) -> set[str]:
+        """Return the set of shortnames that exist in the given table (single query)."""
+        if not shortnames:
+            return set()
+        async with self.get_session() as session:
+            statement = select(table.shortname).where(col(table.shortname).in_(shortnames))
+            result = (await session.execute(statement)).scalars().all()
+            return set(result)
+
     async def _validate_referential_integrity(self, meta: core.Meta):
         if isinstance(meta, core.User):
             if meta.roles:
+                existing = await self._batch_check_shortnames_exist(Roles, list(meta.roles))
                 for role in meta.roles:
-                    if not await self.load_or_none(settings.management_space, "roles", role, core.Role):
+                    if role not in existing:
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1902,8 +1912,9 @@ class SQLAdapter(BaseDataAdapter):
                             ),
                         )
             if meta.groups:
+                existing = await self._batch_check_shortnames_exist(Entries, list(meta.groups))
                 for group in meta.groups:
-                    if not await self.load_or_none(settings.management_space, "groups", group, core.Group):
+                    if group not in existing:
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1914,8 +1925,9 @@ class SQLAdapter(BaseDataAdapter):
                         )
         elif isinstance(meta, core.Role):
             if meta.permissions:
+                existing = await self._batch_check_shortnames_exist(Permissions, list(meta.permissions))
                 for permission in meta.permissions:
-                    if not await self.load_or_none(settings.management_space, "permissions", permission, core.Permission):
+                    if permission not in existing:
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -1926,8 +1938,9 @@ class SQLAdapter(BaseDataAdapter):
                         )
         elif isinstance(meta, core.Group):
             if hasattr(meta, "roles") and meta.roles:
+                existing = await self._batch_check_shortnames_exist(Roles, list(meta.roles))
                 for role in meta.roles:
-                    if not await self.load_or_none(settings.management_space, "roles", role, core.Role):
+                    if role not in existing:
                         raise api.Exception(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             error=api.Error(
@@ -2434,28 +2447,17 @@ class SQLAdapter(BaseDataAdapter):
             if not subpath.startswith("/"):
                 subpath = f"/{subpath}"
 
-            statement = select(table).where(table.space_name == space_name)
+            # Use SELECT 1 ... LIMIT 1 instead of loading full rows
+            statement = select(literal(1)).select_from(table).where(table.space_name == space_name)
 
             if table in [Roles, Permissions, Users]:
                 statement = statement.where(table.shortname == shortname)
-            elif resource_cls in [
-                core.Alteration,
-                core.Media,
-                core.Lock,
-                core.Comment,
-                core.Reply,
-                core.Reaction,
-                core.Json,
-                core.DataAsset,
-            ]:
-                statement = statement.where(table.subpath == subpath).where(table.shortname == shortname)
-
             else:
                 statement = statement.where(table.subpath == subpath).where(table.shortname == shortname)
 
-            result = (await session.execute(statement)).fetchall()
-            result = [result[0] for result in result]
-            return len(result) != 0
+            statement = statement.limit(1)
+            result = (await session.execute(statement)).first()
+            return result is not None
 
     async def delete(
         self,
@@ -2650,9 +2652,7 @@ class SQLAdapter(BaseDataAdapter):
             print("[!fetch_space]", e, space_name)
             return None
 
-    async def set_user_session(
-        self, user_shortname: str, token: str, firebase_token: str | None = None
-    ) -> bool:
+    async def set_user_session(self, user_shortname: str, token: str, firebase_token: str | None = None) -> bool:
         try:
             total, last_session = await self.get_user_session(user_shortname, token)
 
@@ -2919,40 +2919,25 @@ class SQLAdapter(BaseDataAdapter):
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
             try:
-                statement = select(Users).where(Users.shortname == user_shortname)
-                result = (await session.execute(statement)).one_or_none()
-                if result is None:
-                    return False
-                result = result[0]
-                result.attempt_count = 0
-                session.add(result)
-                return True
+                result = await session.execute(update(Users).where(col(Users.shortname) == user_shortname).values(attempt_count=0))
+                return result.rowcount > 0  # type: ignore
             except Exception as e:
                 print("[!clear_failed_password_attempts]", e)
                 return False
 
     async def get_failed_password_attempt_count(self, user_shortname: str) -> int:
         async with self.get_session() as session:
-            statement = select(Users).where(col(Users.shortname) == user_shortname)
-
-            result = (await session.execute(statement)).one_or_none()
-            if result is None:
-                return 0
-            result = result[0]
-            failed_login_attempt = Users.model_validate(result)
-            return 0 if failed_login_attempt.attempt_count is None else failed_login_attempt.attempt_count
+            statement = select(Users.attempt_count).where(col(Users.shortname) == user_shortname)
+            result = (await session.execute(statement)).scalar_one_or_none()
+            return 0 if result is None else result
 
     async def set_failed_password_attempt_count(self, user_shortname: str, attempt_count: int) -> bool:
         async with self.get_session() as session:
             try:
-                statement = select(Users).where(col(Users.shortname) == user_shortname)
-                result = (await session.execute(statement)).one_or_none()
-                if result is None:
-                    return False
-                result = result[0]
-                result.attempt_count = attempt_count
-                session.add(result)
-                return True
+                result = await session.execute(
+                    update(Users).where(col(Users.shortname) == user_shortname).values(attempt_count=attempt_count)
+                )
+                return result.rowcount > 0  # type: ignore
             except Exception as e:
                 print("[!set_failed_password_attempt_count]", e)
                 return False
@@ -3183,30 +3168,42 @@ class SQLAdapter(BaseDataAdapter):
         role_records = await self.load_or_none(settings.management_space, "roles", role.shortname, core.Role)
         if role_records is None:
             return []
-        role_permissions: list[core.Permission] = []
-        for permission in role_records.permissions:
-            permission_record = await self.load_or_none(settings.management_space, "permissions", permission, core.Permission)
-            if permission_record is None:
-                continue
-            role_permissions.append(permission_record)
-        return role_permissions
+        if not role_records.permissions:
+            return []
+        # Batch load all permissions in a single query instead of N individual loads
+        async with self.get_session() as session:
+            statement = (
+                select(Permissions)
+                .where(col(Permissions.shortname).in_(role_records.permissions))
+                .where(Permissions.space_name == settings.management_space)
+            )
+            results = (await session.execute(statement)).scalars().all()
+            return [core.Permission.model_validate(r.model_dump()) for r in results]
 
     async def get_user_roles(self, user_shortname: str) -> dict[str, core.Role]:
         try:
             user = await self.load_or_none(settings.management_space, settings.users_subpath, user_shortname, core.User)
             if user is None:
                 return {}
-            euser_roles: dict[str, core.Role] = {}
+            # Collect all role shortnames to load in one batch
+            role_shortnames = list(user.roles) if user.roles else []
             if user_shortname != "anonymous":
-                role_record = await self.load_or_none(settings.management_space, "roles", "logged_in", core.Role)
-                if role_record is not None:
-                    euser_roles["logged_in"] = role_record
-            for role in user.roles:
-                role_record = await self.load_or_none(settings.management_space, "roles", role, core.Role)
-                if role_record is None:
-                    continue
-                euser_roles[role] = role_record
-            return euser_roles
+                role_shortnames.append("logged_in")
+            if not role_shortnames:
+                return {}
+            # Batch load all roles in a single query
+            async with self.get_session() as session:
+                statement = (
+                    select(Roles)
+                    .where(col(Roles.shortname).in_(role_shortnames))
+                    .where(Roles.space_name == settings.management_space)
+                )
+                results = (await session.execute(statement)).scalars().all()
+                euser_roles: dict[str, core.Role] = {}
+                for row in results:
+                    role_obj = core.Role.model_validate(row.model_dump())
+                    euser_roles[row.shortname] = role_obj
+                return euser_roles
         except Exception as e2:
             print(f"Error: {e2}")
             return {}

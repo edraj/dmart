@@ -1,10 +1,10 @@
+import asyncio
 import codecs
 import csv
 import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import tempfile
 import traceback
@@ -711,7 +711,7 @@ async def create_or_update_resource_with_payload(
     # in such case update should contain all the data every time.
     await is_space_exist(space_name)
 
-    record = core.Record.model_validate_json(request_record.file.read())
+    record = core.Record.model_validate_json(await request_record.read())
 
     payload_filename = payload_file.filename or ""
     if payload_filename and not re.search(regex.EXT, os.path.splitext(payload_filename)[1][1:]):
@@ -755,9 +755,8 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    sha256 = hashlib.sha256()
-    sha256.update(payload_file.file.read())
-    checksum = sha256.hexdigest()
+    payload_bytes = await payload_file.read()
+    checksum = hashlib.sha256(payload_bytes).hexdigest()
     if isinstance(sha, str) and sha != checksum:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -1110,11 +1109,15 @@ async def get_space_report(
             error=api.Error(type="media", code=InternalErrorCode.INVALID_HEALTH_CHECK, message="Invalid health check type"),
         )
 
-    subprocess.Popen(
-        [sys.executable, "./health_check.py", "-t", health_type, "-s", space_name],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
+    await asyncio.create_subprocess_exec(
+        sys.executable,
+        "./health_check.py",
+        "-t",
+        health_type,
+        "-s",
+        space_name,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
     )
     return api.Response(
         status=api.Status.success,

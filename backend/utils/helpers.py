@@ -6,6 +6,7 @@ import json
 from collections.abc import MutableMapping
 from copy import deepcopy
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from re import sub as re_sub
 from typing import Any
@@ -159,11 +160,13 @@ def _resolve_schema_references(schema: dict, resolver) -> dict:
     return schema
 
 
+@lru_cache(maxsize=128)
 def camel_case(snake_str):
     words = snake_str.split("_")
     return "".join(word.title() for word in words)
 
 
+@lru_cache(maxsize=128)
 def snake_case(camel_str):
     return re_sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
 

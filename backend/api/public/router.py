@@ -325,7 +325,7 @@ async def create_or_update_resource_with_payload(
     # in such case update should contain all the data every time.
     await is_space_exist(space_name)
 
-    record = core.Record.model_validate_json(request_record.file.read())
+    record = core.Record.model_validate_json(await request_record.read())
 
     payload_filename = payload_file.filename or ""
     if payload_filename and not re.search(regex.EXT, os.path.splitext(payload_filename)[1][1:]):
@@ -369,9 +369,8 @@ async def create_or_update_resource_with_payload(
             ),
         )
 
-    sha256 = hashlib.sha256()
-    sha256.update(payload_file.file.read())
-    checksum = sha256.hexdigest()
+    payload_bytes = await payload_file.read()
+    checksum = hashlib.sha256(payload_bytes).hexdigest()
     if isinstance(sha, str) and sha != checksum:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
