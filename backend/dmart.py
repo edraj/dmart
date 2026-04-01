@@ -81,7 +81,6 @@ LOG_FILE="{dmart_home / "logs" / "dmart.ljson.log"}"
 WS_LOG_FILE="{dmart_home / "logs" / "websocket.ljson.log"}"
 
 # Database configuration
-ACTIVE_DATA_DB="file"
 SPACES_FOLDER="{dmart_home / "spaces"}"
 DATABASE_DRIVER="sqlite+pysqlite"
 DATABASE_NAME="{dmart_home / "dmart.db"}"
@@ -738,36 +737,37 @@ def main():
             from main import main as server
 
             asyncio.run(server())
-        case "health-check":
-            from data_adapters.file.health_check import main as health_check
-
-            parser = argparse.ArgumentParser(
-                description="This created for doing health check functionality",
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            )
-            parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
-            parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
-            parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
-
-            args = parser.parse_args()
-            before_time = time.time()
-            asyncio.run(health_check(args.type, args.space, args.schemas))
-            print(f"total time: {f'{time.time() - before_time:.2f}'} sec")
-        case "create-index":
-            from data_adapters.file.create_index import main as create_index
-
-            parser = argparse.ArgumentParser(
-                description="Recreate Redis indices based on the available schema definitions",
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            )
-            parser.add_argument("-p", "--space", help="recreate indices for this space only")
-            parser.add_argument("-c", "--schemas", nargs="*", help="recreate indices for this schemas only")
-            parser.add_argument("-s", "--subpaths", nargs="*", help="upload documents for this subpaths only")
-            parser.add_argument("--flushall", action="store_true", help="FLUSHALL data on Redis")
-
-            args = parser.parse_args()
-
-            asyncio.run(create_index(args.space, args.schemas, args.subpaths, args.flushall))
+        # TBD : Check if we still need this
+        # case "health-check":
+        #     from data_adapters.file.health_check import main as health_check
+        #
+        #     parser = argparse.ArgumentParser(
+        #         description="This created for doing health check functionality",
+        #         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        #     )
+        #     parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
+        #     parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
+        #     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
+        #
+        #     args = parser.parse_args()
+        #     before_time = time.time()
+        #     asyncio.run(health_check(args.type, args.space, args.schemas))
+        #     print(f"total time: {f'{time.time() - before_time:.2f}'} sec")
+        # case "create-index":
+        #     from data_adapters.file.create_index import main as create_index
+        #
+        #     parser = argparse.ArgumentParser(
+        #         description="Recreate Redis indices based on the available schema definitions",
+        #         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        #     )
+        #     parser.add_argument("-p", "--space", help="recreate indices for this space only")
+        #     parser.add_argument("-c", "--schemas", nargs="*", help="recreate indices for this schemas only")
+        #     parser.add_argument("-s", "--subpaths", nargs="*", help="upload documents for this subpaths only")
+        #     parser.add_argument("--flushall", action="store_true", help="FLUSHALL data on Redis")
+        #
+        #     args = parser.parse_args()
+        #
+        #     asyncio.run(create_index(args.space, args.schemas, args.subpaths, args.flushall))
         case "export":
             parser = argparse.ArgumentParser(prog="dmart.py export")
             parser.add_argument("--space_name", help="Space name to export, if not provided export all spaces")
@@ -856,32 +856,33 @@ def main():
             print_formatted(settings.model_dump_json())
         case "set_password":
             import set_admin_passwd  # noqa: F401
-        case "archive":
-            from data_adapters.file.archive import archive
-
-            parser = argparse.ArgumentParser(description="Script for archiving records from different spaces and subpaths.")
-            parser.add_argument("space", type=str, help="The name of the space")
-            parser.add_argument("subpath", type=str, help="The subpath within the space")
-            parser.add_argument(
-                "schema",
-                type=str,
-                help="The subpath within the space. Optional, if not provided move everything",
-                nargs="?",
-            )
-            parser.add_argument(
-                "olderthan",
-                type=int,
-                help="The number of day, older than which, the entries will be archived (based on updated_at)",
-            )
-
-            args = parser.parse_args()
-            space = args.space
-            subpath = args.subpath
-            olderthan = args.olderthan
-            schema = args.schema or "meta"
-
-            asyncio.run(archive(space, subpath, schema, olderthan))
-            print("Done.")
+        # TBD : Check if we still need this
+        # case "archive":
+        #     from data_adapters.file.archive import archive
+        #
+        #     parser = argparse.ArgumentParser(description="Script for archiving records from different spaces and subpaths.")
+        #     parser.add_argument("space", type=str, help="The name of the space")
+        #     parser.add_argument("subpath", type=str, help="The subpath within the space")
+        #     parser.add_argument(
+        #         "schema",
+        #         type=str,
+        #         help="The subpath within the space. Optional, if not provided move everything",
+        #         nargs="?",
+        #     )
+        #     parser.add_argument(
+        #         "olderthan",
+        #         type=int,
+        #         help="The number of day, older than which, the entries will be archived (based on updated_at)",
+        #     )
+        #
+        #     args = parser.parse_args()
+        #     space = args.space
+        #     subpath = args.subpath
+        #     olderthan = args.olderthan
+        #     schema = args.schema or "meta"
+        #
+        #     asyncio.run(archive(space, subpath, schema, olderthan))
+        #     print("Done.")
         case "json_to_db":
             from data_adapters.sql.json_to_db_migration import main as json_to_db_migration
 

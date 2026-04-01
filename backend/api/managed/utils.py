@@ -17,7 +17,6 @@ from api.user.service import (
     send_sms,
 )
 from data_adapters.adapter import data_adapter as db
-from data_adapters.file.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from languages.loader import languages
 from models.enums import (
     ContentType,
@@ -26,6 +25,7 @@ from models.enums import (
     ResourceType,
 )
 from utils.access_control import access_control
+from utils.custom_validations import validate_csv_with_schema, validate_jsonl_with_schema
 from utils.generate_email import generate_email_from_template, generate_subject
 from utils.helpers import (
     camel_case,
@@ -195,13 +195,10 @@ def set_resource_object(record, resource_obj, is_internal):
     if not is_internal or "created_at" not in record.attributes:
         resource_obj.created_at = datetime.now()
         resource_obj.updated_at = datetime.now()
-    body_shortname = record.shortname
 
     separate_payload_data = None
     if resource_obj.payload and resource_obj.payload.content_type == ContentType.json and resource_obj.payload.body is not None:
         separate_payload_data = resource_obj.payload.body
-        if settings.active_data_db == "file":
-            resource_obj.payload.body = body_shortname + (".json" if record.resource_type != ResourceType.log else ".jsonl")
     return separate_payload_data, resource_obj
 
 
@@ -217,7 +214,6 @@ async def serve_request_create(request: api.Request, owner_shortname: str, token
                 created = await serve_space_create(request, record, owner_shortname)
                 if created:
                     await db.initialize_spaces()
-                    await access_control.load_permissions_and_roles()
 
                     await plugin_manager.after_action(
                         core.Event(
@@ -394,7 +390,6 @@ async def serve_request_update(request, owner_shortname: str):
                 )
 
                 await db.initialize_spaces()
-                await access_control.load_permissions_and_roles()
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=record.shortname,
@@ -532,8 +527,7 @@ async def serve_request_update(request, owner_shortname: str):
                 updated_attributes_flattend = list(flatten_dict(record.attributes).keys())
 
                 if (
-                    settings.active_data_db == "sql"
-                    and new_resource_payload_data is not None
+                    new_resource_payload_data is not None
                     and resource_obj.payload
                     and resource_obj.payload.content_type == ContentType.json
                 ):
@@ -1003,7 +997,6 @@ async def serve_request_delete(request, owner_shortname: str):
             if record.resource_type == ResourceType.space:
                 await serve_space_delete(request, record, owner_shortname)
                 await db.initialize_spaces()
-                await access_control.load_permissions_and_roles()
                 await plugin_manager.after_action(
                     core.Event(
                         space_name=record.shortname,
@@ -1311,15 +1304,7 @@ async def handle_update_state(space_name, logged_in_user, ticket_obj, action, us
 
     workflows_payload: Any = {}
     if workflows_data.payload is not None and workflows_data.payload.body is not None:
-        if settings.active_data_db == "file":
-            workflows_payload = await db.load_resource_payload(
-                space_name=space_name,
-                subpath="workflows",
-                filename=str(workflows_data.payload.body),
-                class_type=core.Content,
-            )
-        else:
-            workflows_payload = workflows_data.payload.body
+        workflows_payload = workflows_data.payload.body
     else:
         raise api.Exception(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1703,9 +1688,7 @@ async def create_or_update_resource_with_payload_handler(
                 message="Only resources of type 'attachment' or 'content' are allowed",
             ),
         )
-    if settings.active_data_db == "file":
-        resource_obj.payload.body = f"{resource_obj.shortname}.{file_extension}"
-    elif not isinstance(resource_obj, core.Attachment):
+    if not isinstance(resource_obj, core.Attachment):
         resource_obj.payload.body = json.load(payload_file.file)
         payload_file.file.seek(0)
 

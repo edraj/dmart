@@ -1,12 +1,10 @@
 import asyncio
-import json
 import os
 import secrets
 import string
 import time
 from email.message import EmailMessage
 
-import aiofiles
 import aiosmtplib
 from fastapi import status
 from fastapi.logger import logger
@@ -278,25 +276,13 @@ async def update_user_payload(profile, user):
         separate_payload_data = payload["body"]
 
         existing_body = {}
-        if user.payload.body:
-            if settings.active_data_db == "file":
-                path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
-                file_path = path / str(user.payload.body)
-                if file_path.is_file():
-                    async with aiofiles.open(file_path) as f:
-                        content = await f.read()
-                        if content:
-                            existing_body = json.loads(content)
-            elif isinstance(user.payload.body, dict):
+        if user.payload.body and isinstance(user.payload.body, dict):
                 existing_body = user.payload.body
 
         if isinstance(separate_payload_data, dict):
             separate_payload_data = core.deep_update(existing_body, separate_payload_data)
 
-        if settings.active_data_db == "file":
-            user.payload.body = f"{user.shortname}.json"
-        else:
-            user.payload.body = separate_payload_data
+        user.payload.body = separate_payload_data
 
     if user.payload and separate_payload_data and user.payload.schema_shortname:
         await db.validate_payload_with_schema(

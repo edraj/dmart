@@ -1,12 +1,10 @@
 """Session Apis"""
 
-import json
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import aiofiles
 import jwt as pyjwt
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response, status
 from fastapi.logger import logger
@@ -563,16 +561,6 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
     if user.payload:
         attributes["payload"] = user.payload
-        if settings.active_data_db == "file":
-            path = settings.spaces_folder / MANAGEMENT_SPACE / USERS_SUBPATH
-            if (
-                user.payload
-                and user.payload.content_type
-                and user.payload.content_type == ContentType.json
-                and (path / str(user.payload.body)).is_file()
-            ):
-                async with aiofiles.open(path / str(user.payload.body)) as payload_file_content:
-                    attributes["payload"].body = json.loads(await payload_file_content.read())
 
     attributes["type"] = user.type
     attributes["language"] = user.language

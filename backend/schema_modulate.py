@@ -9,7 +9,6 @@ from sqlmodel import col, select
 
 from data_adapters.sql.adapter import SQLAdapter
 from data_adapters.sql.create_tables import Attachments, Entries, Permissions, Roles, Spaces, Users
-from utils.settings import settings
 
 """
 --space and --subpath are optional
@@ -168,7 +167,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if settings.active_data_db == "sql":
-        asyncio.run(handle_sql_modulation(args))
-    else:
-        handle_file_modulation(args)
+    asyncio.run(handle_sql_modulation(args))

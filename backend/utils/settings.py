@@ -56,10 +56,6 @@ class Settings(BaseSettings):
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
-    redis_host: str = "127.0.0.1"
-    redis_password: str = ""
-    redis_port: int = 6379
-    redis_pool_max_connections: int = 20
     max_sessions_per_user: int = 5
     management_space: str = "management"
     users_subpath: str = "users"
@@ -126,9 +122,6 @@ class Settings(BaseSettings):
     enable_channel_auth: bool = False
     channels: list = []
     store_payload_string: bool = True
-
-    active_operational_db: str = "redis"  # allowed values: redis, manticore
-    active_data_db: str = "file"  # allowed values: file, sql
 
     database_driver: str = "sqlite+pysqlite"
     database_username: str = "postgres"

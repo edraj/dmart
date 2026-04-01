@@ -6,7 +6,6 @@ import models.api as api
 import models.core as core
 from data_adapters.adapter import data_adapter as db
 from utils.internal_error_code import InternalErrorCode
-from utils.settings import settings
 
 
 async def get_init_state_from_workflow(space_name: str, workflow_shortname: str):
@@ -111,15 +110,7 @@ async def set_init_state_from_record(ticket: core.Record, logged_in_user, space_
         # sql: payload is already within the entry
         workflows_payload: dict[str, Any] = {}
         mypayload = workflows_data.payload.body
-        if settings.active_data_db == "file" and isinstance(mypayload, str):
-            payload = await db.load_resource_payload(
-                space_name=space_name,
-                subpath="workflows",
-                filename=mypayload,
-                class_type=core.Content,
-            )
-            workflows_payload = payload if payload else {}
-        elif isinstance(mypayload, dict):
+        if isinstance(mypayload, dict):
             workflows_payload = mypayload
         else:
             raise api.Exception(
