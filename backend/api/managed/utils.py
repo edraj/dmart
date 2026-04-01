@@ -374,7 +374,6 @@ async def serve_request_update_fetch_payload(old_resource_obj, record, request, 
 
 
 async def serve_request_update(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -563,8 +562,6 @@ async def serve_request_update(request, owner_shortname: str):
             ):
                 await db.remove_user_session(record.shortname)
 
-            rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=request.space_name,
@@ -577,7 +574,7 @@ async def serve_request_update(request, owner_shortname: str):
                     attributes={"history_diff": history_diff},
                 )
             )
-            return rec, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -589,13 +586,10 @@ async def serve_request_update(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
-    return records, failed_records
+    return [], failed_records
 
 
 async def serve_request_patch(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -725,7 +719,6 @@ async def serve_request_patch(request, owner_shortname: str):
                 await db.remove_user_session(record.shortname)
             if resource_obj.payload and new_resource_payload_data is not None:
                 resource_obj.payload.body = new_resource_payload_data
-            rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
 
             await plugin_manager.after_action(
                 core.Event(
@@ -739,7 +732,7 @@ async def serve_request_patch(request, owner_shortname: str):
                     attributes={"history_diff": history_diff},
                 )
             )
-            return rec, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -751,13 +744,10 @@ async def serve_request_patch(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
-    return records, failed_records
+    return [], failed_records
 
 
 async def serve_request_assign(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -842,8 +832,6 @@ async def serve_request_assign(request, owner_shortname: str):
                 retrieve_lock_status=record.retrieve_lock_status,
             )
 
-            rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=request.space_name,
@@ -856,7 +844,7 @@ async def serve_request_assign(request, owner_shortname: str):
                     attributes={"history_diff": history_diff},
                 )
             )
-            return rec, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -868,14 +856,11 @@ async def serve_request_assign(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
 
-    return records, failed_records
+    return [], failed_records
 
 
 async def serve_request_update_acl(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -954,8 +939,6 @@ async def serve_request_update_acl(request, owner_shortname: str):
                 retrieve_lock_status=record.retrieve_lock_status,
             )
 
-            rec = resource_obj.to_record(record.subpath, resource_obj.shortname, [])
-
             await plugin_manager.after_action(
                 core.Event(
                     space_name=request.space_name,
@@ -968,7 +951,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
                     attributes={"history_diff": history_diff},
                 )
             )
-            return rec, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -980,13 +963,10 @@ async def serve_request_update_acl(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
-    return records, failed_records
+    return [], failed_records
 
 
 async def serve_request_delete(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -1077,7 +1057,7 @@ async def serve_request_delete(request, owner_shortname: str):
                 )
             )
 
-            return record, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -1089,14 +1069,11 @@ async def serve_request_delete(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
 
-    return records, failed_records
+    return [], failed_records
 
 
 async def serve_request_move(request, owner_shortname: str):
-    records: list[core.Record] = []
     failed_records: list[dict] = []
 
     async def process_record(record):
@@ -1229,7 +1206,7 @@ async def serve_request_move(request, owner_shortname: str):
                 )
             )
 
-            return record, None
+            return {}, None
         except api.Exception as e:
             return None, {
                 "record": record.shortname,
@@ -1241,10 +1218,8 @@ async def serve_request_move(request, owner_shortname: str):
     for rec, failed in results:
         if failed is not None:
             failed_records.append(failed)
-        elif rec is not None:
-            records.append(rec)
 
-    return records, failed_records
+    return [], failed_records
 
 
 def get_resource_content_type_from_payload_content_type(payload_file, payload_filename, record):
