@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_oath_callback: str = ""
-    
+
     apple_client_id: str = ""
     apple_client_secret: str = ""
     apple_oath_callback: str = ""
