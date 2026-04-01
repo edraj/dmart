@@ -22,6 +22,7 @@ import utils.password_hashing as password_hashing
 import utils.regex as rgx
 import utils.repository as repository
 from data_adapters.adapter import data_adapter as db
+from data_adapters.sql.create_tables import Users as UsersTable
 from languages.loader import languages
 from models.api import Status
 from models.enums import ActionType, ContentType, RequestType, ResourceType, UserType
@@ -71,9 +72,8 @@ async def check_existing_user_fields(
     unique_fields = {"shortname": shortname, "msisdn": msisdn, "email_unescaped": email}
 
     search_str = f"@subpath:{USERS_SUBPATH}"
-    redis_escape_chars = str.maketrans({".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})
 
-    attributes = await db.check_uniqueness(unique_fields, search_str, redis_escape_chars)
+    attributes: dict[str, bool] = await db.check_uniqueness(unique_fields, search_str)
     return api.Response(status=api.Status.success, attributes=attributes)
 
 
@@ -1333,34 +1333,50 @@ if settings.social_login_allowed:
                 user_shortname=shortname,
             )
         )
+
         user: core.User | None = await db.load_or_none(
             space_name=MANAGEMENT_SPACE,
             subpath=USERS_SUBPATH,
             shortname=shortname,
             class_type=core.User,
         )
-        if not user:
-            user = core.User(
+        if user:
+            return user
+
+        userRecord: core.Record | None = await db.get_entry_by_criteria(
+            {"email": email}, UsersTable
+        )
+        userByEmail: core.User | None = (
+            core.User.from_record(
+                userRecord, userRecord.attributes.get("owner_shortname", "")
+            )
+            if userRecord and userRecord.attributes
+            else None
+        )
+        if userByEmail:
+            return userByEmail
+
+        user = core.User(
+            shortname=shortname,
+            owner_shortname="dmart",
+            displayname=core.Translation(en=f"{first_name or ''} {last_name or ''}".strip()),
+            email=email,
+            is_active=True,
+            is_email_verified=True,
+            social_avatar_url=picture,
+        )
+        setattr(user, f"{provider}_id", provider_id)
+        await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
+        await plugin_manager.after_action(
+            core.Event(
+                space_name=MANAGEMENT_SPACE,
+                subpath=USERS_SUBPATH,
                 shortname=shortname,
-                owner_shortname="dmart",
-                displayname=core.Translation(en=f"{first_name or ''} {last_name or ''}".strip()),
-                email=email,
-                is_active=True,
-                is_email_verified=True,
-                social_avatar_url=picture,
+                action_type=core.ActionType.create,
+                resource_type=ResourceType.user,
+                user_shortname=shortname,
             )
-            setattr(user, f"{provider}_id", provider_id)
-            await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
-            await plugin_manager.after_action(
-                core.Event(
-                    space_name=MANAGEMENT_SPACE,
-                    subpath=USERS_SUBPATH,
-                    shortname=shortname,
-                    action_type=core.ActionType.create,
-                    resource_type=ResourceType.user,
-                    user_shortname=shortname,
-                )
-            )
+        )
         return user
 
     async def social_login(request: Request, sso: SSOBase, provider: str) -> core.User:

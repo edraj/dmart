@@ -1513,7 +1513,7 @@ class FileAdapter(BaseDataAdapter):
 
         return resolve_schema_references(schema_content)
 
-    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars) -> dict:
+    async def check_uniqueness(self, unique_fields, search_str, redis_escape_chars = str.maketrans({".": r"\.", "@": r"\@", ":": r"\:", "/": r"\/", "-": r"\-", " ": r"\ "})) -> dict:
         async with RedisServices() as redis_man:
             for key, value in unique_fields.items():
                 if not value:

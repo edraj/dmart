@@ -8,6 +8,7 @@ PyJWT[crypto]
 redis
 aiofiles
 aiohttp
+brotli
 aiosmtplib
 python-multipart
 jsonschema
