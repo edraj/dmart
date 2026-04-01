@@ -12,11 +12,11 @@ from jsonschema.validators import Draft7Validator
 from sqlmodel import col, delete, select
 
 from api.managed.router import serve_request
-from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.create_tables import Entries, Spaces
 from models import api, core
 from models.enums import ContentType, RequestType
+from utils.settings import settings
 
 duplicated_entries: dict = {}
 
