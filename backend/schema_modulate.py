@@ -8,6 +8,7 @@ from sqlalchemy import update
 from sqlmodel import col, select
 
 from data_adapters.sql.adapter import SQLAdapter
+from utils.settings import settings
 from data_adapters.sql.create_tables import Attachments, Entries, Permissions, Roles, Spaces, Users
 
 """
@@ -36,7 +37,7 @@ class ResourceType(StrEnum):
 async def handle_sql_modulation(args):
     spaces: list[Any] = []
     if args.space:
-        if args.space == "management":
+        if args.space == settings.management_space:
             if args.subpath is None:
                 spaces = []
             if args.subpath == "~attachments":

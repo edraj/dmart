@@ -1485,7 +1485,7 @@ async def serve_space_update(request, record, owner_shortname: str, is_replace: 
 
 
 async def serve_space_delete(request, record, owner_shortname: str):
-    if request.space_name == "management":
+    if request.space_name == settings.management_space:
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             api.Error(

@@ -12,6 +12,7 @@ from jsonschema.validators import Draft7Validator
 from sqlmodel import col, delete, select
 
 from api.managed.router import serve_request
+from utils.settings import settings
 from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.create_tables import Entries, Spaces
 from models import api, core
@@ -170,7 +171,7 @@ async def save_health_check_entry(health_check, space_name: str):
     try:
         await serve_request(
             request=api.Request(
-                space_name="management",
+                space_name=settings.management_space,
                 request_type=RequestType.create,
                 records=[
                     core.Record(

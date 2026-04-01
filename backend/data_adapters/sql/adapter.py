@@ -1480,7 +1480,7 @@ class SQLAdapter(BaseDataAdapter):
                 return 0, []
 
         is_fetching_spaces = False
-        if query.space_name and query.type == QueryType.spaces and query.space_name == "management" and query.subpath == "/":
+        if query.space_name and query.type == QueryType.spaces and query.space_name == settings.management_space and query.subpath == "/":
             is_fetching_spaces = True
             statement = select(Spaces)  # type: ignore
             statement_total = select(func.count(col(Spaces.uuid)))
@@ -3077,7 +3077,7 @@ class SQLAdapter(BaseDataAdapter):
             )
 
         if schema_shortname in ["folder_rendering", "meta_schema"]:
-            space_name = "management"
+            space_name = settings.management_space
         schema = await self.load(space_name, "/schema", schema_shortname, core.Schema)
         if schema.payload:
             schema = schema.payload.model_dump()["body"]
