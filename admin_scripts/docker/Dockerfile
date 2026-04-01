@@ -53,7 +53,6 @@ RUN set -eux \
   && echo "DATABASE_DRIVER='postgresql+psycopg'" >> /root/.dmart/config.env \
   && echo "DATABASE_USERNAME='dmart'" >> /root/.dmart/config.env \
   && echo "DATABASE_PASSWORD='$(cat /tmp/pgpass)'" >> /root/.dmart/config.env \
-  && echo "ACTIVE_DATA_DB='sql'" >> /root/.dmart/config.env \
   && echo "BASE_PATH='/dmart'" >> /root/.dmart/config.env \
   && cp /root/config.json /root/.dmart/ \
   && rm -rf /tmp/* \
