@@ -16,6 +16,7 @@ from data_adapters.adapter import data_adapter as db
 from data_adapters.sql.create_tables import Entries, Spaces
 from models import api, core
 from models.enums import ContentType, RequestType, ResourceType
+from utils.settings import settings
 
 duplicated_entries: dict = {}
 
@@ -170,7 +171,7 @@ async def save_health_check_entry(health_check, space_name: str):
     try:
         await serve_request(
             request=api.Request(
-                space_name="management",
+                space_name=settings.management_space,
                 request_type=RequestType.create,
                 records=[
                     core.Record(

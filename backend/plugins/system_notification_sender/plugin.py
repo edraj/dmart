@@ -64,7 +64,7 @@ class Plugin(PluginBase):
             api.Query(
                 type=QueryType.search,
                 retrieve_json_payload=True,
-                space_name="management",
+                space_name=settings.management_space,
                 subpath="notifications/system",
                 search=f"@payload.body.on_space:{data.space_name} @payload.body.on_subpath:{data.subpath.lstrip('/')} @payload.body.on_action:{data.action_type}",
                 limit=30,
