@@ -8,8 +8,8 @@ from sqlalchemy import update
 from sqlmodel import col, select
 
 from data_adapters.sql.adapter import SQLAdapter
-from utils.settings import settings
 from data_adapters.sql.create_tables import Attachments, Entries, Permissions, Roles, Spaces, Users
+from utils.settings import settings
 
 """
 --space and --subpath are optional
