@@ -7,8 +7,14 @@ import json
 import logging
 import re
 from contextlib import asynccontextmanager
-from typing import Any, Optional, cast
+from typing import Any, cast
 
+from aioquic.asyncio import QuicConnectionProtocol
+from aioquic.asyncio import serve as quic_serve
+from aioquic.h3.connection import H3_ALPN, H3Connection
+from aioquic.h3.events import HeadersReceived, WebTransportStreamDataReceived
+from aioquic.quic.configuration import QuicConfiguration
+from aioquic.quic.events import ProtocolNegotiated, QuicEvent
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
@@ -20,13 +26,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-
-from aioquic.asyncio import QuicConnectionProtocol
-from aioquic.asyncio import serve as quic_serve
-from aioquic.h3.connection import H3_ALPN, H3Connection
-from aioquic.h3.events import HeadersReceived, WebTransportStreamDataReceived
-from aioquic.quic.configuration import QuicConfiguration
-from aioquic.quic.events import ProtocolNegotiated, QuicEvent
 
 from models.enums import ActionType, ResourceType
 from models.enums import Status as ResponseStatus
@@ -71,7 +70,7 @@ class WebTransportConnectionManager:
         if stream not in self.active_connections[user_shortname]:
             self.active_connections[user_shortname].append(stream)
 
-    def disconnect(self, user_shortname: str, stream_to_remove: Optional[WebTransportStream] = None) -> None:
+    def disconnect(self, user_shortname: str, stream_to_remove: WebTransportStream | None = None) -> None:
         if user_shortname in self.active_connections:
             if stream_to_remove is None:
                 del self.active_connections[user_shortname]
@@ -95,7 +94,7 @@ class WebTransportConnectionManager:
             try:
                 await stream.send((message + "\n").encode())
                 results.append(True)
-            except Exception as e:
+            except Exception:
                 results.append(False)
                 self.disconnect(user_shortname, stream)
         return any(results)
@@ -116,7 +115,7 @@ class WebTransportConnectionManager:
             if not self.channels[channel_name]:
                 del self.channels[channel_name]
 
-    def generate_channel_name(self, msg: dict) -> Optional[str]:
+    def generate_channel_name(self, msg: dict) -> str | None:
         if not {"space_name", "subpath"}.issubset(msg):
             return None
         space_name = msg["space_name"]
@@ -136,7 +135,7 @@ class WebTransportConnectionManager:
                 action_type=ActionType.query,
             )
             return bool(result)
-        except Exception as e:
+        except Exception:
             return False
 
     async def channel_subscribe(self, user_shortname: str, msg_json: dict):
@@ -166,7 +165,7 @@ class WebTransportConnectionManager:
         )
         return True, "Subscribed successfully"
 
-    async def channel_unsubscribe(self, user_shortname: str, msg_json: Optional[dict] = None):
+    async def channel_unsubscribe(self, user_shortname: str, msg_json: dict | None = None):
         if msg_json and {"space_name", "subpath"}.issubset(msg_json):
             channel_name = self.generate_channel_name(msg_json)
             if channel_name in self.channels and user_shortname in self.channels[channel_name]:
@@ -193,7 +192,7 @@ manager = WebTransportConnectionManager()
 class WebTransportProtocol(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._http: Optional[H3Connection] = None
+        self._http: H3Connection | None = None
         # session_stream_id (CONNECT stream) -> user_shortname
         self._sessions: dict[int, str] = {}
         # data_stream_id -> WebTransportStream (registered with manager)
@@ -387,16 +386,16 @@ def generate_wt_cert(certfile: str, keyfile: str, hostname: str = "localhost") -
 generate_wt_cert("localhost.crt", "localhost.key")
 
 
-def get_certificate_fingerprint(certfile: str) -> Optional[str]:
+def get_certificate_fingerprint(certfile: str) -> str | None:
     try:
         with open(certfile, "rb") as f:
             cert = x509.load_pem_x509_certificate(f.read(), default_backend())
         return base64.b64encode(cert.fingerprint(hashes.SHA256())).decode()
-    except Exception as e:
+    except Exception:
         return None
 
 
-fingerprint_cache: Optional[str] = None
+fingerprint_cache: str | None = None
 
 
 # ---------------------------------------------------------------------------
