@@ -10,27 +10,32 @@ from utils.settings import settings
 
 FACEBOOK_CLIENT_ID = settings.facebook_client_id
 FACEBOOK_CLIENT_SECRET = settings.facebook_client_secret
+FACEBOOK_OAUTH_CALLBACK = settings.facebook_oath_callback
 
 
 def get_facebook_sso() -> FacebookSSO:
     return FacebookSSO(
         FACEBOOK_CLIENT_ID,
         FACEBOOK_CLIENT_SECRET,
-        redirect_uri=f"{settings.app_url}/user/facebook/callback",
+        redirect_uri=FACEBOOK_OAUTH_CALLBACK,
     )
 
 
 GOOGLE_CLIENT_ID = settings.google_client_id
 GOOGLE_CLIENT_SECRET = settings.google_client_secret
+GOOGLE_OAUTH_CALLBACK = settings.google_oath_callback
 
 
 def get_google_sso() -> GoogleSSO:
-    return GoogleSSO(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirect_uri=f"{settings.app_url}/user/google/callback")
+    return GoogleSSO(
+        GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirect_uri=GOOGLE_OAUTH_CALLBACK
+    )
 
 
 # Apple SSO
 APPLE_CLIENT_ID = settings.apple_client_id  # Your Apple Services ID
 APPLE_CLIENT_SECRET = settings.apple_client_secret
+APPLE_OAUTH_CALLBACK = settings.apple_oath_callback
 
 
 def apple_response_convertor(response: dict[str, Any], client: AsyncClient | None = None) -> OpenID:
@@ -63,6 +68,6 @@ def get_apple_sso() -> SSOBase:
     return AppleProvider(
         client_id=APPLE_CLIENT_ID,
         client_secret=APPLE_CLIENT_SECRET,
-        redirect_uri=f"{settings.app_url}/user/apple/callback",
+        redirect_uri=APPLE_OAUTH_CALLBACK,
         allow_insecure_http=False,
     )
