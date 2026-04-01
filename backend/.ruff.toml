@@ -21,7 +21,7 @@ ignore = [
     "RUF012",   # mutable class variable (Pydantic handles this)
     "ASYNC220", # create-subprocess-in-async-function (subprocess calls are intentional)
     "ASYNC230", # blocking-open-call-in-async-function (requires anyio migration)
-    "ASYNC240", # blocking-path-method-in-async-function (requires anyio migration)
+    # "ASYNC240", # blocking-path-method-in-async-function (not available in ruff 0.6.x)
 ]
 
 [lint.per-file-ignores]

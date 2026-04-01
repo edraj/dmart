@@ -6,11 +6,11 @@ import ipaddress
 import json
 import logging
 import re
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any, cast
 
-from aioquic.asyncio import QuicConnectionProtocol
-from aioquic.asyncio import serve as quic_serve
+from aioquic.asyncio.protocol import QuicConnectionProtocol
+from aioquic.asyncio.server import serve as quic_serve
 from aioquic.h3.connection import H3_ALPN, H3Connection
 from aioquic.h3.events import HeadersReceived, WebTransportStreamDataReceived
 from aioquic.quic.configuration import QuicConfiguration
@@ -75,10 +75,8 @@ class WebTransportConnectionManager:
             if stream_to_remove is None:
                 del self.active_connections[user_shortname]
             else:
-                try:
+                with suppress(ValueError):
                     self.active_connections[user_shortname].remove(stream_to_remove)
-                except ValueError:
-                    pass
                 if not self.active_connections[user_shortname]:
                     del self.active_connections[user_shortname]
 
@@ -199,6 +197,8 @@ class WebTransportProtocol(QuicConnectionProtocol):
         self._streams: dict[int, WebTransportStream] = {}
         # per-stream read buffers
         self._buffers: dict[int, bytearray] = {}
+        # strong references to background tasks to prevent GC cancellation
+        self._background_tasks: set[asyncio.Task] = set()
 
     # ------------------------------------------------------------------
     def quic_event_received(self, event: QuicEvent) -> None:
@@ -228,10 +228,14 @@ class WebTransportProtocol(QuicConnectionProtocol):
                     self._reject(event.stream_id, b"404")
 
         elif isinstance(event, WebTransportStreamDataReceived):
-            asyncio.ensure_future(self._handle_stream_data(event))
+            task = asyncio.ensure_future(self._handle_stream_data(event))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     # ------------------------------------------------------------------
     def _reject(self, stream_id: int, code: bytes) -> None:
+        if self._http is None:
+            return
         self._http.send_headers(
             stream_id=stream_id,
             headers=[(b":status", code)],
@@ -244,12 +248,12 @@ class WebTransportProtocol(QuicConnectionProtocol):
         try:
             decoded = decode_jwt(token)
             user_shortname = decoded["shortname"]
-        except Exception as e:
-            err = getattr(e, "error", None)
-            msg = err.message if (err and hasattr(err, "message")) else str(e)
+        except Exception:
             self._reject(session_stream_id, b"401")
             return
 
+        if self._http is None:
+            return
         self._http.send_headers(
             stream_id=session_stream_id,
             headers=[(b":status", b"200")],
@@ -322,7 +326,7 @@ class WebTransportProtocol(QuicConnectionProtocol):
         elif msg_type == "chat_message":
             channel_name = manager.generate_channel_name(msg_json)
             if channel_name:
-                eligible   = await manager.check_eligibility(user_shortname, msg_json.get("space_name"), msg_json.get("subpath"))
+                eligible   = await manager.check_eligibility(user_shortname, msg_json.get("space_name") or "", msg_json.get("subpath") or "")
                 subscribed = channel_name in manager.channels and user_shortname in manager.channels[channel_name]
                 if eligible and subscribed:
                     await manager.broadcast_message(
@@ -340,8 +344,8 @@ class WebTransportProtocol(QuicConnectionProtocol):
     # ------------------------------------------------------------------
     def connection_lost(self, exc) -> None:
         # Clean up every user whose stream lived on this connection
-        for stream_id, wt_stream in list(self._streams.items()):
-            for session_id, user_shortname in self._sessions.items():
+        for _stream_id, wt_stream in list(self._streams.items()):
+            for _session_id, user_shortname in self._sessions.items():
                 manager.disconnect(user_shortname, wt_stream)
         super().connection_lost(exc)
 
