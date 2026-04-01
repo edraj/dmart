@@ -183,6 +183,12 @@
     let showSchemaImpactModal = $state(false);
     let schemaAffectedCount = $state(0);
 
+    let showPermissionImpactModal = $state(false);
+    let permissionAffectedRoles = $state<string[]>([]);
+
+    let showRoleImpactModal = $state(false);
+    let roleAffectedUsersCount = $state(0);
+
     async function handleSave() {
         if (resource_type === ResourceType.schema) {
             try {
@@ -204,6 +210,51 @@
             } catch (e) {
                 isActionLoading = false;
             }
+        } else if (resource_type === ResourceType.permission) {
+            try {
+                isActionLoading = true;
+                const rolesResult = await Dmart.query({
+                    type: QueryType.search,
+                    space_name: "management",
+                    subpath: "/roles",
+                    exact_subpath: true,
+                    retrieve_json_payload: true,
+                    search: `@permissions:${entry.shortname}`,
+                    limit: 100,
+                    offset: 0,
+                });
+                permissionAffectedRoles = (rolesResult?.records ?? []).map(
+                    (r) => r.shortname,
+                );
+                isActionLoading = false;
+                if (permissionAffectedRoles.length > 0) {
+                    showPermissionImpactModal = true;
+                    return;
+                }
+            } catch (e) {
+                isActionLoading = false;
+            }
+        } else if (resource_type === ResourceType.role) {
+            try {
+                isActionLoading = true;
+                const usersResult = await Dmart.query({
+                    type: QueryType.counters,
+                    space_name: "management",
+                    subpath: "/users",
+                    exact_subpath: true,
+                    retrieve_json_payload: true,
+                    search: `@roles:${entry.shortname}`,
+                });
+                roleAffectedUsersCount =
+                    usersResult?.attributes?.returned ?? 0;
+                isActionLoading = false;
+                if (roleAffectedUsersCount > 0) {
+                    showRoleImpactModal = true;
+                    return;
+                }
+            } catch (e) {
+                isActionLoading = false;
+            }
         }
         await performSave();
     }
@@ -215,6 +266,24 @@
 
     function cancelSchemaUpdate() {
         showSchemaImpactModal = false;
+    }
+
+    async function confirmPermissionUpdate() {
+        showPermissionImpactModal = false;
+        await performSave();
+    }
+
+    function cancelPermissionUpdate() {
+        showPermissionImpactModal = false;
+    }
+
+    async function confirmRoleUpdate() {
+        showRoleImpactModal = false;
+        await performSave();
+    }
+
+    function cancelRoleUpdate() {
+        showRoleImpactModal = false;
     }
 
     let openDeleteModal = $state(false);
@@ -923,6 +992,87 @@
         <Button color="red" onclick={confirmDiscardChanges}
         >Discard Changes</Button
         >
+    </div>
+</Modal>
+
+<Modal
+        bind:open={showPermissionImpactModal}
+        size="md"
+        title="Permission Update Warning"
+>
+    <div class="text-center mb-6">
+        <div
+                class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left dark:bg-yellow-900/20 dark:border-yellow-500"
+        >
+            <p class="text-sm text-yellow-700 font-medium dark:text-yellow-400">
+                ⚠ <strong>{permissionAffectedRoles.length}</strong>
+                role{permissionAffectedRoles.length === 1 ? "" : "s"} will be affected by this
+                permission change.
+            </p>
+            <ul class="mt-2 list-disc list-inside text-sm text-yellow-700 dark:text-yellow-400">
+                {#each permissionAffectedRoles as role}
+                    <li>{role}</li>
+                {/each}
+            </ul>
+        </div>
+        <p>
+            Are you sure you want to update the permission <span class="font-bold"
+        >{entry.shortname}</span
+        >?
+        </p>
+    </div>
+
+    <div class="flex justify-between w-full">
+        <Button
+                class="cursor-pointer"
+                color="alternative"
+                onclick={cancelPermissionUpdate}>Cancel</Button
+        >
+        <Button
+                class="bg-primary cursor-pointer"
+                onclick={confirmPermissionUpdate}
+                disabled={isActionLoading}
+        >
+            {isActionLoading ? "Saving..." : "Confirm Update"}
+        </Button>
+    </div>
+</Modal>
+
+<Modal
+        bind:open={showRoleImpactModal}
+        size="md"
+        title="Role Update Warning"
+>
+    <div class="text-center mb-6">
+        <div
+                class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left dark:bg-yellow-900/20 dark:border-yellow-500"
+        >
+            <p class="text-sm text-yellow-700 font-medium dark:text-yellow-400">
+                ⚠ <strong>{roleAffectedUsersCount}</strong>
+                user{roleAffectedUsersCount === 1 ? "" : "s"} will be affected by this
+                role change.
+            </p>
+        </div>
+        <p>
+            Are you sure you want to update the role <span class="font-bold"
+        >{entry.shortname}</span
+        >?
+        </p>
+    </div>
+
+    <div class="flex justify-between w-full">
+        <Button
+                class="cursor-pointer"
+                color="alternative"
+                onclick={cancelRoleUpdate}>Cancel</Button
+        >
+        <Button
+                class="bg-primary cursor-pointer"
+                onclick={confirmRoleUpdate}
+                disabled={isActionLoading}
+        >
+            {isActionLoading ? "Saving..." : "Confirm Update"}
+        </Button>
     </div>
 </Modal>
 
