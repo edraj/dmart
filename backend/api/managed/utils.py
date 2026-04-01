@@ -583,7 +583,7 @@ async def serve_request_update(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
     return [], failed_records
@@ -741,7 +741,7 @@ async def serve_request_patch(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
     return [], failed_records
@@ -853,7 +853,7 @@ async def serve_request_assign(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
 
@@ -960,7 +960,7 @@ async def serve_request_update_acl(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
     return [], failed_records
@@ -1066,7 +1066,7 @@ async def serve_request_delete(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
 
@@ -1215,7 +1215,7 @@ async def serve_request_move(request, owner_shortname: str):
             }
 
     results = await asyncio.gather(*(process_record(r) for r in request.records))
-    for rec, failed in results:
+    for _, failed in results:
         if failed is not None:
             failed_records.append(failed)
 
