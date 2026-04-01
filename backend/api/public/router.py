@@ -210,7 +210,6 @@ async def retrieve_entry_or_attachment_payload(
     if resource_type is not ResourceType.json and (
         meta.payload is None
         or meta.payload.body is None
-        or (settings.active_data_db == "file" and meta.payload.body != f"{shortname}.{ext}")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -247,14 +246,6 @@ async def retrieve_entry_or_attachment_payload(
             user_shortname="anonymous",
         )
     )
-
-    if settings.active_data_db == "file":
-        payload_path = db.payload_path(
-            space_name=space_name,
-            subpath=subpath,
-            class_type=cls,
-        )
-        return FileResponse(payload_path / str(meta.payload.body))
 
     if meta.payload.content_type == ContentType.json and isinstance(meta.payload.body, dict):
         return api.Response(status=api.Status.success, attributes=meta.payload.body)

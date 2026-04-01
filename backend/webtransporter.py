@@ -447,8 +447,6 @@ def get_certificate_fingerprint(certfile):
         return None
 
 async def main():
-    await access_control.load_permissions_and_roles()
-
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.webtransport_port}"]
     config.logconfig_dict = logging_schema

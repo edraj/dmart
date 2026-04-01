@@ -40,7 +40,6 @@ from api.qr.router import router as qr
 from api.user.router import router as user
 from data_adapters.adapter import data_adapter as db
 from languages.loader import load_langs
-from utils.access_control import access_control
 from utils.internal_error_code import InternalErrorCode
 from utils.jwt import decode_jwt
 from utils.logger import logging_schema
@@ -77,7 +76,6 @@ async def lifespan(app: FastAPI):
     app.openapi_schema = openapi_schema
 
     await db.initialize_spaces()
-    await access_control.load_permissions_and_roles()
     # await plugin_manager.load_plugins(app, capture_body)
     yield
 
@@ -313,7 +311,7 @@ async def middle(request: Request, call_next):
         response_body = {"status": "failed", "error": {"code": 504, "message": "Request processing time excedeed limit"}}
         response = JSONResponse(content=response_body, status_code=status.HTTP_504_GATEWAY_TIMEOUT)
     except api.Exception as e:
-        if settings.active_data_db == "sql" and e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
+        if e.error.message.startswith("(sqlalchemy.dialects.postgresql"):
             response_body = {"status": "failed", "error": "Something went wrong"}
             response = JSONResponse(status_code=500, content=response_body)
         else:

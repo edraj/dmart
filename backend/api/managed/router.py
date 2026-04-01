@@ -267,11 +267,8 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
     keys: list = [i["name"] for i in folder_views]
     keys_existence = dict(zip(keys, [False for _ in range(len(keys))], strict=False))
 
-    # if settings.active_data_db == 'file':
-    #     _, search_res = await db.query(query, user_shortname)
-    # else:
-    #     _, search_res = await db.query(query, user_shortname)
-    #     docs_dicts = [search_re.model_dump() for search_re in search_res]
+    #  _, search_res = await db.query(query, user_shortname)
+    # docs_dicts = [search_re.model_dump() for search_re in search_res]
 
     _, search_res = await repository.serve_query(
         query,
@@ -345,8 +342,6 @@ async def csv_entries(query: api.Query, user_shortname=Depends(JWTBearer())):
 #             )
 #
 #     await db.initialize_spaces()
-#
-#     await access_control.load_permissions_and_roles()
 #
 #     await plugin_manager.after_action(
 #         core.Event(
@@ -636,7 +631,6 @@ async def retrieve_entry_or_attachment_payload(
     if resource_type is not ResourceType.json and (
         meta.payload is None
         or meta.payload.body is None
-        or (settings.active_data_db == "file" and meta.payload.body != f"{shortname}.{ext}")
     ):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
@@ -673,15 +667,6 @@ async def retrieve_entry_or_attachment_payload(
             user_shortname=logged_in_user,
         )
     )
-
-    if settings.active_data_db == "file":
-        payload_path = db.payload_path(
-            space_name=space_name,
-            subpath=subpath,
-            class_type=cls,
-            schema_shortname=schema_shortname,
-        )
-        return FileResponse(payload_path / str(meta.payload.body))
 
     if meta.payload.content_type == ContentType.json and isinstance(meta.payload.body, dict):
         return api.Response(
@@ -1281,9 +1266,6 @@ async def reload_security_data(logged_in_user=Depends(JWTBearer())):
                 message="Only admin users can reload security data",
             ),
         )
-    if settings.active_data_db == "file":
-        await access_control.load_permissions_and_roles()
-
     return api.Response(status=api.Status.success)
 
 

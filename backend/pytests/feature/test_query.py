@@ -84,55 +84,27 @@ async def test_query_count(client: AsyncClient) -> None:
 @pytest.mark.run(order=3)
 @pytest.mark.anyio
 async def test_query_aggregate(client: AsyncClient) -> None:
-    if settings.active_data_db == "file":
-        response = await client.post(
-            "/managed/query",
-            json={
-                "type": QueryType.aggregation,
-                "space_name": DEMO_SPACE,
-                "subpath": DEMO_SUBPATH,
-                "search": "",
-                "aggregation_data": {
-                    "load": ["@resource_type", "@subpath", "@is_active"],
-                    "group_by": ["@resource_type", "@subpath"],
-                    "reducers": [
-                        {"reducer_name": "r_count", "alias": "subpath_count"},
-                        {
-                            "reducer_name": "sum",
-                            "alias": "active_num",
-                            "args": ["is_active"],
-                        },
-                        {
-                            "reducer_name": "random_sample",
-                            "alias": "shortname_random_list",
-                            "args": ["shortname", 3],
-                        },
-                    ],
-                },
+    response = await client.post(
+        "/managed/query",
+        json={
+            "type": QueryType.aggregation,
+            "space_name": DEMO_SPACE,
+            "subpath": DEMO_SUBPATH,
+            "search": "",
+            "aggregation_data": {
+                "load": ["@resource_type", "@subpath", "@is_active"],
+                "group_by": ["@resource_type", "@subpath", "@is_active"],
+                "reducers": [
+                    {"reducer_name": "r_count", "alias": "subpath_count"},
+                    {
+                        "reducer_name": "sum",
+                        "alias": "active_num",
+                        "args": ["is_active"],
+                    },
+                ],
             },
-        )
-    else:
-        response = await client.post(
-            "/managed/query",
-            json={
-                "type": QueryType.aggregation,
-                "space_name": DEMO_SPACE,
-                "subpath": DEMO_SUBPATH,
-                "search": "",
-                "aggregation_data": {
-                    "load": ["@resource_type", "@subpath", "@is_active"],
-                    "group_by": ["@resource_type", "@subpath", "@is_active"],
-                    "reducers": [
-                        {"reducer_name": "r_count", "alias": "subpath_count"},
-                        {
-                            "reducer_name": "sum",
-                            "alias": "active_num",
-                            "args": ["is_active"],
-                        },
-                    ],
-                },
-            },
-        )
+        },
+    )
 
     assert response.status_code == status.HTTP_200_OK
     json_response = response.json()
@@ -141,25 +113,3 @@ async def test_query_aggregate(client: AsyncClient) -> None:
     assert isinstance(json_response["records"][0]["attributes"], dict)
     assert "active_num" in list(json_response["records"][0]["attributes"].keys())
 
-
-@pytest.mark.run(order=3)
-@pytest.mark.anyio
-async def test_query_events(client: AsyncClient) -> None:
-    if settings.active_data_db == "sql":
-        pytest.skip("Skipping test for sql-based database")
-        return
-
-    response = await client.post(
-        "/managed/query",
-        json={
-            "type": QueryType.events,
-            "space_name": DEMO_SPACE,
-            "subpath": "/",
-            "search": "",
-        },
-    )
-    assert response.status_code == status.HTTP_200_OK
-    json_response = response.json()
-    assert json_response["status"] == "success"
-    assert json_response["attributes"]["total"] > 0
-    assert json_response["records"][0]["attributes"]["request"] in RequestType._value2member_map_

@@ -37,9 +37,6 @@ def connect_with_retry(engine, retries=5, delay=2):
 
 @pytest.fixture(scope="module")
 def setup_database():
-    if settings.active_data_db == "file":
-        pytest.skip("Skipping test for file-based database")
-        return
 
     # Use the settings to connect with the main `postgres` user
     postgresql_url = f"{settings.database_driver.replace('+asyncpg', '+psycopg')}://{settings.database_username}:{settings.database_password}@{settings.database_host}:{settings.database_port}"
@@ -75,9 +72,6 @@ def setup_database():
 
 @pytest.fixture(scope="module")
 def setup_environment(setup_database):
-    if settings.active_data_db == "file":
-        pytest.skip("Skipping test for file-based database")
-        return
 
     # Set the database name from settings
     driver = settings.database_driver.replace("+asyncpg", "+psycopg")
@@ -98,10 +92,6 @@ def setup_environment(setup_database):
 
 
 def test_json_to_db_migration(setup_environment):
-    if settings.active_data_db == "file":
-        pytest.skip("Skipping test for file-based database")
-        return
-
     engine = setup_environment
 
     # Create a complex mock directory structure and files for different entry types

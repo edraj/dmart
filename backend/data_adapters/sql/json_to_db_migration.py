@@ -435,11 +435,6 @@ async def main(target_path: Path | None = None):
     # for future in as_completed(futures):
     #     future.result()
 
-    if settings.active_data_db == "file":
-        print(
-            "[Warning] you are using active_data_db='file', please don't forget to set it to active_data_db='sql' in your config.env"
-        )
-
     await save_health_check_entry()
 
     # await SQLAdapter().ensure_authz_materialized_views_fresh()

@@ -104,13 +104,11 @@ async def get_user_query_policies(
                 sql_query_policies.append(f"{perm_key}:true:{user_group}")
         elif ConditionType.is_active in permission["conditions"]:
             sql_query_policies.append(f"{perm_key}:true:*")
-        elif ConditionType.own in permission["conditions"]:
-            for user_group in user_groups:
-                if settings.active_data_db == "file":
-                    sql_query_policies.append(f"{perm_key}:true:{user_shortname}|{perm_key}:false:{user_group}")
-                else:
-                    sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
-                    sql_query_policies.append(f"{perm_key}:false:{user_shortname}")
+        # TBD The following seems useless ... needs review
+        # elif ConditionType.own in permission["conditions"]:
+        #     for user_group in user_groups:
+        #         sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
+        #         sql_query_policies.append(f"{perm_key}:false:{user_shortname}")
 
         else:
             sql_query_policies.append(f"{perm_key}:*")

@@ -1,10 +1,9 @@
 import sys
 
 from data_adapters.adapter import data_adapter as db
-from models.core import ACL, ActionType, ConditionType, Group, Meta, Permission, Role, User
+from models.core import ACL, ActionType, ConditionType, Group, Permission, Role, User
 from models.enums import ResourceType
 from utils.helpers import camel_case, flatten_dict
-from utils.regex import FILE_PATTERN
 from utils.settings import settings
 
 
@@ -13,41 +12,6 @@ class AccessControl:
     groups: dict[str, Group] = {}
     roles: dict[str, Role] = {}
     users: dict[str, User] = {}
-
-    async def load_permissions_and_roles(self) -> None:
-        if settings.active_data_db == "file":
-            management_path = settings.spaces_folder / settings.management_space
-
-            management_modules: dict[str, type[Meta]] = {"groups": Group, "roles": Role, "permissions": Permission}
-
-            for module_name, module_value in management_modules.items():
-                # Clear and repopulate the module dict on the instance
-                module_dict: dict = getattr(self, module_name)
-                module_dict.clear()
-                path = management_path / module_name
-                entries_glob = ".dm/*/meta.*.json"
-                if path.exists():
-                    for one in path.glob(entries_glob):
-                        match = FILE_PATTERN.search(str(one))
-                        if not match or not one.is_file():
-                            continue
-                        shortname = match.group(1)
-                        try:
-                            resource_obj: Meta = await db.load(
-                                settings.management_space,
-                                module_name,
-                                shortname,
-                                module_value,
-                                "anonymous",
-                            )
-                            if resource_obj.is_active:
-                                module_dict[shortname] = resource_obj
-                        except Exception as ex:
-                            raise ex
-
-            await db.create_user_premission_index()
-            await db.store_modules_to_redis(self.roles, self.groups, self.permissions)
-            await db.delete_user_permissions_map_in_redis()
 
     async def check_access(
         self,
