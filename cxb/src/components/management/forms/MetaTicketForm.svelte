@@ -19,7 +19,12 @@
         formData = $bindable(),
     } = $props();
 
-    const userRoles = JSON.parse(localStorage.getItem("roles"));
+    let userRoles: string[] = [];
+    try {
+        userRoles = JSON.parse(localStorage.getItem("roles") || "[]") || [];
+    } catch {
+        // Corrupted localStorage data
+    }
 
     let ticketElement = $state(null);
     let ticket_status = $state(null);

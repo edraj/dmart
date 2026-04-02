@@ -48,7 +48,7 @@ export async function saveEntry(
         };
     }
 
-    if (resource_type === ResourceType.user && content.password === null || ((content.password && content.password.startsWith("$argon2id")) || content.password === '')) {
+    if (resource_type === ResourceType.user && (content.password === null || (content.password && content.password.startsWith("$argon2id")) || content.password === '')) {
         delete content.password;
     }
 
@@ -81,7 +81,7 @@ export async function saveEntry(
                 resource_type: resource_type,
                 shortname: shortname,
                 subpath: resource_type === ResourceType.folder ? getParentSubpath(subpath) : subpath,
-                attributes: removeEmpty(content)
+                attributes: removeEmpty(content) as Record<string, any>
             }]
         });
         showToast(Level.info, `Entry has been updated successfully!`);

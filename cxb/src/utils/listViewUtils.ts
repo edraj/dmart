@@ -15,8 +15,8 @@ export function getValueByPath(path: string[], data: any, type: string): string 
     if (data === null) {
         return get(_)("not_applicable");
     }
-    if (path.length == 1 && path[0].length > 0 && typeof(data) === "object" && path[0] in data) {
-        if (type == "json") return JSON.stringify(data[path[0]], undefined, 1);
+    if (path.length === 1 && path[0].length > 0 && typeof(data) === "object" && path[0] in data) {
+        if (type === "json") return JSON.stringify(data[path[0]], undefined, 1);
         else return data[path[0]];
     }
     if (path.length > 1 && path[0].length > 0 && path[0] in data) {
@@ -45,7 +45,13 @@ export function storeRowsPerPageSetting(rowsPerPage: number): void {
  * Gets rows per page setting from localStorage
  */
 export function getRowsPerPageSetting(): number {
-    return parseInt(typeof localStorage !== 'undefined' && localStorage.getItem("rowPerPage")) || 15;
+    if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem("rowPerPage");
+        if (stored) {
+            return parseInt(stored, 10) || 15;
+        }
+    }
+    return 15;
 }
 
 
@@ -176,6 +182,10 @@ export async function fetchPageRecords(params: {
     });
 
     const resp = await Dmart.query(queryObject, params.scope);
+
+    if (!resp) {
+        return { total: 0, records: [] };
+    }
 
     return {
         total: resp.attributes.total,

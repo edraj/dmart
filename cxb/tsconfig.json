@@ -20,9 +20,8 @@
         "./src/*"
       ]
     },
-    "types": [
-      "vitest/globals"
-    ]
+    "strict": true,
+    "noImplicitAny": false
   },
   "include": [
     "vite-env.d.ts",

@@ -188,7 +188,7 @@
             const currentSpace = $spaces.find((e) => e.shortname === space_name);
             const hideFolders = currentSpace?.attributes?.hide_folders;
 
-            if (hideFolders.length) {
+            if (hideFolders?.length) {
                 _search += ` -@shortname:${hideFolders.join("|")}`;
             }
         }
@@ -407,31 +407,23 @@
 
     let isAllBulkChecked = false;
 
-    function handleAllBulk(e, override = null) {
+    function handleAllBulk(e: any, override: boolean | null = null) {
         isAllBulkChecked = override === null ? !isAllBulkChecked : override;
         if (e) {
             e.target.checked = isAllBulkChecked;
         }
 
-        objectDatatable.arrayRawData.map((e, i) => {
-            const _shortname = e.shortname;
-
-            const input: any = document.getElementById(_shortname);
-            if (input === null) return;
-            input.checked = isAllBulkChecked;
-
-            if (input.checked) {
-                const _resource_type = objectDatatable.arrayRawData[i].resource_type;
-                $bulkBucket = [
-                    ...$bulkBucket,
-                    {shortname: _shortname, resource_type: _resource_type},
-                ];
-            } else {
-                $bulkBucket = $bulkBucket.filter(
-                    (e) => e.shortname !== objectDatatable.arrayRawData[i].shortname,
-                );
-            }
-        });
+        if (isAllBulkChecked) {
+            // Select all — build the full list in one pass
+            $bulkBucket = objectDatatable.arrayRawData.map((row: any) => ({
+                shortname: row.shortname,
+                resource_type: row.resource_type,
+                ...row,
+            }));
+        } else {
+            // Deselect all
+            $bulkBucket = [];
+        }
     }
 
     function handleSortRendered(node) {

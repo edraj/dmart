@@ -1,5 +1,4 @@
 // FORM -> JSON
-import {generateUUID} from "@/utils/uuid";
 
 export function transformFormToJson(obj: any) {
     if (obj === null){
@@ -66,7 +65,7 @@ export function transformJsonToForm(obj: any) {
         return obj;
     }
     if (obj.id === undefined){
-        obj.id = generateUUID();
+        obj.id = crypto.randomUUID();
     }
     if (Array.isArray(obj)) {
         return obj.map(transformJsonToForm);
