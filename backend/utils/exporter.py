@@ -148,7 +148,7 @@ async def extract(
     input_subpath_schema_obj = copy.deepcopy(subpath_schema_obj)
 
     output_subpath = Path(f"{output_path}/{OUTPUT_FOLDER_NAME}/{space}/{subpath}")
-    if not output_subpath.is_dir():
+    if not output_subpath.is_dir():  # noqa: ASYNC240
         os.makedirs(output_subpath)
 
     # Generat output schema
@@ -182,8 +182,8 @@ async def extract(
         if not file_name.endswith(".json"):
             continue
         if entries_since:
-            payload_ts = round(os.path.getmtime(os.path.join(path, file_name)) * 1000)
-            meta_ts = round(os.path.getmtime(meta_path(space_path, subpath, file_name.split(".")[0], resource_type)) * 1000)
+            payload_ts = round(os.path.getmtime(os.path.join(path, file_name)) * 1000)  # noqa: ASYNC240
+            meta_ts = round(os.path.getmtime(meta_path(space_path, subpath, file_name.split(".")[0], resource_type)) * 1000)  # noqa: ASYNC240
             if payload_ts <= entries_since and meta_ts <= entries_since:
                 continue
 

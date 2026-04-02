@@ -490,10 +490,10 @@ if os.path.isdir(cxb_path):
 
     @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
     async def get_cxb_config():
-        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
+        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):  # noqa: ASYNC240
             return FileResponse(settings.cxb_config_path)
 
-        if os.path.exists("config.json"):
+        if os.path.exists("config.json"):  # noqa: ASYNC240
             return FileResponse("config.json")
 
         user_config = settings.spaces_folder / "config.json"
@@ -505,7 +505,7 @@ if os.path.isdir(cxb_path):
             return FileResponse(home_config)
 
         bundled_config = os.path.join(cxb_path, "config.json")
-        if os.path.exists(bundled_config):
+        if os.path.exists(bundled_config):  # noqa: ASYNC240
             return FileResponse(bundled_config)
 
         return {

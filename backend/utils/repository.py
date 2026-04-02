@@ -309,7 +309,7 @@ async def validate_subpath_data(
 
         folder_meta = Path(f"{folder.path}/meta.folder.json")
         folder_name = "/".join(subpath.split("/")[folder_name_index:])
-        if not folder_meta.is_file():
+        if not folder_meta.is_file():  # noqa: ASYNC240
             meta_folders_health.append(str(folder_meta)[len(str(settings.spaces_folder)) :])
             continue
 

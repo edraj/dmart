@@ -337,7 +337,7 @@ async def process_jsonl_file(
     """
     Python implementation of tail, grep, tac, head, sed for JSONL files.
     """
-    if not file_path.is_file():
+    if not file_path.is_file():  # noqa: ASYNC240
         return 0, []
 
     async with aiofiles.open(file_path) as f:

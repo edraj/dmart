@@ -799,12 +799,12 @@ def main():
                             db_to_json_main()
 
                         # Zip the contents
-                        output_zip = os.path.abspath(output_file)
+                        output_zip = os.path.abspath(output_file)  # noqa: ASYNC240
                         with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zip_file:
                             for root, _, files in os.walk(temp_dir):
                                 for file in files:
                                     file_path = os.path.join(root, file)
-                                    arcname = os.path.relpath(file_path, temp_dir)
+                                    arcname = os.path.relpath(file_path, temp_dir)  # noqa: ASYNC240
                                     zip_file.write(file_path, arcname)
                         print(f"Data exported successfully to {output_zip}")
                     finally:
@@ -818,7 +818,7 @@ def main():
             args = parser.parse_args(sys.argv[1:])
 
             async def run_import():
-                target_path = Path(args.target).absolute()
+                target_path = Path(args.target).absolute()  # noqa: ASYNC240
                 if not target_path.exists():
                     print(f"Error: Target path {target_path} does not exist")
                     sys.exit(1)

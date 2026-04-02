@@ -12,7 +12,7 @@ from models.enums import ContentType
 
 async def main(space: str, subpath: str, schema_path: str, num: int):
 
-    if not Path(schema_path).is_file():
+    if not Path(schema_path).is_file():  # noqa: ASYNC240
         print("Invalid schema file path")
 
     faker = JSF.from_json(Path(schema_path))  # type: ignore

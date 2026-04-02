@@ -371,7 +371,7 @@ async def events_query(query: api.Query, user_shortname: str | None = None) -> t
     total: int = 0
 
     path = Path(f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
-    if not path.is_file():
+    if not path.is_file():  # noqa: ASYNC240
         return total, records
 
     total, result = await process_jsonl_file(path, limit=query.limit, offset=query.offset, search=query.search, reverse=True)

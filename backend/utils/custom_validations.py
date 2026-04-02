@@ -35,7 +35,7 @@ async def validate_jsonl_with_schema(
         schema_shortname=f"{schema_shortname}.json",
     )
 
-    schema = json.loads(FSPath(schema_path).read_text())
+    schema = json.loads(FSPath(schema_path).read_text())  # noqa: ASYNC240
 
     async with aiofiles.open(file_path) as file:
         lines = await file.readlines()
@@ -54,7 +54,7 @@ async def validate_csv_with_schema(
         schema_shortname=f"{schema_shortname}.json",
     )
 
-    schema = json.loads(FSPath(schema_path).read_text())
+    schema = json.loads(FSPath(schema_path).read_text())  # noqa: ASYNC240
 
     jsonl: list[dict[str, Any]] = await csv_file_to_json(file_path)
     for json_item in jsonl:
