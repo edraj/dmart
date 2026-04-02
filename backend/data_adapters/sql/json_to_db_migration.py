@@ -17,7 +17,7 @@ from utils.settings import settings
 
 async def save_health_check_entry():
     health_check_entry = {
-        "space_name": "management",
+        "space_name": settings.management_space,
         "resource_type": "content",
         "shortname": "migration_json_to_db",
         "subpath": "/health_check",

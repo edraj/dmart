@@ -113,11 +113,15 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
+    google_oath_callback: str = ""
+
     apple_client_id: str = ""
     apple_client_secret: str = ""
+    apple_oath_callback: str = ""
 
     facebook_client_id: str = ""
     facebook_client_secret: str = ""
+    facebook_oath_callback: str = ""
 
     enable_channel_auth: bool = False
     channels: list = []

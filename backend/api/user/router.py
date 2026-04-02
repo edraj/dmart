@@ -317,7 +317,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     ),
                 )
 
-            user = await db.load_or_none("management", "/users", shortname, core.User)
+            user = await db.load_or_none(settings.management_space, "/users", shortname, core.User)
             if user is None:
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
@@ -921,7 +921,7 @@ async def otp_request_login(
 
     user: str | core.User | None = None
     if shortname:
-        user = await db.load_or_none("management", "/users", shortname, core.User)
+        user = await db.load_or_none(settings.management_space, "/users", shortname, core.User)
     else:
         user = await db.get_user_by_criteria(
             "msisdn" if msisdn else "email",

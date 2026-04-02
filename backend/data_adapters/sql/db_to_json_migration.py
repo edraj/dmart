@@ -299,7 +299,7 @@ async def export_data_with_query(query, user_shortname):
     _total, records = await serve_query(query, user_shortname)
 
     with Session(get_engine()) as session:
-        if query.space_name == "management":
+        if query.space_name == settings.management_space:
             subpath = (query.subpath or "/").strip("/")
             if subpath in ("", "users"):
                 process_users(session, space_folder)
