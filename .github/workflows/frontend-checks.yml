@@ -25,6 +25,7 @@ jobs:
     - name: Build CXB 
       run: |
         cd cxb
+        cp public/config.sample.json public/config.json
         yarn build
     - name: Check svelte
       run: |
