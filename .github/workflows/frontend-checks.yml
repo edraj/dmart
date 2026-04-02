@@ -21,7 +21,6 @@ jobs:
     - name: Install cxb js depdenencies
       run: |
         cd cxb
-        rm .yarnrc
         yarn install
     - name: Build CXB 
       run: |
