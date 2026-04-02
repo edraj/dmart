@@ -81,6 +81,8 @@ async def lifespan(app: FastAPI):
 
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
+    if hasattr(db, "engine"):
+        await db.engine.dispose()  # type: ignore[attr-defined]
 
 
 app = FastAPI(
@@ -149,7 +151,7 @@ async def my_exception_handler(_, exception):
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
     err = jsonable_encoder({"detail": exc.errors()})["detail"]
     raise api.Exception(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         error=api.Error(
             code=InternalErrorCode.UNPROCESSABLE_ENTITY, type="validation", message="Validation error [1]", info=err
         ),
@@ -540,7 +542,7 @@ async def catchall(x):
     if x.startswith(settings.cxb_url.strip("/")):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         error=api.Error(type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"),
     )
 
