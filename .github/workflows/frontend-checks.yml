@@ -1,12 +1,12 @@
-name: Frontend checks
+name: CXB checks
 
 on:
   push:
     branches: [ "master" ]
-    paths: ["frontend/**"]
+    paths: ["cxb/**"]
   pull_request:
     branches: [ "master" ]
-    paths: ["frontend/**"]
+    paths: ["cxb/**"]
 
 permissions:
   contents: read
@@ -18,16 +18,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install frontend js depdenencies
+    - name: Install cxb js depdenencies
       run: |
-        cd frontend
+        cd cxb
         rm .yarnrc
         yarn install
-    - name: Build frontend
+    - name: Build CXB 
       run: |
-        cd frontend
+        cd cxb
         yarn build
     - name: Check svelte
       run: |
-        cd frontend
+        cd cxb
         yarn svelte-check
