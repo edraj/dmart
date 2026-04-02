@@ -4,9 +4,9 @@
     import {signin} from "@/stores/user";
     import {_} from "@/i18n";
 
-  let username: string;
-  let password: string;
-  let errorMessage: string = $state(null);
+  let username: string = $state("");
+  let password: string = $state("");
+  let errorMessage: string | null = $state(null);
   let showPassword: boolean = $state(false);
   let isLoginLoading: boolean = $state(false);
 
@@ -18,7 +18,7 @@
         isLoginLoading = true;
         await signin(username, password);
         window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
         errorMessage = error.response?.data?.error?.message ?? "Something went wrong, please try again.";
     }
     isLoginLoading = false;

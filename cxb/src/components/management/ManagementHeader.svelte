@@ -145,12 +145,12 @@
                 : ''}"
             id="avatar_with_name"
         >
-            {#await getAvatar($user.shortname)}
-                <Avatar src={null} size="xs" class="ring-2 ring-white" />
+            {#await getAvatar($user.shortname ?? "")}
+                <Avatar src={undefined} size="xs" class="ring-2 ring-white" />
             {:then avatar}
-                <Avatar src={avatar} size="xs" class="ring-2 ring-white" />
+                <Avatar src={avatar ?? undefined} size="xs" class="ring-2 ring-white" />
             {:catch error}
-                <Avatar src={null} size="xs" class="ring-2 ring-white" />
+                <Avatar src={undefined} size="xs" class="ring-2 ring-white" />
             {/await}
 
             <span class="text-sm">{$user.shortname}</span>

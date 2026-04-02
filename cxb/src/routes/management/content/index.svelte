@@ -31,7 +31,9 @@
     let editModal = $state(false);
     let deleteModal = $state(false);
     let addSpaceModal = $state(false);
+    /** @type {any} */
     let selectedSpace = $state(null);
+    /** @type {string | null | any} */
     let modelError = $state(null);
 
     let spaceFormData = $state({
@@ -108,7 +110,7 @@
                 );
                 await getSpaces();
                 addSpaceModal = false;
-            } catch (error) {
+            } catch (/** @type {any} */ error) {
                 modelError = error.response.data;
             } finally {
                 isActionLoading = false;
@@ -119,14 +121,14 @@
     function viewMeta(space) {
         modelError = null;
         selectedSpace = structuredClone(space);
-        jeContent = { json: selectedSpace };
+        jeContent = { json: selectedSpace ?? undefined };
         viewMetaModal = true;
     }
 
     function editSpace(space) {
         modelError = null;
         selectedSpace = structuredClone(space);
-        jeContent = { json: selectedSpace };
+        jeContent = { json: selectedSpace ?? undefined };
         editModal = true;
     }
 
@@ -161,7 +163,7 @@
                     `Space "${selectedSpace.shortname}" updated successfully!`,
                 );
                 await getSpaces();
-            } catch (error) {
+            } catch (/** @type {any} */ error) {
                 modelError = error;
             } finally {
                 isActionLoading = false;
@@ -199,7 +201,7 @@
                 deleteModal = false;
                 selectedSpace = null;
                 await getSpaces();
-            } catch (error) {
+            } catch (/** @type {any} */ error) {
                 modelError = error;
             } finally {
                 isActionLoading = false;
@@ -284,7 +286,7 @@
                     </h3>
 
                     <p class="text-gray-600 mt-2 mb-4 line-clamp-3">
-                        {space?.description?.en || ""}
+                        {space?.attributes?.description?.en || ""}
                     </p>
 
                     <div class="text-xs text-gray-500 mt-auto">

@@ -36,7 +36,7 @@
     // Constants
     const DEFAULT_QUERY_LIMIT = 10;
 
-    let spaces = $state([]);
+    let spaces: any[] = $state([]);
     let space_name: string = $state("");
     // let queryType: QueryType = $state(null);
     let subpath: string = $state("/");
@@ -50,7 +50,7 @@
     // let retrieve_attachments: boolean = $state(false);
     // let retrieve_json_payload: boolean = $state(false);
 
-    let response = $state(null);
+    let response: any = $state(null);
     let isDisplayFilter = $state(false);
     let isExporting: boolean = $state(false);
     let exportEvents: Array<{
@@ -61,13 +61,13 @@
         duration: string;
     }> = $state([]);
 
-    let selectedSpacename = $state(null);
-    let tempSubpaths = $state([]);
-    let subpaths = $state([]);
+    let selectedSpacename: string | null = $state(null);
+    let tempSubpaths: string[] = $state([]);
+    let subpaths: string[] = $state([]);
 
     onMount(() => {
         async function setup() {
-            spaces = (await Dmart.getSpaces()).records;
+            spaces = (await Dmart.getSpaces())?.records ?? [];
         }
         setup();
     });

@@ -23,7 +23,7 @@
         payloadContentType?: string,
     } = $props();
 
-    let items = $state([]);
+    let items: {text: string; action: () => any}[] = $state([]);
     onMount(() => {
         const parts = subpath.split("/");
         items = parts.filter((item) => item !== "").map((part, index) => ({

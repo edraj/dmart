@@ -58,13 +58,13 @@
         value: 'query',
     });
 
-    let selectedResourceType = '';
-    let selectedAction = '';
-    let newCondition = '';
-    let newRestrictedField = '';
+    let selectedResourceType = $state('');
+    let selectedAction = $state('');
+    let newCondition = $state('');
+    let newRestrictedField = $state('');
 
-    let spaces = $state([]);
-    let subpaths = $state([]);
+    let spaces: {name: string; value: string}[] = $state([]);
+    let subpaths: {name: string; value: string}[] = $state([]);
     let selectedSpace = $state('');
     let selectedSubpath = $state('');
     let loadingSpaces = $state(true);
@@ -185,7 +185,7 @@
         formData.restricted_fields = formData.restricted_fields.filter(i => i !== item);
     }
 
-    let jsonEditorContent = '';
+    let jsonEditorContent = $state('');
 
     function updateJsonEditor() {
         try {

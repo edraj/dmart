@@ -74,7 +74,9 @@
         return `/${$activeRoute.params.subpath}` === getCurrentPath();
     }
 
-    loadChildren(spaceName, getCurrentPath());
+    $effect(() => {
+        loadChildren(spaceName, getCurrentPath());
+    });
 </script>
 
 <SidebarItem

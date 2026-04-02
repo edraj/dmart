@@ -18,7 +18,7 @@
         </div>
     {:then entry}
         <EntryRenderer
-            {entry}
+            entry={entry!}
             resource_type={ResourceType.folder}
             space_name={$params.space_name}
             subpath={$params.subpath.replaceAll("-", "/")}

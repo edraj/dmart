@@ -155,7 +155,7 @@
         <Card class="min-w-full p-4">
             <div class="space-y-4">
                 <Alert color="red" class="mb-4">
-                    <InfoCircleSolid slot="icon" class="w-4 h-4" />
+                    {#snippet icon()}<InfoCircleSolid class="w-4 h-4" />{/snippet}
                     <span class="font-medium"><b>{$_("warning")}!</b></span>
                     {$_("import_warning_message")}
                 </Alert>

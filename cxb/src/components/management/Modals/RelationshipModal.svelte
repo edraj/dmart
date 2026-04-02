@@ -58,7 +58,7 @@
     async function loadSpaces() {
         try {
             const result = await Dmart.getSpaces();
-            spaces = result.records || [];
+            spaces = result?.records || [];
         } catch (e) {
             spaces = [];
         }

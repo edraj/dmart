@@ -75,11 +75,11 @@
           attachment.dataAsset = r;
         } else {
           attachment.dataAsset = {
-            code: r.response.data?.error?.code,
-            message: r.response.data?.error?.message,
+            code: (r as any).response?.data?.error?.code,
+            message: (r as any).response?.data?.error?.message,
           };
-          if (r.response.data?.error?.info.length > 0) {
-            attachment.dataAsset.details = r.response.data?.error?.info[0].msg;
+          if ((r as any).response?.data?.error?.info?.length > 0) {
+            attachment.dataAsset.details = (r as any).response?.data?.error?.info[0].msg;
           }
         }
       } else if (attachment.resource_type === "sqlite") {
@@ -149,7 +149,7 @@
           Level.info,
           `Attachment ${item.shortname} deleted successfully.`,
         );
-        $currentEntry.refreshEntry();
+        $currentEntry?.refreshEntry();
         openCreateAttachmentModal = false;
       } else {
         showToast(Level.warn);
@@ -207,7 +207,7 @@
   let openDeleteModal = $state(false);
   let openViewContentModal = $state(false);
   let openCreateAttachmentModal = $state(false);
-  let selectedAttachment = $state(null);
+  let selectedAttachment: any = $state(null);
 
   function handleViewContentModal(attachment) {
     selectedAttachment = attachment;
@@ -233,7 +233,9 @@
     openCreateAttachmentModal = true;
   }
 
+  // svelte-ignore state_referenced_locally
   let selectedFilter = $state("all");
+  // svelte-ignore state_referenced_locally
   let filteredAttachments: any = $state(Object.values(attachments).flat(1));
   let contentTypeGroups: any = $state({});
 
@@ -475,6 +477,8 @@
             </div>
           </div>
           {#if attachment.resource_type !== ResourceType.reaction}
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
               class="absolute top-2 right-2"
               onclick={() => handleViewContentModal(attachment)}
@@ -527,7 +531,7 @@
     >
     <Button
       color="red"
-      onclick={() => handleDelete(selectedAttachment)}
+      onclick={() => handleDelete(selectedAttachment!)}
       disabled={isDeleteLoading}
       >{isDeleteLoading ? "Deleting..." : "Delete"}</Button
     >

@@ -37,7 +37,7 @@
                     <Avatar
                         size="xl"
                         class="w-24 h-24 rounded"
-                        src={url}
+                        src={url ?? undefined}
                     >
                         {profile.shortname?.charAt(0).toUpperCase() || "U"}
                     </Avatar>

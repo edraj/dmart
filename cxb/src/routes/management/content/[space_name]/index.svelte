@@ -14,7 +14,7 @@
         </div>
     {:then entry}
         <EntryRenderer
-            {entry}
+            entry={entry!}
             resource_type={ResourceType.space}
             space_name={$params.space_name}
             subpath={'/'}

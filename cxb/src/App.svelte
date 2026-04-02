@@ -41,7 +41,7 @@
       return null;
     }
   }
-  let appRouter = null;
+  let appRouter: Router | null = null;
   async function prepareRouter() {
     if (appRouter) return appRouter;
     appRouter = createRouter({
