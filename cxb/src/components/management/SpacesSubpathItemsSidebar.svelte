@@ -75,7 +75,11 @@
     }
 
     $effect(() => {
-        loadChildren(spaceName, getCurrentPath());
+        const name = spaceName;
+        const path = getCurrentPath();
+        untrack(() => {
+            loadChildren(name, path);
+        });
     });
 </script>
 

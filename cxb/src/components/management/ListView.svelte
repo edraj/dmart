@@ -214,6 +214,9 @@
             retrieve_json_payload: true,
             retrieve_total: !delayTotalCount,
         };
+        if ($currentListView) {
+            $currentListView.query = queryObject;
+        }
         if (delayTotalCount) {
             fetchPageRecordsTotal({...queryObject});
         }
@@ -366,9 +369,12 @@
 
     $effect(() => {
         if (objectDatatable.numberActivePage !== numberActivePage) {
-            setQueryParam({
-                ...$params,
-                page: objectDatatable.numberActivePage.toString(),
+            numberActivePage = objectDatatable.numberActivePage;
+            untrack(() => {
+                setQueryParam({
+                    ...$params,
+                    page: objectDatatable.numberActivePage.toString(),
+                });
             });
         }
     });
@@ -452,14 +458,6 @@
             },
         };
     }
-
-    $effect(() => {
-        if (queryObject && $currentListView) {
-            untrack(() => {
-                $currentListView!.query = queryObject;
-            });
-        }
-    });
 
     fetchPageRecords(true, {});
 </script>

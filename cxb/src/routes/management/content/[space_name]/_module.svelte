@@ -4,7 +4,6 @@
     import { BarsOutline } from "flowbite-svelte-icons";
     import { sineIn } from "svelte/easing";
 
-    let { children } = $props();
     let hidden1 = $state(true);
     let transitionParams = {
         x: -320,
@@ -67,7 +66,7 @@
         </div>
 
         <div class="flex-1 overflow-auto md:p-0 w-full pb-8 md:pb-8">
-            {@render children()}
+            <slot />
         </div>
     </div>
 </div>

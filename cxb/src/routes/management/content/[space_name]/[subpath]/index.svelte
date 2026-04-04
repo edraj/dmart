@@ -9,10 +9,16 @@
         _parent_subpath.slice(0, _parent_subpath.length - 1).join("/") || "__root__"
     );
     let shortname: string =  $derived(_parent_subpath[_parent_subpath.length - 1]);
+
+    let entryPromise = $derived(
+        $params.space_name
+            ? Dmart.retrieveEntry({resource_type: ResourceType.folder, space_name: $params.space_name, subpath: parent_subpath, shortname, retrieve_json_payload: true, retrieve_attachments: true, validate_schema: true})
+            : null
+    );
 </script>
 
-{#if $params.space_name}
-    {#await Dmart.retrieveEntry({resource_type: ResourceType.folder, space_name: $params.space_name, subpath: parent_subpath, shortname, retrieve_json_payload: true,retrieve_attachments: true, validate_schema: true})}
+{#if entryPromise}
+    {#await entryPromise}
         <div class="flex flex-col w-full">
             <ListPlaceholder class="m-5" size="lg" style="width: 100vw"/>
         </div>
@@ -34,3 +40,4 @@
     <h4>For some reason ... params doesn't have the needed info</h4>
     <pre>{JSON.stringify($params, null, 2)}</pre>
 {/if}
+

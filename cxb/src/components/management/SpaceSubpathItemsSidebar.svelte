@@ -45,8 +45,8 @@
                 );
                 $spaceChildren.data.set(cacheKey, []);
             }
+            $spaceChildren.data = new Map($spaceChildren.data);
         }
-        $spaceChildren.data = new Map($spaceChildren.data);
         return $spaceChildren.data.get(cacheKey) || [];
     }
 
