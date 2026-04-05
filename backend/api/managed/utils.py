@@ -5,7 +5,6 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path as FilePath
 from typing import Any
-from uuid import uuid4
 
 from fastapi import status
 

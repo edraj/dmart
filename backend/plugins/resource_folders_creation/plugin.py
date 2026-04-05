@@ -3,7 +3,6 @@ from fastapi.logger import logger
 from data_adapters.adapter import data_adapter as db
 from models.core import Event, Folder, PluginBase
 from models.enums import ResourceType
-from utils.settings import settings
 
 
 class Plugin(PluginBase):
