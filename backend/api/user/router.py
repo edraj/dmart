@@ -90,6 +90,7 @@ async def create_user(response: Response, record: core.Record, http_request: Req
 
     if record.attributes.get("email") and (settings.is_otp_for_create_required and not record.attributes.get("email_otp")):
         validation_message = "Email OTP is required"
+        record.attributes["email"] = record.attributes["email"].lower()
 
     if record.attributes.get("msisdn") and (settings.is_otp_for_create_required and not record.attributes.get("msisdn_otp")):
         validation_message = "MSISDN OTP is required"
@@ -403,7 +404,9 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             raise api.Exception(
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
-                    type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
+                    type="auth",
+                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    message="Invalid username or password",
                 ),
             )
         else:
@@ -503,14 +506,22 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
 
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"),
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password",
+            ),
         )
     except api.Exception as _:
         if getattr(_.error, "code", None) == InternalErrorCode.OTP_NEEDED:
             raise
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
-            api.Error(type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"),
+            api.Error(
+                type="auth",
+                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                message="Invalid username or password",
+            ),
         ) from _
         # if e.error.type == "db":
         #     raise api.Exception(
@@ -707,6 +718,7 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
     else:
         await db.validate_uniqueness(MANAGEMENT_SPACE, profile, RequestType.update, shortname)
         if "email" in profile.attributes and user.email != profile_user.email:
+            profile.attributes["email"] = profile.attributes["email"].lower()
             is_valid_otp = await verify_user(
                 ConfirmOTPRequest(
                     email=profile.attributes.get("email"),

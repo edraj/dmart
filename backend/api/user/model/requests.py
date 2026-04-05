@@ -1,5 +1,4 @@
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import utils.regex as rgx
 from models.api import Error, Exception
@@ -16,6 +15,11 @@ class SendOTPRequest(BaseModel):
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
     email: str | None = Field(None, pattern=rgx.EMAIL)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def lowercase_email(cls, v: str | None) -> str | None:
+        return v.lower() if isinstance(v, str) else v
 
     def check_fields(self) -> dict[str, str]:
         if self.email is None and self.msisdn is None and self.shortname is None:
@@ -61,6 +65,11 @@ class PasswordResetRequest(BaseModel):
     msisdn: str | None = Field(None, pattern=rgx.MSISDN)
     shortname: str | None = Field(None, pattern=rgx.SHORTNAME)
     email: str | None = Field(None, pattern=rgx.EMAIL)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def lowercase_email(cls, v: str | None) -> str | None:
+        return v.lower() if isinstance(v, str) else v
 
     def check_fields(self) -> dict[str, str]:
         if self.email is None and self.msisdn is None and self.shortname is None:
@@ -124,6 +133,12 @@ class UserLoginRequest(BaseModel):
     firebase_token: str | None = Field(None)
     device_id: str | None = Field(None)
     otp: str | None = Field(None)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def lowercase_email(cls, v: str | None) -> str | None:
+        return v.lower() if isinstance(v, str) else v
+
 
     def check_fields(self) -> dict[str, str] | None:
         if self.shortname is None and self.email is None and self.msisdn is None:

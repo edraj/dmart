@@ -234,9 +234,12 @@ class Meta(Resource):
 
         meta_class = getattr(sys.modules["models.core"], camel_case(record.resource_type))
 
-        if issubclass(meta_class, User) and "password" in record.attributes:
-            hashed_pass = password_hashing.hash_password(record.attributes["password"])
-            record.attributes["password"] = hashed_pass
+        if issubclass(meta_class, User):
+            if "password" in record.attributes:
+                hashed_pass = password_hashing.hash_password(record.attributes["password"])
+                record.attributes["password"] = hashed_pass
+            if "email" in record.attributes:
+                record.attributes["email"] = record.attributes["email"].lower()
 
         record.attributes["owner_shortname"] = owner_shortname
         record.attributes["shortname"] = record.shortname
