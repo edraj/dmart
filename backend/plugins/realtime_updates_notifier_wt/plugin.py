@@ -39,11 +39,11 @@ class Plugin(PluginBase):
                     ]
                 )
             subpath += "/"
-        
+
         # Use WebTransport HTTP endpoint (TCP) for broadcasting
         # WebTransport server runs on webtransport_port and exposes HTTP endpoints
         webtransport_url = f"http://{settings.listening_host}:{settings.webtransport_port}"
-        
+
         async with AsyncRequest() as client:
             print({
                 "url": f"{webtransport_url}/broadcast-to-channels",
