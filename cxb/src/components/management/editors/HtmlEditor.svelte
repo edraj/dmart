@@ -13,8 +13,8 @@
         content: string
     } = $props();
 
-    let maindiv;
-    let editor = null;
+    let maindiv: HTMLDivElement;
+    let editor: Editor | null = null;
     let toolbarElement: HTMLDivElement | null = null;
     let buttonCleanups: Array<{ button: HTMLButtonElement; action: () => void }> = [];
 
@@ -115,8 +115,8 @@
             }
         });
 
-        editor.on('change', () => {
-            content = editor.getHTML();
+        editor!.on('change', () => {
+            content = editor!.getHTML();
             dispatch("changed");
         });
 
@@ -147,50 +147,50 @@
         const directionGroup = document.createElement('div');
         directionGroup.className = 'toolbar-group';
 
-        addToolbarButton(textFormatGroup, 'Bold', 'B', () => editor.formatText('bold'));
-        addToolbarButton(textFormatGroup, 'Italic', 'I', () => editor.formatText('italic'));
-        addToolbarButton(textFormatGroup, 'Underline', 'U', () => editor.formatText('underline'));
-        addToolbarButton(textFormatGroup, 'Strike', 'S', () => editor.formatText('strike'));
-        addToolbarButton(textFormatGroup, 'Superscript', 'x²', () => editor.formatText('superscript'));
-        addToolbarButton(textFormatGroup, 'Subscript', 'x₂', () => editor.formatText('subscript'));
-        addToolbarButton(textFormatGroup, 'Remove Format', 'X', () => editor.removeFormat());
+        addToolbarButton(textFormatGroup, 'Bold', 'B', () => editor!.formatText('bold'));
+        addToolbarButton(textFormatGroup, 'Italic', 'I', () => editor!.formatText('italic'));
+        addToolbarButton(textFormatGroup, 'Underline', 'U', () => editor!.formatText('underline'));
+        addToolbarButton(textFormatGroup, 'Strike', 'S', () => editor!.formatText('strike'));
+        addToolbarButton(textFormatGroup, 'Superscript', 'x²', () => editor!.formatText('superscript'));
+        addToolbarButton(textFormatGroup, 'Subscript', 'x₂', () => editor!.formatText('subscript'));
+        addToolbarButton(textFormatGroup, 'Remove Format', 'X', () => editor!.removeFormat());
 
-        addToolbarButton(lineFormatGroup, 'Heading 1', 'H1', () => editor.formatLine({ header: 1 }));
-        addToolbarButton(lineFormatGroup, 'Heading 2', 'H2', () => editor.formatLine({ header: 2 }));
-        addToolbarButton(lineFormatGroup, 'Paragraph', '¶', () => editor.formatLine('paragraph'));
-        addToolbarButton(lineFormatGroup, 'Blockquote', '""', () => editor.formatLine('blockquote'));
-        addToolbarButton(lineFormatGroup, 'Ordered List', '1.', () => editor.formatLine({ list: 'ordered' }));
-        addToolbarButton(lineFormatGroup, 'Unordered List', '•', () => editor.formatLine({ list: 'bullet' }));
-        addToolbarButton(lineFormatGroup, 'Horizontal Rule', '—', () => editor.formatLine('hr'));
+        addToolbarButton(lineFormatGroup, 'Heading 1', 'H1', () => editor!.formatLine({ header: 1 }));
+        addToolbarButton(lineFormatGroup, 'Heading 2', 'H2', () => editor!.formatLine({ header: 2 }));
+        addToolbarButton(lineFormatGroup, 'Paragraph', '¶', () => editor!.formatLine('paragraph'));
+        addToolbarButton(lineFormatGroup, 'Blockquote', '""', () => editor!.formatLine('blockquote'));
+        addToolbarButton(lineFormatGroup, 'Ordered List', '1.', () => editor!.formatLine({ list: 'ordered' }));
+        addToolbarButton(lineFormatGroup, 'Unordered List', '•', () => editor!.formatLine({ list: 'bullet' }));
+        addToolbarButton(lineFormatGroup, 'Horizontal Rule', '—', () => editor!.formatLine('hr'));
 
-        addToolbarButton(alignmentGroup, 'Align Left', '↤', () => editor.formatLine('align-left'));
-        addToolbarButton(alignmentGroup, 'Align Center', '↔', () => editor.formatLine('align-center'));
-        addToolbarButton(alignmentGroup, 'Align Right', '↦', () => editor.formatLine('align-right'));
-        addToolbarButton(alignmentGroup, 'Justify', '☰', () => editor.formatLine('align-justify'));
+        addToolbarButton(alignmentGroup, 'Align Left', '↤', () => editor!.formatLine('align-left'));
+        addToolbarButton(alignmentGroup, 'Align Center', '↔', () => editor!.formatLine('align-center'));
+        addToolbarButton(alignmentGroup, 'Align Right', '↦', () => editor!.formatLine('align-right'));
+        addToolbarButton(alignmentGroup, 'Justify', '☰', () => editor!.formatLine('align-justify'));
 
         addToolbarButton(insertGroup, 'Link', '🔗', () => {
             const url = prompt('Enter URL:');
-            if (url) editor.formatText({ link: url });
+            if (url) editor!.formatText({ link: url });
         });
 
         addToolbarButton(insertGroup, 'Image', '🖼', () => {
             const url = prompt('Enter image URL:');
-            if (url) editor.insert({ image: url });
+            if (url) editor!.insert({ image: url });
         });
 
-        addToolbarButton(historyGroup, 'Undo', '↶', () => editor.modules.history.undo());
-        addToolbarButton(historyGroup, 'Redo', '↷', () => editor.modules.history.redo());
+        addToolbarButton(historyGroup, 'Undo', '↶', () => editor!.modules.history.undo());
+        addToolbarButton(historyGroup, 'Redo', '↷', () => editor!.modules.history.redo());
 
 
 
 
         addToolbarButton(directionGroup, 'LTR', 'LTR', () => {
             maindiv.dir = 'ltr';
-            editor.formatLine({ direction: 'ltr' });
+            editor!.formatLine({ direction: 'ltr' });
         });
         addToolbarButton(directionGroup, 'RTL', 'RTL', () => {
             maindiv.dir = 'rtl';
-            editor.formatLine({ direction: 'rtl' });
+            editor!.formatLine({ direction: 'rtl' });
         });
 
         toolbar.appendChild(textFormatGroup);
@@ -200,7 +200,7 @@
         toolbar.appendChild(historyGroup);
         toolbar.appendChild(directionGroup);
 
-        maindiv.parentNode.insertBefore(toolbar, maindiv);
+        maindiv.parentNode?.insertBefore(toolbar, maindiv);
     }
 
     function addToolbarButton(toolbar, title, icon, action) {
@@ -228,16 +228,16 @@
 
         // Destroy the editor instance
         if (editor) {
-            editor.destroy?.();
+            (editor as any).destroy?.();
             editor = null;
         }
     });
 
     $effect(() => {
-        if (editor && typeof editor.setHTML === 'function') {
-            const currentHtml = editor.getHTML();
+        if (editor && typeof (editor as any).setHTML === 'function') {
+            const currentHtml = (editor as any).getHTML();
             if (content !== currentHtml) {
-                editor.setHTML(content);
+                (editor as any).setHTML(content);
             }
         }
     });

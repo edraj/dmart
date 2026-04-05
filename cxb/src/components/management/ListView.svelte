@@ -1,13 +1,13 @@
 <script lang="ts">
     import {Engine, functionCreateDatatable, Pagination, RowsPerPage, Sort,} from "svelte-datatables-net";
-    import {Dmart, type QueryRequest, QueryType, SortyType,} from "@edraj/tsdmart";
+    import {Dmart, type ApiResponseRecord, type QueryRequest, QueryType, SortyType,} from "@edraj/tsdmart";
     import cols from "@/utils/jsons/list_cols.json";
     import {searchListView} from "@/stores/management/triggers";
     import Prism from "@/components/Prism.svelte";
     import {goto, params} from "@roxi/routify";
     import {fade} from "svelte/transition";
     import {isDeepEqual} from "@/utils/compare";
-    import {folderRenderingColsToListCols} from "@/utils/columnsUtils";
+    import {folderRenderingColsToListCols, type ListColumn} from "@/utils/columnsUtils";
     import {
         Button,
         Checkbox,
@@ -50,11 +50,11 @@
     }: {
         space_name?: string;
         subpath?: string;
-        shortname?: string;
+        shortname?: string | null;
         type?: QueryType;
         folderColumns?: any;
-        sort_by?: string;
-        sort_order?: string;
+        sort_by?: string | null;
+        sort_order?: string | null;
         query?: any;
         is_clickable?: boolean;
         canDelete?: boolean;
@@ -64,15 +64,14 @@
 
     $currentListView = {fetchPageRecords};
 
-    let columns = $state(null);
-
+    let _initColumns: Record<string, ListColumn>;
     if (folderColumns === null || folderColumns.length === 0) {
-        columns = cols;
+        _initColumns = cols;
     } else {
-        columns = folderRenderingColsToListCols(folderColumns);
+        _initColumns = folderRenderingColsToListCols(folderColumns);
     }
-    if (Object.keys(columns).includes("undefined")) {
-        columns = {
+    if (Object.keys(_initColumns).includes("undefined")) {
+        _initColumns = {
             shortname: {
                 path: "shortname",
                 title: "shortname",
@@ -81,8 +80,9 @@
             },
         };
     }
+    let columns: Record<string, ListColumn> | null = $state(_initColumns);
 
-    let total: number = $state(null);
+    let total: number | null = $state(null);
     const {sortBy, sortOrder, page, search} = $params;
     if (search) {
         $searchListView = search;
@@ -107,7 +107,7 @@
     );
 
     $effect(() => {
-        objectDatatable.arraySearchableColumns = Object.keys(columns);
+        if (columns) objectDatatable.arraySearchableColumns = Object.keys(columns);
     });
 
     let height: number = $state(0);
@@ -120,13 +120,13 @@
     );
     let paginationBottomInfoTo = $derived(
         objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage >=
-        total
-            ? total
+        (total ?? 0)
+            ? (total ?? 0)
             : objectDatatable.numberRowsPerPage * objectDatatable.numberActivePage,
     );
 
     function setNumberOfPages() {
-        propNumberOfPages = Math.ceil(total / numberRowsPerPage);
+        propNumberOfPages = Math.ceil((total ?? 0) / numberRowsPerPage);
         localStorage.setItem("rowPerPage", numberRowsPerPage.toString());
         if (website.delay_total_count) {
             objectDatatable.numberRowsPerPage = numberRowsPerPage;
@@ -140,7 +140,7 @@
         query.type = QueryType.counters;
         query.retrieve_total = true;
         const resp = await Dmart.query(query, scope);
-        total = resp.attributes.total;
+        total = resp?.attributes?.total ?? 0;
         objectDatatable.arrayRawData = [...objectDatatable.arrayRawData];
         setNumberOfPages();
     }
@@ -185,10 +185,10 @@
             if ($spaces === null || $spaces.length === 0) {
                 await getSpaces();
             }
-            const currentSpace = $spaces.find((e) => e.shortname === space_name);
+            const currentSpace = $spaces?.find((e) => e.shortname === space_name);
             const hideFolders = currentSpace?.attributes?.hide_folders;
 
-            if (hideFolders.length) {
+            if (hideFolders?.length) {
                 _search += ` -@shortname:${hideFolders.join("|")}`;
             }
         }
@@ -204,7 +204,7 @@
             subpath: subpath,
             exact_subpath: exact_subpath,
             limit: objectDatatable.numberRowsPerPage,
-            sort_by: objectDatatable.stringSortBy.toString(),
+            sort_by: (objectDatatable.stringSortBy ?? "shortname").toString(),
             sort_type: SortyType[objectDatatable.stringSortOrder],
             offset:
                 objectDatatable.numberRowsPerPage *
@@ -214,6 +214,9 @@
             retrieve_json_payload: true,
             retrieve_total: !delayTotalCount,
         };
+        if ($currentListView) {
+            $currentListView.query = queryObject;
+        }
         if (delayTotalCount) {
             fetchPageRecordsTotal({...queryObject});
         }
@@ -221,11 +224,11 @@
 
         old_search = $searchListView;
         if (delayTotalCount === false) {
-            total = resp.attributes.total;
+            total = resp?.attributes?.total ?? 0;
         } else {
             total = -1;
         }
-        objectDatatable.arrayRawData = resp.records;
+        objectDatatable.arrayRawData = (resp?.records ?? []) as any;
         if (isSetPage) {
             if (objectDatatable.arrayRawData.length === 0) {
                 propNumberOfPages = 0;
@@ -275,7 +278,7 @@
                 "/",
             );
 
-            if (_subpath.length > 0 && subpath[0] === "/") {
+            if (_subpath.length > 0 && subpath?.[0] === "/") {
                 _subpath = _subpath.substring(1);
             }
             if (_subpath.length > 0 && _subpath[_subpath.length - 1] === "/") {
@@ -283,7 +286,7 @@
             }
 
             $goto("/management/content/[space_name]/[subpath]", {
-                space_name: space_name,
+                space_name: space_name ?? "",
                 subpath: _subpath.replaceAll("/", "-"),
             });
 
@@ -310,7 +313,7 @@
         $goto(
             "/management/content/[space_name]/[subpath]/[shortname]/[resource_type]",
             {
-                space_name: space_name,
+                space_name: space_name ?? "",
                 subpath: tmp_subpath,
                 shortname: shortname,
                 resource_type: record.resource_type,
@@ -327,18 +330,18 @@
                 })
             ) {
                 const x = {
-                    sort_by: objectDatatable.stringSortBy.toString(),
+                    sort_by: (objectDatatable.stringSortBy ?? "shortname").toString(),
                     sort_order: objectDatatable.stringSortOrder,
                 };
                 setQueryParam({
                     ...$params,
-                    sortBy: objectDatatable.stringSortBy.toString(),
+                    sortBy: (objectDatatable.stringSortBy ?? "shortname").toString(),
                     sortOrder: objectDatatable.stringSortOrder,
                 });
 
                 untrack(() => {
                     fetchPageRecords(true, {
-                        sort_by: objectDatatable.stringSortBy.toString(),
+                        sort_by: (objectDatatable.stringSortBy ?? "shortname").toString(),
                         sort_type: objectDatatable.stringSortOrder,
                     });
                 });
@@ -366,9 +369,12 @@
 
     $effect(() => {
         if (objectDatatable.numberActivePage !== numberActivePage) {
-            setQueryParam({
-                ...$params,
-                page: objectDatatable.numberActivePage.toString(),
+            numberActivePage = objectDatatable.numberActivePage;
+            untrack(() => {
+                setQueryParam({
+                    ...$params,
+                    page: objectDatatable.numberActivePage.toString(),
+                });
             });
         }
     });
@@ -383,55 +389,46 @@
         event.stopImmediatePropagation();
         try {
             const {name, checked} = event.target;
-            const _shortname = objectDatatable.arrayRawData[name].shortname;
+            const record = objectDatatable.arrayRawData[name] as ApiResponseRecord;
             if (checked) {
-                const _resource_type = objectDatatable.arrayRawData[name].resource_type;
                 $bulkBucket = [
                     ...$bulkBucket,
                     {
-                        shortname: _shortname,
-                        resource_type: _resource_type,
-                        ...objectDatatable.arrayRawData[name],
+                        ...record,
+                        shortname: record.shortname,
+                        resource_type: record.resource_type,
                     },
                 ];
             } else {
                 $bulkBucket = $bulkBucket.filter(
-                    (e) => e.shortname !== objectDatatable.arrayRawData[name].shortname,
+                    (e) => e.shortname !== record.shortname,
                 );
             }
-        } catch (e) {
+        } catch (e: any) {
             showToast(Level.warn, "Error processing bulk selection");
-            e.target.checked = false;
+            if (e?.target) e.target.checked = false;
         }
     }
 
     let isAllBulkChecked = false;
 
-    function handleAllBulk(e, override = null) {
+    function handleAllBulk(e: any, override: boolean | null = null) {
         isAllBulkChecked = override === null ? !isAllBulkChecked : override;
         if (e) {
             e.target.checked = isAllBulkChecked;
         }
 
-        objectDatatable.arrayRawData.map((e, i) => {
-            const _shortname = e.shortname;
-
-            const input: any = document.getElementById(_shortname);
-            if (input === null) return;
-            input.checked = isAllBulkChecked;
-
-            if (input.checked) {
-                const _resource_type = objectDatatable.arrayRawData[i].resource_type;
-                $bulkBucket = [
-                    ...$bulkBucket,
-                    {shortname: _shortname, resource_type: _resource_type},
-                ];
-            } else {
-                $bulkBucket = $bulkBucket.filter(
-                    (e) => e.shortname !== objectDatatable.arrayRawData[i].shortname,
-                );
-            }
-        });
+        if (isAllBulkChecked) {
+            // Select all — build the full list in one pass
+            $bulkBucket = objectDatatable.arrayRawData.map((row: any) => ({
+                shortname: row.shortname,
+                resource_type: row.resource_type,
+                ...row,
+            }));
+        } else {
+            // Deselect all
+            $bulkBucket = [];
+        }
     }
 
     function handleSortRendered(node) {
@@ -461,14 +458,6 @@
             },
         };
     }
-
-    $effect(() => {
-        if (queryObject) {
-            untrack(() => {
-                $currentListView.query = queryObject;
-            });
-        }
-    });
 
     fetchPageRecords(true, {});
 </script>
@@ -510,7 +499,7 @@
 <svelte:window bind:innerHeight={height}/>
 
 {#if type !== QueryType.events}
-    <ListViewActionBar {space_name} {subpath}/>
+    <ListViewActionBar space_name={space_name ?? ""} subpath={subpath ?? ""}/>
 {/if}
 
 {#if isFetching}
@@ -541,11 +530,11 @@
                                     <Checkbox class="bg-white" onchange={handleAllBulk}/>
                                 </TableHeadCell>
                             {/if}
-                            {#each Object.keys(columns) as col}
+                            {#each Object.keys(columns ?? {}) as col}
                                 <TableHeadCell class="border border-gray-300">
                                     <div use:handleSortRendered>
                                         <Sort bind:propDatatable={objectDatatable} propColumn={col}>
-                                            {columns[col].title}
+                                            {columns?.[col]?.title}
                                         </Sort>
                                     </div>
                                 </TableHeadCell>
@@ -553,19 +542,23 @@
                         </TableHead>
                         <TableBody>
                             {#each objectDatatable.arrayRawData as row, index}
+                                {@const typedRow = row as any}
                                 <TableBodyRow
                                         class="hover:bg-gray-200"
-                                        onclick={(e) => onListClick(e, row)}
-                                >
+                                        onclick={(e) => onListClick(e, typedRow)}
+                >
                                     <div style="all: unset;display: contents;">
                                         {#if canDelete}
+                      <!-- svelte-ignore a11y_no_static_element_interactions -->
+                      <!-- svelte-ignore a11y_click_events_have_key_events -->
                       <span
                               style="all: unset;display: contents;"
+                              role="presentation"
                               onclick={(e) => {
                           e.stopPropagation();
                           const checkbox = e.currentTarget.querySelector(
                             'input[type="checkbox"]',
-                          );
+                          ) as HTMLInputElement | null;
                           if (checkbox) {
                             checkbox.checked = !checkbox.checked;
                             const event = new Event("change", {
@@ -578,10 +571,10 @@
                         <TableBodyCell class="p-2 border border-gray-300">
                           <Checkbox
                                   class="bg-white"
-                                  id={row.shortname}
+                                  id={typedRow.shortname}
                                   name={index.toString()}
                                   checked={$bulkBucket.some(
-                              (e) => e.shortname === row.shortname,
+                              (e) => e.shortname === typedRow.shortname,
                             )}
                                   onchange={handleBulk}
                                   onclick={(e) => e.stopPropagation()}
@@ -589,14 +582,14 @@
                         </TableBodyCell>
                       </span>
                                         {/if}
-                                        {#each Object.keys(columns) as col}
+                                        {#each Object.keys(columns ?? {}) as col}
                                             <TableBodyCell
                                                     class="p-2 border border-gray-300 cursor-pointer"
                                             >
                                                 {getValueByPath(
-                                                    columns[col].path.split("."),
-                                                    row,
-                                                    columns[col].type,
+                                                    columns?.[col]?.path?.split(".") ?? [],
+                                                    typedRow,
+                                                    columns?.[col]?.type ?? "string",
                                                 )}
                                             </TableBodyCell>
                                         {/each}

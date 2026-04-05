@@ -19,18 +19,23 @@
         formData = $bindable(),
     } = $props();
 
-    const userRoles = JSON.parse(localStorage.getItem("roles"));
+    let userRoles: string[] = [];
+    try {
+        userRoles = JSON.parse(localStorage.getItem("roles") || "[]") || [];
+    } catch {
+        // Corrupted localStorage data
+    }
 
     let ticketElement = $state(null);
-    let ticket_status = $state(null);
-    let ticket_action = $state(null);
-    let resolution = $state(null);
+    let ticket_status: string | null = $state(null);
+    let ticket_action: string | null = $state(null);
+    let resolution: string | null = $state(null);
     let comment = $state("");
     // let to_shortname = $state("");
 
-    let ticketPayload = $state(null);
-    let ticketStates = $state([]);
-    let ticketResolutions = $state([]);
+    let ticketPayload: any = $state(null);
+    let ticketStates: any[] = $state([]);
+    let ticketResolutions: any[] = $state([]);
     let errorMessage = $state("");
 
     async function get_ticket_payload() {
@@ -43,7 +48,7 @@
             retrieve_attachments: false,
             validate_schema: true,
         });
-        ticketPayload = ticketPayload.payload.body;
+        ticketPayload = ticketPayload?.payload?.body ?? null;
 
         if (ticketPayload) {
             ticketStates =
@@ -68,7 +73,7 @@
     $effect(() => {
         if ((ticketStates || []).length) {
             ticketResolutions =
-                ticketPayload.states.filter((e) => e.state === ticket_status)[0]
+                ticketPayload?.states?.filter((e: any) => e.state === ticket_status)[0]
                     ?.resolutions || [];
         }
     });
@@ -98,8 +103,8 @@
                 space_name,
                 subpath,
                 shortname,
-                action: ticket_action,
-                resolution,
+                action: ticket_action ?? "",
+                resolution: resolution ?? undefined,
                 comment,
             });
             showToast(Level.info, `Ticket has been updated successfully!`);
@@ -173,7 +178,7 @@
                     {/if}
                 {/key}
 
-                {#if ticket_status && !!ticketPayload.states.filter((e) => e.state === ticket_status)[0]?.next === false}
+                {#if ticket_status && !!ticketPayload?.states?.filter((e: any) => e.state === ticket_status)[0]?.next === false}
                     <div class="mb-4">
                         <Label for="comment" class="block mb-2">Comment</Label>
                         <Input

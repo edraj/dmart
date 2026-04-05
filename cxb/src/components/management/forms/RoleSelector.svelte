@@ -6,9 +6,9 @@
 
     let { selectedRoles = $bindable([]), label = "Roles" } = $props();
 
-    let availableRoles = $state([]);
+    let availableRoles: any[] = $state([]);
     let loading = $state(true);
-    let filteredRoles = $state([]);
+    let filteredRoles: {key: string; value: string}[] = $state([]);
     let searchTerm = $state("");
     let showDropdown = $state(false);
     let dropdownWrapperRef = $state<HTMLElement>();

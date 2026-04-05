@@ -52,12 +52,12 @@
             <Button class="bg-primary" onclick={()=>$goto('/management')} >Login</Button>
         {:else}
             <Button pill color="light" class="flex items-center gap-2 py-1 px-3">
-                {#await getAvatar($user.shortname)}
-                    <Avatar src={null} size="xs" class="ring-2 ring-white"/>
+                {#await getAvatar($user.shortname ?? "")}
+                    <Avatar src={undefined} size="xs" class="ring-2 ring-white"/>
                 {:then avatar}
-                    <Avatar src={avatar} size="xs" class="ring-2 ring-white"/>
+                    <Avatar src={avatar ?? undefined} size="xs" class="ring-2 ring-white"/>
                 {:catch error}
-                    <Avatar src={null} size="xs" class="ring-2 ring-white"/>
+                    <Avatar src={undefined} size="xs" class="ring-2 ring-white"/>
                 {/await}
 
                 <span class="text-sm">{$user.shortname}</span>

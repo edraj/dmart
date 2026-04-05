@@ -7,11 +7,11 @@ export enum Level {
 
 export function showToast(
     level: Level,
-    message: string = undefined,
+    message?: string,
     args = {}
 ) {
   if (message === undefined) {
-    message = level == Level.info ? "Success" : "Failed";
+    message = level === Level.info ? "Success" : "Failed";
   }
   toast.push(message, { classes: [level], ...args });
 }

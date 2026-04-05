@@ -11,7 +11,7 @@
     import { CodeForkSolid } from "flowbite-svelte-icons";
     import { JSONEditor, Mode } from "svelte-jsoneditor";
     import Prism from "@/components/Prism.svelte";
-    import { Dmart, RequestType, ResourceType } from "@edraj/tsdmart";
+    import { Dmart, RequestType, ResourceType, type ApiResponseRecord } from "@edraj/tsdmart";
     import { Level, showToast } from "@/utils/toast";
     import { getChildren, getSpaces } from "@/lib/dmart_services";
     import { jsonEditorContentParser } from "@/utils/jsonEditor";
@@ -45,8 +45,8 @@
                 );
                 $spaceChildren.data.set(cacheKey, []);
             }
+            $spaceChildren.data = new Map($spaceChildren.data);
         }
-        $spaceChildren.data = new Map($spaceChildren.data);
         return $spaceChildren.data.get(cacheKey) || [];
     }
 
@@ -83,8 +83,8 @@
     let editModal = $state(false);
     let deleteModal = $state(false);
     let addSpaceModal = $state(false);
-    let selectedSpace = $state(null);
-    let modelError = $state(null);
+    let selectedSpace: ApiResponseRecord | null = $state(null);
+    let modelError: string | null = $state(null);
 
     let spaceFormData = $state({
         shortname: "",
@@ -105,7 +105,7 @@
 
     let isActionLoading = $state(false);
 
-    let jeContent = { json: undefined };
+    let jeContent = $state({ json: undefined });
 
     async function createSpace() {
         if (!validateSpaceForm()) {
@@ -140,7 +140,7 @@
                 );
                 await getSpaces();
                 addSpaceModal = false;
-            } catch (error) {
+            } catch (error: any) {
                 modelError = error.response.data;
             } finally {
                 isActionLoading = false;
@@ -179,7 +179,7 @@
                     `Space "${selectedSpace.shortname}" updated successfully!`,
                 );
                 await getSpaces();
-            } catch (error) {
+            } catch (error: any) {
                 modelError = error;
             } finally {
                 isActionLoading = false;
@@ -211,7 +211,7 @@
                 deleteModal = false;
                 selectedSpace = null;
                 await getSpaces();
-            } catch (error) {
+            } catch (error: any) {
                 modelError = error;
             } finally {
                 isActionLoading = false;
@@ -221,6 +221,7 @@
 
     let currentSpaceNameLabel = $state($params.space_name);
     async function getCurrentSpaceNameLabel() {
+        if (!$spaces) return;
         const currentSpace = $spaces.filter(
             (space) => space.shortname === $params.space_name,
         );

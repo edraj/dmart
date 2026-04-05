@@ -4,7 +4,7 @@
     import {SvelteToast, type SvelteToastOptions} from "@zerodevx/svelte-toast";
     import './app.css'
 
-    const prefix='cxb'; // ""
+    const prefix = (import.meta.env.BASE_URL || '/cxb').replace(/^\/|\/$/g, '');
 
   const options: SvelteToastOptions = {
     duration: 2500, // duration of progress bar tween to the `next` value
@@ -41,7 +41,7 @@
       return null;
     }
   }
-  var appRouter = null;
+  let appRouter: Router | null = null;
   async function prepareRouter() {
     if (appRouter) return appRouter;
     appRouter = createRouter({

@@ -16,7 +16,7 @@
     } = $props();
 
     let selectedResourceType = $state(ResourceType.content);
-    let selectedSchema = $state(null);
+    let selectedSchema = $state<string | null>(null);
     let payloadFiles = $state([]);
     let isUploading = $state(false);
     let resourceTypeError = $state(false);
@@ -147,20 +147,20 @@
                 space_name,
                 subpath,
                 resourceType: selectedResourceType,
-                schema: selectedSchema,
+                schema: selectedSchema!,
                 payload: payloadFiles[0],
                 isUpdate: isUpdate,
             });
 
-            if (response.status === "success") {
+            if ((response as any).status === "success") {
                 if (
-                    (response?.attributes?.failed_shortnames ?? []).length !== 0
+                    ((response as any)?.attributes?.failed_shortnames ?? []).length !== 0
                 ) {
                     showToast(Level.warn, "Some entries failed to upload");
-                    responseError = response.attributes.failed_shortnames;
+                    responseError = (response as any).attributes.failed_shortnames;
                 } else {
                     showToast(Level.info, "CSV uploaded successfully");
-                    await $currentListView.fetchPageRecords();
+                    await $currentListView?.fetchPageRecords();
                     isOpen = false;
                 }
             } else {
@@ -185,7 +185,7 @@
                 class="my-2 {resourceTypeError ? 'border-red-500' : ''}"
                 items={resourceTypeItems}
                 bind:value={selectedResourceType}
-                on:change={() => (resourceTypeError = false)}
+                onchange={() => (resourceTypeError = false)}
                 disabled={resourceTypeItems.length === 1}
             />
             {#if resourceTypeError}
@@ -208,7 +208,7 @@
                     class="mt-2 {schemaError ? 'border-red-500' : ''}"
                     items={parseQuerySchemaResponse(schemas)}
                     bind:value={selectedSchema}
-                    on:change={() => (schemaError = false)}
+                    onchange={() => (schemaError = false)}
                 />
                 {#if schemaError}
                     <p class="text-red-500 text-xs mt-1">Schema is required</p>
@@ -221,7 +221,7 @@
             <input
                 type="file"
                 accept=".csv"
-                on:change={handleFileChange}
+                onchange={handleFileChange}
                 class="mt-2 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
             />
         </Label>
@@ -267,7 +267,7 @@
             disabled={isUploading}
         >
             {#if isUploading}
-                <Spinner size="sm" class="mr-2" />
+                <Spinner size="4" class="mr-2" />
                 Uploading...
             {:else}
                 Upload

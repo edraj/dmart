@@ -23,19 +23,19 @@
 
     let form;
 
-    let availableRoles = $state([]);
+    let availableRoles: any[] = $state([]);
     let loadingRoles = $state(true);
-    let filteredRoles = $state([]);
+    let filteredRoles: {key: string; value: string}[] = $state([]);
     let rolesSearchTerm = $state('');
     let showRolesDropdown = $state(false);
-    let rolesDropdownRef;
+    let rolesDropdownRef: HTMLDivElement | null = $state(null);
 
-    let availableGroups = $state([]);
+    let availableGroups: any[] = $state([]);
     let loadingGroups = $state(true);
-    let filteredGroups = $state([]);
+    let filteredGroups: {key: string; value: string}[] = $state([]);
     let groupsSearchTerm = $state('');
     let showGroupsDropdown = $state(false);
-    let groupsDropdownRef = $state(null);
+    let groupsDropdownRef: HTMLDivElement | null = $state(null);
 
     formData = {
         ...formData,
@@ -55,6 +55,7 @@
         social_avatar_url: formData.social_avatar_url || null
     }
 
+    // svelte-ignore state_referenced_locally
     if (!isCreate) {
         formData.old_password = formData.old_password || null;
     } else {
@@ -321,6 +322,8 @@
                                         {#if showRolesDropdown && filteredRoles.length > 0}
                                             <div class="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-auto">
                                                 {#each filteredRoles as role}
+                                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
                                                     <div
                                                             class="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
                                                             onclick={(e) => toggleRole(e, role)}
@@ -391,6 +394,8 @@
                                         {#if showGroupsDropdown && filteredGroups.length > 0}
                                             <div class="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-auto">
                                                 {#each filteredGroups as group}
+                                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
                                                     <div
                                                             class="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
                                                             onclick={(e) => toggleGroup(e, group)}

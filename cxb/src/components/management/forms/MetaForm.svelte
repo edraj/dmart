@@ -60,7 +60,7 @@
     let isShortnameUpdateOpen = $state(false);
     let newShortname = $state("");
     let isUpdatingShortname = $state(false);
-    let shortnameUpdateError = $state(null);
+    let shortnameUpdateError: string | null = $state(null);
 
     function handleShortnameModalUpdate() {
         newShortname = formData.shortname;
@@ -137,7 +137,7 @@
                 }
             }
             $goto(`${url}`, gotoPayload);
-        } catch (error) {
+        } catch (error: any) {
             shortnameUpdateError = error.response.data.error?.info[0]?.failed[0].error || error.response.data.error?.message || "An error occurred while updating the shortname.";
         } finally {
             isUpdatingShortname = false;
@@ -188,7 +188,6 @@
 
         <Accordion>
             <AccordionItem>
-                <span slot="header" class="font-medium">Translations</span>
                 {#snippet header()}Displayname and Description Translations{/snippet}
                 <div class="p-4 space-y-4">
                     <div class="mb-4">
@@ -240,7 +239,7 @@
 
         {#if shortnameUpdateError}
             <Alert color="red" class="mb-4">
-                <span slot="icon" class="text-red-500">!</span>
+                {#snippet icon()}<span class="text-red-500">!</span>{/snippet}
                 {shortnameUpdateError}
             </Alert>
         {/if}

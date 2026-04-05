@@ -6,7 +6,7 @@
     export let attributes: any = {};
   export let resource_type: ResourceType;
   export let url: string;
-  export let displayname: string = undefined;
+  export let displayname: string = "";
   let content_type: string = attributes?.payload?.content_type || "";
   let body: any = attributes?.payload?.body;
 </script>

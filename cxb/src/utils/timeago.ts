@@ -1,8 +1,6 @@
-
 function getFormattedDate(date : Date, prefomattedDate? : string, hideYear = false) {
-  // const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
   const day = date.getDate();
-  const month = date.getMonth() + 1;  // MONTH_NAMES[date.getMonth()];
+  const month = date.getMonth() + 1;
   const year = date.getFullYear();
   const hours = date.getHours();
   let minutes : string = `${(date.getMinutes()<10) ? "0": ""}${date.getMinutes()}`;

@@ -22,6 +22,18 @@
 
     let dark = $derived(isDarkBackground($navbarTheme));
 
+    let avatarUrl: string | null = $state(null);
+    $effect(() => {
+        const shortname = $user.shortname ?? "";
+        if (shortname) {
+            getAvatar(shortname).then((url) => {
+                avatarUrl = url;
+            }).catch(() => {
+                avatarUrl = null;
+            });
+        }
+    });
+
     function setLanguage(lang: string) {
         switchLocale(lang);
     }
@@ -145,13 +157,7 @@
                 : ''}"
             id="avatar_with_name"
         >
-            {#await getAvatar($user.shortname)}
-                <Avatar src={null} size="xs" class="ring-2 ring-white" />
-            {:then avatar}
-                <Avatar src={avatar} size="xs" class="ring-2 ring-white" />
-            {:catch error}
-                <Avatar src={null} size="xs" class="ring-2 ring-white" />
-            {/await}
+            <Avatar src={avatarUrl ?? undefined} size="xs" class="ring-2 ring-white" />
 
             <span class="text-sm">{$user.shortname}</span>
 

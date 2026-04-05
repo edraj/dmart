@@ -13,7 +13,7 @@ export interface User {
   locale: Locale;
   shortname?: string;
   localized_displayname?: string;
-  account?: Object;
+  account?: Record<string, unknown>;
 }
 
 const KEY = "user";
@@ -33,16 +33,24 @@ let signedout: User = { signedin: false, locale: guess_locale() };
 export let user: Writable<User>;
 
 // Load the user information from store, if it exists
-const data =
-    typeof localStorage !== "undefined"
-        ? localStorage.getItem(KEY) || JSON.stringify(signedout)
-        : JSON.stringify(signedout);
-user = writable<User>(JSON.parse(data) || signedout);
+let initialUser: User = signedout;
+if (typeof localStorage !== "undefined") {
+    try {
+        const data = localStorage.getItem(KEY);
+        if (data) {
+            initialUser = JSON.parse(data) || signedout;
+        }
+    } catch {
+        // Corrupted localStorage data, fall back to signedout state
+        initialUser = signedout;
+    }
+}
+user = writable<User>(initialUser);
 
 export async function signin(username: string, password: string) {
   const response = await Dmart.login(username, password);
 
-  if (response.status == "success" && response.records.length > 0) {
+  if (response.status === "success" && response.records.length > 0) {
     const account = response.records[0];
     const auth = account.attributes.access_token;
     authToken.set(auth);
@@ -52,7 +60,7 @@ export async function signin(username: string, password: string) {
 
     const _user: User = {
       signedin: true,
-      locale: Locale.ar,
+      locale: guess_locale(),
       shortname: account.shortname,
       localized_displayname: account.attributes?.displayname?.en,
       account: account,

@@ -22,7 +22,7 @@
     </div>
   {:then entry}
     <EntryRenderer
-      {entry}
+      entry={entry!}
       resource_type={ResourceType[$params.resource_type]}
       space_name={$params.space_name}
       subpath={$params.subpath?.replaceAll("-", "/")}

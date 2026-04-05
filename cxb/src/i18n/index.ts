@@ -24,11 +24,15 @@ function switchLocale(_locale: string) {
 }
 
 function getPreferredLocale(): string {
-  let preferred_locale = '"en"';
-  if (typeof localStorage !== 'undefined')
-    preferred_locale = localStorage.getItem("preferred_locale");
-  if (typeof preferred_locale === "string") {
-    return JSON.parse(preferred_locale);
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const preferred_locale = localStorage.getItem("preferred_locale");
+      if (typeof preferred_locale === "string") {
+        return JSON.parse(preferred_locale);
+      }
+    } catch {
+      // Corrupted localStorage data, continue to browser detection
+    }
   }
 
   let fallback: string = "";

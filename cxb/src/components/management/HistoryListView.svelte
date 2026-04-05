@@ -1,12 +1,12 @@
 <script lang="ts">
-    import {Dmart, QueryType, SortyType} from "@edraj/tsdmart";
+    import {Dmart, QueryType, SortyType, type ApiResponseRecord} from "@edraj/tsdmart";
     import {ListPlaceholder, Modal, Table} from "flowbite-svelte";
     import {onMount} from "svelte";
     import Prism from "../Prism.svelte";
 
     let { space_name, subpath, shortname }: { space_name:string, subpath:string, shortname:string } = $props();
 
-  let records = $state([]);
+  let records: ApiResponseRecord[] = $state([]);
   let loading = $state(true);
   let limit = $state(10);
   let offset = $state(0);
@@ -28,9 +28,9 @@
         sort_by: 'timestamp',
         sort_type: SortyType.descending
       });
-      records = response.records || [];
+      records = response?.records || [];
       // Fix for total_count error
-      totalItems = response.attributes.total || records.length;
+      totalItems = response?.attributes?.total || records.length;
     } catch (error) {
       console.error('Failed to fetch history:', error);
     } finally {

@@ -65,7 +65,8 @@ export default defineConfig({
           'non_reactive_update',
           'state_referenced_locally',
           'element_invalid_self_closing_tag',
-          'event_directive_deprecated'
+          'event_directive_deprecated',
+          'css_unused_selector'
         ];
         if (
             warning.code?.startsWith("a11y") ||
@@ -84,7 +85,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            return id.toString().split('node_modules/')[1].split('/')[0].toString();
+            const pkg = id.toString().split('node_modules/')[1].split('/')[0].toString();
+            // Skip packages that produce empty chunks after tree-shaking
+            const skipChunks = [
+              '@popperjs', 'date-fns', 'fast-deep-equal', 'fast-uri',
+              'jmespath', 'json-schema-traverse', 'jsonpath-plus'
+            ];
+            if (skipChunks.includes(pkg)) return;
+            return pkg;
           }
         },
       },

@@ -12,6 +12,7 @@
     import {removeEmpty} from "@/utils/compare";
     import MetaForm from "@/components/management/forms/MetaForm.svelte";
     import {untrack} from "svelte";
+    import type {ActionRequestRecord, ActionRequest} from "@edraj/tsdmart";
 
     let {
         meta = $bindable({}),
@@ -30,7 +31,7 @@
     let payloadFiles = $state<FileList | null>(null);
     let content: any = $state(payload);
     let selectedSchema = $state("");
-    let trueResourceType = $state(null);
+    let trueResourceType = $state<ResourceAttachmentType | null>(null);
     let isLoading = $state(false);
     let errorModalMessage = $state(null);
     let errorContent = $state(null);
@@ -76,7 +77,7 @@
             }
         } else {
             trueResourceType = ResourceAttachmentType[_attachment.resource_type];
-            resourceType = trueResourceType;
+            resourceType = trueResourceType!;
 
             const metaAttachment = structuredClone(_attachment);
             if (metaAttachment?.attributes?.payload?.body) {
@@ -144,7 +145,7 @@
                                     }
                                 }
                             },
-                        }),
+                        }) as ActionRequestRecord,
                     ],
                 });
             } else if (
@@ -165,7 +166,7 @@
                             resource_type: ResourceType[resourceType],
                             payload_file: ResourceType[resourceType] === ResourceType.json
                                 ? jsonToFile(content)
-                                : payloadFiles[0],
+                                : payloadFiles![0],
                             attributes: {
                                 slug: meta.slug,
                                 displayname: meta.displayname,
@@ -196,7 +197,7 @@
                                     description: meta.description,
                                     is_active: true,
                                 },
-                            }),
+                            }) as ActionRequestRecord,
                         ],
                     });
                 }
@@ -218,7 +219,7 @@
                             resource_type: ResourceType[resourceType],
                             payload_file: ResourceType[resourceType] === ResourceType.json
                                 ? jsonToFile(content)
-                                : payloadFiles[0],
+                                : payloadFiles![0],
                             attributes: removeEmpty({
                                 slug: meta.slug,
                                 displayname: meta.displayname,
@@ -248,7 +249,7 @@
                                     description: meta.description,
                                     is_active: true,
                                 },
-                            }),
+                            }) as ActionRequestRecord,
                         ],
                     });
                 }
@@ -288,7 +289,7 @@
                                             : content,
                                 },
                             },
-                        }),
+                        }) as ActionRequestRecord,
                     ],
                 });
             }
@@ -297,11 +298,11 @@
                 showToast(Level.info);
                 isOpen = false;
                 resetModal();
-                $currentEntry.refreshEntry();
+                $currentEntry?.refreshEntry();
             } else {
                 showToast(Level.warn);
             }
-        } catch (e) {
+        } catch (e: any) {
             const errorData = e?.response?.data || e?.message || "An unexpected error occurred";
             showToast(Level.warn, errorData);
             errorContent = errorData;
@@ -314,7 +315,7 @@
         return menuItems;
     }
 
-    let validateMetaForm;
+    let validateMetaForm = $state<any>(undefined);
 
     async function updateMeta() {
         errorModalMessage = null;
@@ -325,10 +326,10 @@
         _payloadContent.attributes.slug = meta.slug
         _payloadContent.attributes.displayname = meta.displayname
         _payloadContent.attributes.description = meta.description
-        const request_dict = {
+        const request_dict: ActionRequest = {
             space_name,
             request_type: RequestType.update,
-            records: [removeEmpty(_payloadContent)],
+            records: [removeEmpty(_payloadContent) as ActionRequestRecord],
         };
 
         try {
@@ -337,11 +338,11 @@
                 showToast(Level.info);
                 isOpen = false;
                 resetModal();
-                $currentEntry.refreshEntry();
+                $currentEntry?.refreshEntry();
             } else {
                 showToast(Level.warn);
             }
-        } catch (e) {
+        } catch (e: any) {
             showToast(Level.warn, e.response?.data || "Error updating metadata");
             errorContent = e.response?.data || "Error updating metadata";
         } finally {
@@ -492,7 +493,7 @@
                                         retrieve_json_payload: true,
                                         limit: 99
                                     }) then schemas}
-                                        {#each schemas.records.map(e => e.shortname) as schema}
+                                        {#each (schemas?.records ?? []).map(e => e.shortname) as schema}
                                             <option value={schema}>{schema}</option>
                                         {/each}
                                     {/await}

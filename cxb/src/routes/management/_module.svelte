@@ -30,9 +30,11 @@
     });
     Dmart.setAxiosInstance(dmartAxios);
     getSpaces();
+
+    const profilePromise = Dmart.getProfile();
 </script>
 
-{#await Dmart.getProfile()}
+{#await profilePromise}
     <div class="flex w-svw h-svh justify-center items-center">
         <Spinner color="blue" size="16" />
     </div>

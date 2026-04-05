@@ -18,7 +18,7 @@ export async function getAvatar(shortname: string) {
     }
     const results = await Dmart.query(query);
 
-    if (results.records.length === 0) {
+    if (!results || results.records.length === 0) {
         return null
     }
 
@@ -72,11 +72,14 @@ export async function getChildren(
         limit: limit,
         offset: offset,
     });
-    if (ignoreFilter == false && spaces !== null) {
-        const selectedSpace = spaces.records.find(record => record.shortname === space_name);
-        const hiddenFolders: string[] = selectedSpace.attributes.hide_folders;
+    if (!folders) {
+        throw new Error(`Failed to query children for ${space_name}/${subpath}`);
+    }
+    if (ignoreFilter === false && spaces !== null) {
+        const selectedSpace = spaces.records?.find(record => record.shortname === space_name);
+        const hiddenFolders: string[] | undefined = selectedSpace?.attributes?.hide_folders;
         if (hiddenFolders) {
-            folders.records = folders.records.filter(record => hiddenFolders.includes(record.shortname) === false);
+            folders.records = folders.records.filter(record => !hiddenFolders.includes(record.shortname));
         }
     }
 
@@ -85,10 +88,10 @@ export async function getChildren(
         if (leftSide.shortname.toLowerCase() > rightSide.shortname.toLowerCase()) return 1;
         return 0;
     });
-    return folders
+    return folders;
 }
 
-export async function getChildrenAndSubChildren(subpathsPTR: any, spacename, base: string, _subpaths: any) {
+export async function getChildrenAndSubChildren(subpathsPTR: string[], spacename: string, base: string, _subpaths: any): Promise<void> {
     for (const _subpath of _subpaths.records) {
         if (_subpath.resource_type === "folder") {
             const fullPath = `${base}/${_subpath.shortname}`;
@@ -107,8 +110,9 @@ export async function fetchWorkflows(space_name: string) {
             space_name,
             subpath: '/workflows'
         });
-        return result.records || [];
+        return result?.records || [];
     } catch (e) {
         showToast(Level.warn, "Failed to fetch workflows");
+        return [];
     }
 }
