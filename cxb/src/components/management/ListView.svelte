@@ -196,12 +196,12 @@
         if (query?.type && query?.search) {
             _search += ` ${query.search.trim()}`;
         }
-
+        let _subpath = subpath.replaceAll('-', '/')
         queryObject = {
             filter_shortnames: shortname ? [shortname] : [],
             type,
             space_name: space_name,
-            subpath: subpath,
+            subpath: _subpath,
             exact_subpath: exact_subpath,
             limit: objectDatatable.numberRowsPerPage,
             sort_by: (objectDatatable.stringSortBy ?? "shortname").toString(),

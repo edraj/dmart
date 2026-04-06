@@ -72,7 +72,8 @@ export async function saveEntry(
             }
         }
     }
-
+    let _subpath = resource_type === ResourceType.folder ? getParentSubpath(subpath) : subpath
+    _subpath = _subpath.replaceAll('-', '/')
     try {
         await Dmart.request({
             space_name: space_name,
@@ -80,7 +81,7 @@ export async function saveEntry(
             records: [{
                 resource_type: resource_type,
                 shortname: shortname,
-                subpath: resource_type === ResourceType.folder ? getParentSubpath(subpath) : subpath,
+                subpath: _subpath,
                 attributes: removeEmpty(content) as Record<string, any>
             }]
         });
