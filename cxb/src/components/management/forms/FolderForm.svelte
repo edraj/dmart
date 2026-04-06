@@ -298,13 +298,14 @@
                 </div>
 
                 <Select class="mb-2" onclick={(e) => {
-                    if (e.target.value && !content.content_schema_shortnames.includes(e.target.value)) {
-                        content.content_schema_shortnames = [...content.content_schema_shortnames, e.target.value];
-                        e.target.value = "";
+                    const target = e.target as HTMLSelectElement;
+                    if (target.value && !content.content_schema_shortnames.includes(target.value)) {
+                        content.content_schema_shortnames = [...content.content_schema_shortnames, target.value];
+                        target.value = "";
                     }
                 }}>
                     {#await Dmart.query({ space_name: "management", type: QueryType.search, subpath: "/schema", search: "", retrieve_json_payload: true, limit: 99 }) then schemas}
-                        {#each schemas.records.map(e => e.shortname) as schema}
+                        {#each (schemas?.records ?? []).map(e => e.shortname) as schema}
                             <option value={schema}>{schema}</option>
                         {/each}
                     {/await}
@@ -328,13 +329,14 @@
                 </div>
 
                 <Select class="mb-2" onclick={(e) => {
-                        if (e.target.value && !content.workflow_shortnames.includes(e.target.value)) {
-                            content.workflow_shortnames = [...content.workflow_shortnames, e.target.value];
-                            e.target.value = "";
+                        const target = e.target as HTMLSelectElement;
+                        if (target.value && !content.workflow_shortnames.includes(target.value)) {
+                            content.workflow_shortnames = [...content.workflow_shortnames, target.value];
+                            target.value = "";
                         }
                     }}>
                     {#await Dmart.query({ space_name: "management", type: QueryType.search, subpath: "/workflow", search: "", retrieve_json_payload: true, limit: 99 }) then workflows}
-                        {#each workflows.records.map(e => e.shortname) as workflow}
+                        {#each (workflows?.records ?? []).map(e => e.shortname) as workflow}
                             <option value={workflow}>{workflow}</option>
                         {/each}
                     {/await}

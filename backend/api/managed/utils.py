@@ -1354,7 +1354,6 @@ async def serve_space_create(request, record, owner_shortname: str):
 
     resource_obj = core.Meta.from_record(record=record, owner_shortname=owner_shortname)
     resource_obj.is_active = True
-    resource_obj.shortname = request.space_name
     if isinstance(resource_obj, core.Space):
         resource_obj.indexing_enabled = True
         resource_obj.active_plugins = [

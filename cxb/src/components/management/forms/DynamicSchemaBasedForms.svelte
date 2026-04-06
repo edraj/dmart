@@ -69,7 +69,7 @@
             }
         }
 
-        let newItem = {};
+        let newItem: any = {};
         if (
             schemaProp.items &&
             schemaProp.items.type === "object" &&
@@ -418,9 +418,7 @@
                     {:else if property.type === "object" && property.properties}
                         <Accordion flush>
                             <AccordionItem>
-                                <span slot="header" class="font-medium"
-                                    >{property.title || propName}</span
-                                >
+                                {#snippet header()}<span class="font-medium">{property.title || propName}</span>{/snippet}
                                 <div class="p-2 space-y-3">
                                     {#each Object.keys(property.properties) as nestedPropName}
                                         {@const nestedProperty =

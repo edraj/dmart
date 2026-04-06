@@ -81,6 +81,8 @@ async def lifespan(app: FastAPI):
 
     logger.info("Application shutting down")
     print('{"stage":"shutting down"}')
+    if hasattr(db, "engine"):
+        await db.engine.dispose()  # type: ignore[attr-defined]
 
 
 app = FastAPI(
@@ -149,7 +151,7 @@ async def my_exception_handler(_, exception):
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
     err = jsonable_encoder({"detail": exc.errors()})["detail"]
     raise api.Exception(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         error=api.Error(
             code=InternalErrorCode.UNPROCESSABLE_ENTITY, type="validation", message="Validation error [1]", info=err
         ),
@@ -488,10 +490,10 @@ if os.path.isdir(cxb_path):
 
     @app.get(f"{settings.cxb_url}/config.json", include_in_schema=False)
     async def get_cxb_config():
-        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):
+        if settings.cxb_config_path and os.path.exists(settings.cxb_config_path):  # noqa: ASYNC240
             return FileResponse(settings.cxb_config_path)
 
-        if os.path.exists("config.json"):
+        if os.path.exists("config.json"):  # noqa: ASYNC240
             return FileResponse("config.json")
 
         user_config = settings.spaces_folder / "config.json"
@@ -503,7 +505,7 @@ if os.path.isdir(cxb_path):
             return FileResponse(home_config)
 
         bundled_config = os.path.join(cxb_path, "config.json")
-        if os.path.exists(bundled_config):
+        if os.path.exists(bundled_config):  # noqa: ASYNC240
             return FileResponse(bundled_config)
 
         return {
@@ -540,7 +542,7 @@ async def catchall(x):
     if x.startswith(settings.cxb_url.strip("/")):
         return RedirectResponse(f"{settings.cxb_url}/")
     raise api.Exception(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         error=api.Error(type="catchall", code=InternalErrorCode.INVALID_ROUTE, message="Requested method or path is invalid"),
     )
 

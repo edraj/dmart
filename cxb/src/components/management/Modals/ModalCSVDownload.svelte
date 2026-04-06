@@ -17,7 +17,7 @@
         try {
             isCSVDownloadInProgress = true;
 
-            const query = { ...$currentListView.query };
+            const query = { ...$currentListView!.query };
 
             if (!downloadAll) {
                 if (limit) {
@@ -47,7 +47,7 @@
             }
 
             const data = await Dmart.csv(query);
-            downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+            downloadFile(JSON.stringify(data), `${space_name}/${subpath}.csv`, "text/csv");
             isOpen = false;
         } catch (e) {
             showToast(Level.warn);

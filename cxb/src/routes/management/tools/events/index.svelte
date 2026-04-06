@@ -40,7 +40,7 @@
     <div
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 w-full place-items-center"
     >
-        {#each $spaces as space}
+        {#each ($spaces ?? []) as space}
             <Card class="relative w-full">
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -60,7 +60,7 @@
                     </h3>
 
                     <p class="text-gray-600 mt-2 mb-4 line-clamp-3">
-                        {space?.description?.en || ""}
+                        {space?.attributes?.description?.en || ""}
                     </p>
 
                     <div class="text-xs text-gray-500 mt-auto">

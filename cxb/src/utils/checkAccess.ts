@@ -22,12 +22,12 @@ export function checkAccess(
     return false;
   }
 
-  const oks = [];
+  const oks: boolean[] = [];
   for (const key of keys) {
     if (permissions[key]) {
       oks.push(permissions[key].allowed_actions.includes(action));
     }
   }
 
-  return oks.some((s)=>s);
+  return oks.some((s) => s);
 }

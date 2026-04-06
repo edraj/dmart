@@ -7,10 +7,10 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.logger import logger
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from utils.settings import settings
+from data_adapters.adapter import data_adapter as _db
 
 router = APIRouter()
 
@@ -26,21 +26,8 @@ def _load_config():
         return {}
 
 
-def _build_engine():
-    driver = settings.database_driver
-    user = settings.database_username
-    password = settings.database_password
-    host = settings.database_host
-    port = settings.database_port
-    name = settings.database_name
-
-    url = f"{driver}://{user}:{password}@{host}:{port}/{name}"
-    return create_async_engine(url, pool_pre_ping=True)
-
-
 _config = _load_config()
-_engine = _build_engine()
-_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore
+_async_session: Any = sessionmaker(_db.engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore[attr-defined]
 
 
 @asynccontextmanager

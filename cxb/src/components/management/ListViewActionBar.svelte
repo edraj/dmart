@@ -49,15 +49,16 @@
     let canDelete = $state(false);
     let isCSVDownloadModalOpen = $state(false);
 
-    const isEntryTrash =
+    const isEntryTrash = $derived(
         space_name === "personal" &&
-        subpath.startsWith(`people/${$user.shortname}/trash`);
+        subpath.startsWith(`people/${$user.shortname}/trash`),
+    );
 
     onMount(() => {
-        if ($currentEntry.entry?.payload?.body?.allow_csv) {
+        if ($currentEntry?.entry?.payload?.body?.allow_csv) {
             canDownloadCSV = true;
         }
-        if ($currentEntry.entry?.payload?.body?.allow_upload_csv) {
+        if ($currentEntry?.entry?.payload?.body?.allow_upload_csv) {
             canUploadCSV = true;
         }
 
@@ -106,7 +107,7 @@
             try {
                 isActionLoading = true;
                 const records = $bulkBucket.map((b) => ({
-                    resource_type: b.resource_type,
+                    resource_type: b.resource_type as ResourceType,
                     shortname: b.shortname,
                     subpath: subpath || "/",
                     attributes: {},
@@ -124,7 +125,7 @@
                 } else {
                     showToast(Level.warn);
                 }
-                await $currentListView.fetchPageRecords();
+                await $currentListView?.fetchPageRecords();
                 bulkBucket.set([]);
             } catch (e) {
                 showToast(
@@ -145,11 +146,11 @@
                 const result = await bulkMoveEntryToTrash(
                     $state.snapshot($bulkBucket),
                     space_name,
-                    $user.shortname,
+                    $user.shortname ?? "",
                 );
 
                 if (result.success) {
-                    await $currentListView.fetchPageRecords();
+                    await $currentListView?.fetchPageRecords();
                     $bulkBucket = [];
                 }
             } catch (e) {
@@ -165,7 +166,8 @@
 
 
     let searchInput = $state($searchListView);
-    async function handleSearch(e) {
+    async function handleSearch(e?: Event) {
+        e?.preventDefault();
         searchListView.set(searchInput);
         if (searchInput) {
             $goto("$leaf", { ...$params, search: searchInput });
@@ -207,7 +209,7 @@
                 };
 
                 return {
-                    resource_type: moveResourceType,
+                    resource_type: moveResourceType as ResourceType,
                     shortname: b.shortname,
                     subpath: b.subpath.replaceAll("-", "/"),
                     attributes: moveAttrb,
@@ -219,7 +221,7 @@
                 request_type: RequestType.move,
                 records: records,
             });
-            await $currentListView.fetchPageRecords();
+            await $currentListView?.fetchPageRecords();
             showToast(Level.info, `Entries restored successfully`);
         } catch (error) {
             showToast(Level.warn, `Failed to restore the entries!`);
@@ -244,7 +246,7 @@
 
 <div class="flex flex-col md:flex-row justify-between items-center my-2 mx-3">
     <div class="w-1/2">
-        <form on:submit|preventDefault={handleSearch}>
+        <form onsubmit={handleSearch}>
             <ButtonGroup class="w-full">
                 <Input
                     id="website-admin"

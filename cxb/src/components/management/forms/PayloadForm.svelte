@@ -82,9 +82,9 @@
             content = {
                 json:
                     _schemaContent &&
-                    generateObjectFromSchema(_schemaContent.payload.body),
+                    generateObjectFromSchema(_schemaContent?.payload?.body),
             };
-        } catch (e) {
+        } catch (e: any) {
             errorContent = e.response.data;
             isFolderFormReady = false;
         } finally {
@@ -108,8 +108,8 @@
 
     const folderPreference = $currentEntry?.entry?.payload?.body;
 
-    let tmpSchemas = [];
-    let selectedSchemaContent = $state(null);
+    let tmpSchemas: any[] = [];
+    let selectedSchemaContent: any = $state(null);
 
     let mismatchedProperties = $derived.by(() => {
         if (
@@ -127,6 +127,7 @@
         return payloadKeys.filter((key) => !schemaKeys.has(key));
     });
 
+    // svelte-ignore state_referenced_locally
     if (!isCreate) {
         Dmart.query({
             space_name: $params.space_name,
@@ -162,7 +163,7 @@
         })
             .then((result) => {
                 selectedSchema = "folder_rendering";
-                selectedSchemaContent = result.payload.body;
+                selectedSchemaContent = result?.payload?.body;
                 isFolderFormReady = true;
             })
             .catch((e) => {
@@ -224,7 +225,7 @@
                 },
             ];
         }
-        let result = [];
+        let result: string[] = [];
         const _schemas = schemas.records.map((e) => e.shortname);
         if (selectedResourceType === ResourceType.folder) {
             result = ["folder_rendering", ..._schemas];
@@ -424,7 +425,7 @@
         {:else if selectedResourceType === ResourceType.content && contentType === "markdown"}
             <MarkdownEditor bind:content />
         {:else if selectedResourceType === ResourceType.content && contentType === "text"}
-            <textarea class="w-full h-full my-2" bind:value={content} />
+            <textarea class="w-full h-full my-2" bind:value={content}></textarea>
         {:else}
             {#if !isCreate && mismatchedProperties.length > 0}
                 <div

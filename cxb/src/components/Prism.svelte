@@ -9,7 +9,8 @@
 
   let formatted: string = $state("{}");
   $effect(() => {
-    formatted = highlight(language=="json"?JSON.stringify(code, undefined,1):code as string,languages[language],language);
+    const lang = language ?? "json";
+    formatted = highlight(language=="json"?JSON.stringify(code, undefined,1):code as string,languages[lang],lang);
   })
 </script>
 

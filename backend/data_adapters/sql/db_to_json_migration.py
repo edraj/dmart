@@ -294,7 +294,7 @@ def process_spaces(session, space_folder):
 async def export_data_with_query(query, user_shortname):
     from utils.repository import serve_query
 
-    space_folder = os.path.relpath(str(settings.spaces_folder))
+    space_folder = os.path.relpath(str(settings.spaces_folder))  # noqa: ASYNC240
 
     _total, records = await serve_query(query, user_shortname)
 

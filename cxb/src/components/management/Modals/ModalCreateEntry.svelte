@@ -8,7 +8,7 @@
         Spinner,
     } from "flowbite-svelte";
     import { CodeOutline, FileCodeOutline } from "flowbite-svelte-icons";
-    import { Dmart, RequestType, ResourceType } from "@edraj/tsdmart";
+    import { Dmart, RequestType, ResourceType, type ActionResponse } from "@edraj/tsdmart";
     import { tick, untrack } from "svelte";
     import { scrollToElById } from "@/utils/renderer/rendererUtils";
     import Prism from "@/components/Prism.svelte";
@@ -39,10 +39,10 @@
         isOpen: boolean;
     } = $props();
 
-    const folderPreference = $currentEntry?.entry?.payload?.body;
+    const folderPreference = ($currentEntry as any)?.entry?.payload?.body;
 
     let selectedResourceType = $state(ResourceType.content);
-    let allowedResourceTypes = $state([]);
+    let allowedResourceTypes = $state<{name: string; value: ResourceType}[]>([]);
 
     let selectedInputMode = $state(InputMode.form);
 
@@ -189,7 +189,7 @@
     }
     prepareResourceTypes();
 
-    let selectedSchema = $state(null);
+    let selectedSchema = $state<string | null>(null);
 
     let content: any = $state({
         json: {},
@@ -198,11 +198,11 @@
     let contentType = $state("json");
 
     let errorContent: any = $state(null);
-    let validateMetaForm;
-    let validateRTForm;
+    let validateMetaForm = $state<any>(undefined);
+    let validateRTForm = $state<any>(undefined);
 
     let isHandleCreateEntryLoading = $state(false);
-    let errorModalMessage = $state(null);
+    let errorModalMessage = $state<string | null>(null);
     async function handleCreateEntry() {
         errorModalMessage = null;
         if (!validateMetaForm()) {
@@ -227,7 +227,7 @@
 
         try {
             isHandleCreateEntryLoading = true;
-            let response = null;
+            let response: ActionResponse | null = null;
             const _metaContent = $state.snapshot(metaContent);
             const shortname = _metaContent.shortname;
             delete _metaContent.shortname;
@@ -332,18 +332,18 @@
             };
             response = await Dmart.request(request);
 
-            if (response.attributes && response.attributes.error) {
+            if ((response as any)?.attributes && (response as any).attributes.error) {
                 isHandleCreateEntryLoading = false;
-                errorContent = response.attributes.error;
+                errorContent = (response as any).attributes.error;
                 return;
             }
-            await $currentListView.fetchPageRecords();
+            await $currentListView?.fetchPageRecords();
             if (selectedResourceType === ResourceType.folder) {
-                $spaceChildren.refresh(space_name, subpath, true);
+                $spaceChildren.refresh?.(space_name, subpath, true);
             }
             isOpen = false;
             showToast(Level.info, "Entry created successfully.");
-        } catch (e) {
+        } catch (e: any) {
             errorContent = e.response.data;
             tick().then(() => {
                 scrollToElById("error-content");
@@ -355,7 +355,7 @@
         isHandleCreateEntryLoading = false;
     }
 
-    let selectedWorkflow = $state(null);
+    let selectedWorkflow = $state<string | null>(null);
 
     $effect(() => {
         if (isOpen === false) {
@@ -421,6 +421,7 @@
             <MetaPermissionForm
                 bind:formData={metaContent}
                 bind:validateFn={validateRTForm}
+                readOnly={false}
             />
         {/if}
 

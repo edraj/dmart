@@ -1,4 +1,4 @@
-export function isDeepEqual(x: any, y: any) {
+export function isDeepEqual(x: unknown, y: unknown): boolean {
   if (x === y) {
     return true;
   } else if (
@@ -27,7 +27,7 @@ export function isDeepEqual(x: any, y: any) {
   }
 }
 
-export const removeEmpty = (obj) => {
+export const removeEmpty = (obj: Record<string, any>): Record<string, any> => {
   // Handle arrays specifically
   if (Array.isArray(obj)) {
     return obj.map(item =>
@@ -35,11 +35,11 @@ export const removeEmpty = (obj) => {
     );
   }
 
-  let newObj = {};
+  const newObj: Record<string, any> = {};
   Object.keys(obj).forEach((key) => {
     if (Array.isArray(obj[key])) {
       // Preserve arrays (including empty arrays)
-      newObj[key] = obj[key].map(item =>
+      newObj[key] = obj[key].map((item: any) =>
           typeof item === 'object' && item !== null ? removeEmpty(item) : item
       );
     } else if (obj[key] === Object(obj[key]) && obj[key] !== null) {
@@ -49,7 +49,7 @@ export const removeEmpty = (obj) => {
         obj[key] !== undefined &&
         obj[key] !== null &&
         typeof obj[key] === "string" &&
-        obj[key].trim().length != 0
+        obj[key].trim().length !== 0
     ) {
       newObj[key] = obj[key];
     } else if (

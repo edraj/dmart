@@ -238,7 +238,7 @@ def is_date_time_value(value):
 
 def parse_search_string(string):
     result = {}
-    terms = string.split()
+    terms = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
 
     # Match comparison operators at the start of value: !, >, >=, <, <=
     comparison_pattern = re.compile(r"^(>=|<=|>|<|!)(.+)$")
@@ -255,6 +255,8 @@ def parse_search_string(string):
 
         field, value = parts
         field = field[2:] if negative else field[1:]
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
 
         comparison_operator = None
         match = comparison_pattern.match(value)
@@ -371,7 +373,7 @@ async def events_query(query: api.Query, user_shortname: str | None = None) -> t
     total: int = 0
 
     path = Path(f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
-    if not path.is_file():
+    if not path.is_file():  # noqa: ASYNC240
         return total, records
 
     total, result = await process_jsonl_file(path, limit=query.limit, offset=query.offset, search=query.search, reverse=True)

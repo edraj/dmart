@@ -64,7 +64,7 @@ class PluginManager:
 
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
-        current = Path(__file__).resolve().parent
+        current = Path(__file__).resolve().parent  # noqa: ASYNC240
         parent = current.parent
         path = parent / "plugins"
         if path.is_dir():
@@ -82,7 +82,7 @@ class PluginManager:
         for plugin_path in plugins_iterator:
             config_file_path = Path(f"{plugin_path.path}/config.json")
             plugin_file_path = Path(f"{plugin_path.path}/plugin.py")
-            if not config_file_path.is_file() or not plugin_file_path.is_file():
+            if not config_file_path.is_file() or not plugin_file_path.is_file():  # noqa: ASYNC240
                 continue
 
             # Load plugin config file

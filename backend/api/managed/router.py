@@ -82,8 +82,8 @@ async def import_data(
         try:
             with zipfile.ZipFile(zip_file.file, "r") as zip_ref:
                 for member in zip_ref.namelist():
-                    member_path = os.path.realpath(os.path.join(temp_dir, member))
-                    if not member_path.startswith(os.path.realpath(temp_dir)):
+                    member_path = os.path.realpath(os.path.join(temp_dir, member))  # noqa: ASYNC240
+                    if not member_path.startswith(os.path.realpath(temp_dir)):  # noqa: ASYNC240
                         raise api.Exception(
                             status.HTTP_400_BAD_REQUEST,
                             api.Error(
@@ -133,7 +133,7 @@ async def export_data(query: api.Query, user_shortname=Depends(JWTBearer())):
                 for root, _, files in os.walk(temp_dir):
                     for file in files:
                         file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
+                        arcname = os.path.relpath(file_path, temp_dir)  # noqa: ASYNC240
                         zip_file.write(file_path, arcname)
 
             def cleanup():
@@ -628,10 +628,7 @@ async def retrieve_entry_or_attachment_payload(
         schema_shortname=schema_shortname,
     )
 
-    if resource_type is not ResourceType.json and (
-        meta.payload is None
-        or meta.payload.body is None
-    ):
+    if resource_type is not ResourceType.json and (meta.payload is None or meta.payload.body is None):
         raise api.Exception(
             status.HTTP_400_BAD_REQUEST,
             error=api.Error(type="media", code=InternalErrorCode.OBJECT_NOT_FOUND, message="Request object is not available"),

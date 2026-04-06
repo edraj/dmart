@@ -36,7 +36,7 @@ const loadConfig = async (): Promise<WebsiteConfig> => {
       default_language: "ar",
       languages: { ar: "العربية", en: "English" },
       backend: "http://localhost:8282",
-      websocket: "ws://0.0.0.0:8484/ws",
+      websocket: "ws://localhost:8484/ws",
       backend_timeout: 30000,
       delay_total_count: false
     };
@@ -52,7 +52,7 @@ export let website: WebsiteConfig = {
   default_language: "ar",
   languages: { ar: "العربية", en: "English" },
   backend: "http://localhost:8282",
-  websocket: "ws://0.0.0.0:8484/ws",
+  websocket: "ws://localhost:8484/ws",
   backend_timeout: 30000,
   delay_total_count: false
 };

@@ -36,11 +36,11 @@
     // Constants
     const DEFAULT_QUERY_LIMIT = 10;
 
-    let spaces = $state([]);
+    let spaces: any[] = $state([]);
     let space_name: string = $state("");
-    let queryType: QueryType = $state(null);
+    let queryType: QueryType | null = $state(null);
     let subpath: string = $state("/");
-    let resource_type: ResourceType = $state(null);
+    let resource_type: ResourceType | null = $state(null);
     let resource_shortnames: string = $state("");
     let search: string = $state("");
     let from_date: string = $state("");
@@ -56,16 +56,16 @@
         reducers: [],
     });
 
-    let response = $state(null);
+    let response: any = $state(null);
     let isDisplayFilter = $state(false);
 
-    let selectedSpacename = $state(null);
-    let tempSubpaths = $state([]);
-    let subpaths = $state([]);
+    let selectedSpacename: string | null = $state(null);
+    let tempSubpaths: string[] = $state([]);
+    let subpaths: string[] = $state([]);
 
     onMount(() => {
         async function setup() {
-            spaces = (await Dmart.getSpaces()).records;
+            spaces = (await Dmart.getSpaces())?.records ?? [];
         }
         setup();
     });
@@ -133,7 +133,7 @@
         if (data?.status === "failed") {
             showToast(Level.warn);
         } else {
-            downloadFile(data, `${space_name}/${subpath}.csv`, "text/csv");
+            downloadFile(JSON.stringify(data) as any, `${space_name}/${subpath}.csv`, "text/csv");
         }
     }
 

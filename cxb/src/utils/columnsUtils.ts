@@ -3,7 +3,7 @@ interface FolderColumn {
     name: string;
 }
 
-interface ListColumn {
+export interface ListColumn {
     path: string;
     title: string;
     type: string;

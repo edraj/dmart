@@ -12,8 +12,8 @@
         spaceName: string
     } = $props();
 
-    let plugins = $state([]);
-    let availableFolders = $state([]);
+    let plugins: string[] = $state([]);
+    let availableFolders: string[] = $state([]);
 
     formData = {
         ...formData,
@@ -45,7 +45,7 @@
                 limit: 100,
                 search: ""
             });
-            availableFolders = (foldersFull.records || []).map(r => r.shortname);
+            availableFolders = (foldersFull?.records || []).map(r => r.shortname);
         } catch (e) {
             console.error("Failed to fetch folders", e);
         }

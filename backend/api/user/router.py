@@ -186,9 +186,7 @@ async def create_user(response: Response, record: core.Record, http_request: Req
 
     await db.create(MANAGEMENT_SPACE, USERS_SUBPATH, user)
     if isinstance(separate_payload_data, dict) and separate_payload_data:
-        await db.update_payload(
-            MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname
-        )
+        await db.update_payload(MANAGEMENT_SPACE, USERS_SUBPATH, user, separate_payload_data, user.owner_shortname)
 
     response_record = await process_user_login(user, response, {}, request_headers=http_request.headers)
 
@@ -328,7 +326,12 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                         type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
                     ),
                 )
-            if user.type == UserType.mobile and user.locked_to_device and user.device_id and (not request.device_id or request.device_id != user.device_id):
+            if (
+                user.type == UserType.mobile
+                and user.locked_to_device
+                and user.device_id
+                and (not request.device_id or request.device_id != user.device_id)
+            ):
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
@@ -379,7 +382,9 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 if request.otp:
                     await db.delete_otp(key)
 
-                record = await process_user_login(user, response, {}, request.firebase_token, request.device_id, http_request.headers)
+                record = await process_user_login(
+                    user, response, {}, request.firebase_token, request.device_id, http_request.headers
+                )
 
                 await plugin_manager.after_action(
                     core.Event(
@@ -424,7 +429,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 _list = list(identifier.items())
                 if len(_list) != 1:
                     raise api.Exception(
-                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
                         api.Error(
                             type="request",
                             code=InternalErrorCode.INVALID_IDENTIFIER,
@@ -451,18 +456,14 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 user_shortname=shortname,
             )
 
-        is_password_valid = password_hashing.verify_password(
-            request.password or "", user.password or ""
-        )
-        if (
-            user
-            and user.is_active
-            and (
-                request.invitation
-                or is_password_valid
-            )
-        ):
-            if request.invitation is None and user.type == UserType.mobile and user.device_id and (not request.device_id or request.device_id != user.device_id):
+        is_password_valid = password_hashing.verify_password(request.password or "", user.password or "")
+        if user and user.is_active and (request.invitation or is_password_valid):
+            if (
+                request.invitation is None
+                and user.type == UserType.mobile
+                and user.device_id
+                and (not request.device_id or request.device_id != user.device_id)
+            ):
                 if user.locked_to_device:
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
@@ -481,7 +482,9 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                     )
 
             await db.clear_failed_password_attempts(shortname)
-            record = await process_user_login(user, response, user_updates, request.firebase_token, request.device_id, http_request.headers)
+            record = await process_user_login(
+                user, response, user_updates, request.firebase_token, request.device_id, http_request.headers
+            )
             await reset_failed_login_attempt(user)
 
             await plugin_manager.after_action(
@@ -707,7 +710,7 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
 
         if result is None or result != profile.attributes["confirmation"]:
             raise api.Exception(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 api.Error(type="request", code=InternalErrorCode.INVALID_CONFIRMATION, message="Invalid confirmation code [1]"),
             )
 
@@ -1348,9 +1351,7 @@ if settings.social_login_allowed:
         )
         userRecord.attributes.pop("password", None)
         userByEmail: core.User | None = (
-            core.User.from_record(
-                userRecord, userRecord.attributes.get("owner_shortname", "")
-            )
+            core.User.from_record(userRecord, userRecord.attributes.get("owner_shortname", ""))
             if userRecord and userRecord.attributes
             else None
         )

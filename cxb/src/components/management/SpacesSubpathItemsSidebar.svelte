@@ -74,7 +74,13 @@
         return `/${$activeRoute.params.subpath}` === getCurrentPath();
     }
 
-    loadChildren(spaceName, getCurrentPath());
+    $effect(() => {
+        const name = spaceName;
+        const path = getCurrentPath();
+        untrack(() => {
+            loadChildren(name, path);
+        });
+    });
 </script>
 
 <SidebarItem

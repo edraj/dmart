@@ -66,7 +66,7 @@
 
         isActionLoading = true;
         try {
-            const records = [];
+            const records: any[] = [];
             const isMove = actionType === "move";
 
             $bulkBucket.forEach(b => {
@@ -113,7 +113,7 @@
 
             if (response?.status === "success") {
                 showToast(Level.info, `Entries ${isMove ? "moved" : "copied"} successfully`);
-                await $currentListView.fetchPageRecords();
+                await $currentListView?.fetchPageRecords();
                 bulkBucket.set([]);
                 isOpen = false;
             } else {
@@ -127,7 +127,7 @@
         }
     }
 
-    let spaceOptions = $derived($spaces ? $spaces.map(s => ({name: s.shortname, value: s.shortname})) : []);
+    let spaceOptions = $derived($spaces?.map(s => ({name: s.shortname, value: s.shortname})) ?? []);
 
 </script>
 
@@ -149,7 +149,7 @@
             <Button color="alternative" onclick={() => isOpen = false}>Cancel</Button>
             <Button class="bg-primary" onclick={handleBulkAction} disabled={isActionLoading}>
                 {#if isActionLoading}
-                    <Spinner size="sm" class="mr-2" />
+                    <Spinner size="4" class="mr-2" />
                     {actionType === "move" ? "Moving..." : "Copying..."}
                 {:else}
                     {actionType === "move" ? "Move" : "Copy"}

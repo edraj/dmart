@@ -163,7 +163,7 @@
                                     <div class="border p-3 rounded-md bg-gray-50">
                                         <div class="flex justify-between items-center mb-2">
                                             <h4 class="font-medium">Array Items</h4>
-                                            <Button size="xs" color="blue" onclick={() => addArrayItem(`properties.${index}`)}>Configure Items</Button>
+                                            <Button size="xs" color="blue" onclick={() => handleAddArrayItem(`properties.${index}`)}>Configure Items</Button>
                                         </div>
 
                                         {#if property.items}
@@ -202,7 +202,7 @@
                                                                                 </div>
                                                                             </div>
                                                                             <div class="mt-2 flex justify-end">
-                                                                                <Button size="xs" color="red" onclick={() => removeProperty(`properties.${index}.items.properties`, itemIndex)}>Remove</Button>
+                                                                                <Button size="xs" color="red" onclick={() => handleRemoveProperty(`properties.${index}.items.properties`, itemIndex)}>Remove</Button>
                                                                             </div>
                                                                         </div>
                                                                     {/each}
@@ -250,7 +250,7 @@
                                                         </div>
                                                     </div>
                                                     <div class="mt-2 flex justify-end">
-                                                        <Button size="xs" color="red" onclick={() => removeProperty(`properties.${index}.properties`, nestedIndex)}>Remove</Button>
+                                                        <Button size="xs" color="red" onclick={() => handleRemoveProperty(`properties.${index}.properties`, nestedIndex)}>Remove</Button>
                                                     </div>
                                                 </div>
                                             {/each}
@@ -259,12 +259,12 @@
                                 {/if}
 
                                 <div class="flex items-center mt-4">
-                                    <Checkbox id={`property-required-${index}`} checked={isRequired(property.name)} onclick={() => toggleRequired(property.name)} />
+                                    <Checkbox id={`property-required-${index}`} checked={isRequired(property.name)} onclick={() => handleToggleRequired(property.name)} />
                                     <Label for={`property-required-${index}`} class="ml-2">Required</Label>
                                 </div>
 
                                 <div class="flex justify-end mt-2">
-                                    <Button size="xs" color="red" onclick={() => removeProperty('properties', index)}>Remove Property</Button>
+                                    <Button size="xs" color="red" onclick={() => handleRemoveProperty('properties', index)}>Remove Property</Button>
                                 </div>
                             </div>
                         </AccordionItem>

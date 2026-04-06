@@ -290,7 +290,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
             def _field_exists_in_table(_field: str) -> bool:
                 if _field in table_columns:
                     return True
-                return _field.startswith("payload.") and "payload" in table_columns
+                if _field.startswith("payload.") and "payload" in table_columns:
+                    return True
+                if "." in _field:
+                    base_col = _field.split(".", 1)[0]
+                    if base_col in table_columns:
+                        col_type = table_columns[base_col].type
+                        if str(col_type).lower() == "jsonb":
+                            return True
+                return False
 
             for field, field_data in search_tokens.items():
                 if not _field_exists_in_table(field):
@@ -310,6 +318,33 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                         value_type = "string"
 
                 if not values:
+                    continue
+
+                if "." in field and field not in table_columns and not field.startswith("payload."):
+                    base_col, sub_key = field.split(".", 1)
+                    if base_col in table_columns and str(table_columns[base_col].type).lower() == "jsonb":
+                        conditions = []
+                        for value in values:
+                            p_val = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p_val] = value
+                            if sub_key == "*":
+                                if negative:
+                                    conditions.append(f"({base_col}::text NOT ILIKE '%' || :{p_val} || '%')")
+                                else:
+                                    conditions.append(f"({base_col}::text ILIKE '%' || :{p_val} || '%')")
+                            else:
+                                col_extract = f"{base_col}::jsonb->>'{sub_key}'"
+                                if negative:
+                                    conditions.append(f"({col_extract} IS NULL OR {col_extract} NOT ILIKE '%' || :{p_val} || '%')")
+                                else:
+                                    conditions.append(f"({col_extract} ILIKE '%' || :{p_val} || '%')")
+                        if conditions:
+                            join_operator = " OR " if operation == "AND" else " AND "
+                            if negative:
+                                join_operator = " AND " if operation == "AND" else " OR "
+                            combined_cond = "(" + join_operator.join(conditions) + ")"
+                            statement = statement.where(text(combined_cond))
                     continue
 
                 if field.startswith("payload."):

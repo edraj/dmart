@@ -4,34 +4,19 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.logger import logger
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from utils.settings import settings
+from data_adapters.adapter import data_adapter as _db
 
 router = APIRouter()
 
 
-def _build_engine():
-    driver = settings.database_driver
-    user = settings.database_username
-    password = settings.database_password
-    host = settings.database_host
-    port = settings.database_port
-    name = settings.database_name
-
-    url = f"{driver}://{user}:{password}@{host}:{port}/{name}"
-    return create_async_engine(url, pool_pre_ping=True)
-
-
-_engine = _build_engine()
-_async_session: Any = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False) if _engine else None  # type: ignore
+_async_session: Any = sessionmaker(_db.engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore[attr-defined]
 
 
 @asynccontextmanager
 async def get_session():
-    if _async_session is None:
-        raise RuntimeError("db_size_info: database engine is not initialised")
     async with _async_session() as session:
         yield session
 

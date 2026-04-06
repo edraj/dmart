@@ -52,7 +52,7 @@
                 subpath: by_subpath ? resource_type : "/",
                 search: by_subpath ? "" : `@resource_type:${resource_type}`,
             } as any);
-            return resp.attributes.total || 0;
+            return resp?.attributes?.total || 0;
         } catch (e) {
             console.error(
                 `Failed to fetch count for ${space}/${resource_type}`,

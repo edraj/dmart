@@ -9,12 +9,12 @@
         validateFn = $bindable()
     } = $props();
 
-    let availablePermissions = $state([]);
+    let availablePermissions: any[] = $state([]);
     let loading = $state(true);
-    let filteredPermissions = $state([]);
+    let filteredPermissions: {key: string; value: string}[] = $state([]);
     let searchTerm = $state('');
     let showDropdown = $state(false);
-    let dropdownWrapperRef;
+    let dropdownWrapperRef: HTMLElement | null = $state(null);
 
     formData = {
         ...formData,
@@ -126,6 +126,8 @@
                         {#if showDropdown && filteredPermissions.length > 0}
                             <div class="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-auto">
                                 {#each filteredPermissions as permission}
+                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
                                     <div
                                             class="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
                                             onclick={(e) => togglePermission(e, permission)}

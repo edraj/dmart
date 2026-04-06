@@ -7,13 +7,13 @@
     workflowContent: any
   } = $props();
 
-  let currentDiagram = {
+  let currentDiagram = $derived({
     name: shortname,
     content: jsonToPlantUML(workflowContent),
-    encodedContent: function () {
+    encodedContent() {
       return encode(this.content);
     },
-  };
+  });
 </script>
 
 

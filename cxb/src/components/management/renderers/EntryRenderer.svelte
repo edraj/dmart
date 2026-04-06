@@ -118,13 +118,16 @@
         resolution: null,
         comment: null,
     });
-    let errorMessage = $state(null);
+    let errorMessage: string | null | undefined = $state(null);
 
+    // svelte-ignore state_referenced_locally
     const isEntryTrash =
         space_name === "personal" &&
         subpath.startsWith(`people/${$user.shortname}/trash`);
 
+    // svelte-ignore state_referenced_locally
     const canUpdate = checkAccess("update", space_name, subpath, resource_type);
+    // svelte-ignore state_referenced_locally
     const canDelete = (() => {
         if (space_name === "management" && subpath === "/") {
             if (
@@ -139,8 +142,8 @@
 
     let activeTab = $state(TabMode.list);
     let isActionLoading = $state(false);
-    let validateMetaForm;
-    let validateRTForm;
+    let validateMetaForm: any = $state(undefined);
+    let validateRTForm: any = $state(undefined);
 
     function navigateAfterEntryAction() {
         if (resource_type === ResourceType.space) {
@@ -317,7 +320,7 @@
             space_name,
             subpath,
             resource_type,
-            $user.shortname,
+            $user.shortname ?? "",
         );
 
         if (result.success) {
@@ -385,7 +388,7 @@
     async function refreshEntry() {
         if (resource_type === ResourceType.folder) {
             if (isJEDirty) {
-                entry = await Dmart.retrieveEntry({
+                entry = (await Dmart.retrieveEntry({
                     resource_type,
                     space_name,
                     subpath: getParentPath(subpath),
@@ -393,7 +396,7 @@
                     retrieve_json_payload: true,
                     retrieve_attachments: true,
                     validate_schema: true,
-                });
+                }))!;
                 const children = await getChildren(
                     space_name,
                     getParentPath(subpath),
@@ -410,9 +413,9 @@
                 );
                 $spaceChildren.data = structuredClone($spaceChildren.data);
             }
-            await $currentListView.fetchPageRecords();
+            await $currentListView?.fetchPageRecords();
         } else {
-            entry = await Dmart.retrieveEntry({
+            entry = (await Dmart.retrieveEntry({
                 resource_type,
                 space_name,
                 subpath,
@@ -420,7 +423,7 @@
                 retrieve_json_payload: true,
                 retrieve_attachments: true,
                 validate_schema: true,
-            });
+            }))!;
         }
         jeContent = { json: $state.snapshot(entry) };
         entryRelationships = entry.relationships || [];
@@ -520,7 +523,7 @@
             {space_name}
             {subpath}
             {resource_type}
-            schema_name={schemaShortname}
+            schema_name={schemaShortname ?? undefined}
             shortname={entry.shortname}
             payloadContentType={entry?.payload?.content_type}
     />
@@ -619,10 +622,10 @@
                     <div class="flex items-center gap-2">
                         <PaperClipOutline size="md" />
                         <p>
-                            Attachments {Object.values(entry.attachments).flat(
+                            Attachments {Object.values(entry.attachments ?? {}).flat(
                             1,
                         ).length
-                            ? `(${Object.values(entry.attachments).flat(1).length})`
+                            ? `(${Object.values(entry.attachments ?? {}).flat(1).length})`
                             : ""}
                         </p>
                     </div>
@@ -896,7 +899,7 @@
                 {#if resource_type === ResourceType.schema}
                     <SchemaDiagram
                             shortname={entry.shortname}
-                            properties={entry.payload.body.properties}
+                            properties={entry.payload?.body?.properties}
                     />
                 {/if}
                 {#if subpath === "workflows"}

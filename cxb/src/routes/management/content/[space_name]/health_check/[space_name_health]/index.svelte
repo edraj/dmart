@@ -60,8 +60,7 @@
     }
 </script>
 
-<Modal bind:open={open} size="lg" class="w-full">
-    <div slot="header" class="text-lg font-semibold">{modalData.shortname}</div>
+<Modal bind:open={open} size="lg" class="w-full" title={modalData.shortname}>
     <div class="space-y-2">
         <p><b>UUID:</b> {modalData.uuid}</p>
         <p><b>Space name:</b> {$params.shortname}</p>
@@ -69,7 +68,7 @@
         <p><b>Issues:</b> {modalData.issues}</p>
         <p><b>Exception:</b><br /> {modalData.exception}</p>
     </div>
-    <div slot="footer" class="flex justify-between">
+    <div class="flex justify-between mt-4">
         <Button color="alternative" onclick={() => (open = false)}>Close</Button>
         {#if isEntryExist}
             <Button color="primary" onclick={handleEdit}>Edit</Button>
@@ -94,13 +93,14 @@
         <ListPlaceholder class="m-5" size="lg" style="width: 100vw"/>
     </div>
 {:then response}
+    {@const body = response?.payload?.body}
     <List class="w-full px-5">
-        {#if response.payload.body["invalid_folders"]}
+        {#if body?.["invalid_folders"]}
             <ListgroupItem class="bg-blue-500 text-white">
-                {`Invalid folders (${response.payload.body["invalid_folders"].length} invalid entires)`}
+                {`Invalid folders (${body["invalid_folders"].length} invalid entires)`}
             </ListgroupItem>
-            {#if response.payload.body["invalid_folders"].length}
-                {#each response.payload.body["invalid_folders"] as entry}
+            {#if body["invalid_folders"].length}
+                {#each body["invalid_folders"] as entry}
                     <ListgroupItem class="bg-gray-200">{entry}</ListgroupItem>
                 {/each}
             {/if}
@@ -109,19 +109,21 @@
         <ListgroupItem class="bg-blue-500 text-white">
             {`Folders report`}
         </ListgroupItem>
-        {#if response.payload.body["folders_report"]}
-            {#each Object.keys(response.payload.body["folders_report"]) as key_entry}
+        {#if body?.["folders_report"]}
+            {#each Object.keys(body["folders_report"]) as key_entry}
                 <ListgroupItem class="bg-gray-200">{key_entry}</ListgroupItem>
-                {#if response.payload.body["folders_report"][key_entry].valid_entries}
+                {#if body["folders_report"][key_entry].valid_entries}
                     <ListgroupItem class="bg-green-500 text-white">
-                        {`Valid entries ${response.payload.body["folders_report"][key_entry].valid_entries}`}
+                        {`Valid entries ${body["folders_report"][key_entry].valid_entries}`}
                     </ListgroupItem>
                 {/if}
-                {#if response.payload.body["folders_report"][key_entry].invalid_entries}
+                {#if body["folders_report"][key_entry].invalid_entries}
                     <ListgroupItem class="bg-red-500 text-white">
-                        {`Invalid entries ${response.payload.body["folders_report"][key_entry].invalid_entries.length}`}
+                        {`Invalid entries ${body["folders_report"][key_entry].invalid_entries.length}`}
                     </ListgroupItem>
-                    {#each response.payload.body["folders_report"][key_entry].invalid_entries as err_entry}
+                    {#each body["folders_report"][key_entry].invalid_entries as err_entry}
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <span onclick={(e) => { handleErrorEntryClick(err_entry, { subpath: key_entry }); }}>
                         <ListgroupItem class="cursor-pointer hover:bg-gray-100 border" >{err_entry.shortname}</ListgroupItem>
                         </span>
@@ -129,12 +131,12 @@
                 {/if}
             {/each}
         {/if}
-        {#if response.payload.body["invalid_meta_folders"]}
+        {#if body?.["invalid_meta_folders"]}
             <ListgroupItem class="bg-blue-500 text-white">
-                {`Invalid meta folders (${response.payload.body["invalid_meta_folders"].length} invalid entires)`}
+                {`Invalid meta folders (${body["invalid_meta_folders"].length} invalid entires)`}
             </ListgroupItem>
-            {#if response.payload.body["invalid_meta_folders"].length}
-                {#each response.payload.body["invalid_meta_folders"] as entry}
+            {#if body["invalid_meta_folders"].length}
+                {#each body["invalid_meta_folders"] as entry}
                     <ListgroupItem class="bg-gray-200">{entry}</ListgroupItem>
                 {/each}
             {/if}
