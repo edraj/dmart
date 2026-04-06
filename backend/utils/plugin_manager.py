@@ -155,8 +155,15 @@ class PluginManager:
         else:
             formats_of_subpath.append(f"/{event.subpath}")
 
+        def subpath_matches(event_subpath: str, filter_subpaths: list) -> bool:
+            for filter_subpath in filter_subpaths:
+                normalized = filter_subpath.rstrip("/")
+                if event_subpath == normalized or event_subpath.startswith(normalized + "/"):
+                    return True
+            return False
+
         if "__ALL__" not in plugin_filters.subpaths and not any(
-            subpath in plugin_filters.subpaths for subpath in formats_of_subpath
+            subpath_matches(subpath, plugin_filters.subpaths) for subpath in formats_of_subpath
         ):
             return False
 
