@@ -7,7 +7,6 @@ import os
 import shutil
 import sys
 import time
-import traceback
 from contextlib import asynccontextmanager
 from copy import copy
 from datetime import datetime
