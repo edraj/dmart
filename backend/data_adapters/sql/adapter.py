@@ -19,6 +19,7 @@ from fastapi import status
 from fastapi.logger import logger
 from jsonschema import Draft7Validator
 from sqlalchemy import URL, String, Text, bindparam, cast, literal, literal_column, or_
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import defer, sessionmaker
 from sqlmodel import Boolean, Float, Integer, Session, col, delete, func, select, text, update
@@ -3312,11 +3313,16 @@ class SQLAdapter(BaseDataAdapter):
                 return cached.permissions  # type: ignore
 
         user_permissions = await self.generate_user_permissions(user_shortname)
-
         async with self.get_session() as session:
-            cache_entry = UserPermissionsCache(user_shortname=user_shortname, permissions=user_permissions)
-            await session.merge(cache_entry)
-            await session.commit()
+            stmt = insert(UserPermissionsCache).values(
+                user_shortname=user_shortname,
+                permissions=user_permissions
+            )
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_shortname"],
+                set_={"permissions": user_permissions}
+            )
+            await session.execute(stmt)
 
         return user_permissions
 
