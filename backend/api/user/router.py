@@ -1346,7 +1346,11 @@ if settings.social_login_allowed:
         if user:
             return user
 
-        userRecord: core.Record | None = await db.get_entry_by_criteria({"email": email}, UsersTable)
+        userRecord: core.Record | None = await db.get_entry_by_criteria(
+            {"email": email}, UsersTable
+        )
+        if userRecord and userRecord.attributes:
+            userRecord.attributes.pop("password", None)
         userByEmail: core.User | None = (
             core.User.from_record(userRecord, userRecord.attributes.get("owner_shortname", ""))
             if userRecord and userRecord.attributes
