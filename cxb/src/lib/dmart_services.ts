@@ -62,10 +62,11 @@ export async function getChildren(
     spaces: any = null,
     ignoreFilter = false
 ): Promise<ApiQueryResponse> {
+    const _subpath = subpath.replaceAll('-', '/')
     const folders = await Dmart.query({
         type: QueryType.search,
         space_name: space_name,
-        subpath: subpath,
+        subpath: _subpath,
         filter_types: restrict_types,
         exact_subpath: true,
         search: "",
