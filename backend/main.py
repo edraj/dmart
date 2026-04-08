@@ -560,7 +560,6 @@ async def main():
     config = Config()
     config.bind = [f"{settings.listening_host}:{settings.listening_port}"]
     config.backlog = 2000
-    config.workers = 2
 
     config.logconfig_dict = logging_schema
     config.errorlog = logger
