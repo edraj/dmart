@@ -1036,7 +1036,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())) -> api.Response:
+async def confirm_otp(request: Request, user_request: ConfirmOTPRequest, user=Depends(JWTBearer())) -> api.Response:
     """Confirm OTP"""
 
     result = user_request.check_fields()
@@ -1070,7 +1070,7 @@ async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())
 
     await db.save_otp(key, confirmation)
 
-    response = await update_profile(data, shortname=user)
+    response = await update_profile(request, data, shortname=user)
 
     if response.status == Status.success:
         return api.Response(status=api.Status.success, records=[])
