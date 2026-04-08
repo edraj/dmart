@@ -19,7 +19,7 @@ from utils.settings import settings
 
 # Pattern for validating field paths used in search, sort_by, aggregation
 # Only allows alphanumeric, underscore, dot (for JSON paths), hyphen, and optional @ prefix
-_SAFE_FIELD_PATH = re.compile(r"^@?[a-zA-Z0-9_.\-]+$")
+_SAFE_FIELD_PATH = re.compile(r"^@?[a-zA-Z0-9_.\-\s,]+$")
 # Blocklist of dangerous jq builtins that can leak server info
 _JQ_DANGEROUS = re.compile(r"\benv\b|\$ENV\b|\binput\b|\bdebug\b|\bstderr\b|\bpath\b\(", re.IGNORECASE)
 
@@ -143,6 +143,13 @@ class Query(BaseModel):
     offset: int = 0
     aggregation_data: RedisAggregate | None = None
     join: list[JoinQuery] | None = None
+
+    @field_validator("sort_by")
+    @classmethod
+    def validate_sort_by(cls, v: str | None) -> str | None:
+        if v is not None and not _SAFE_FIELD_PATH.match(v):
+            raise ValueError("sort_by contains invalid characters; only alphanumeric, underscore, dot, and hyphen are allowed")
+        return v
 
     @field_validator("jq_filter")
     @classmethod
