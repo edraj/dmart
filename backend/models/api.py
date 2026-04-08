@@ -144,13 +144,6 @@ class Query(BaseModel):
     aggregation_data: RedisAggregate | None = None
     join: list[JoinQuery] | None = None
 
-    @field_validator("sort_by")
-    @classmethod
-    def validate_sort_by(cls, v: str | None) -> str | None:
-        if v is not None and not _SAFE_FIELD_PATH.match(v):
-            raise ValueError("sort_by contains invalid characters; only alphanumeric, underscore, dot, and hyphen are allowed")
-        return v
-
     @field_validator("jq_filter")
     @classmethod
     def validate_jq_filter(cls, v: str | None) -> str | None:
