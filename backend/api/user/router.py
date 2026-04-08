@@ -616,7 +616,7 @@ async def get_profile(shortname=Depends(JWTBearer())) -> api.Response:
 
 
 @router.post("/profile", response_model=api.Response, response_model_exclude_none=True)
-async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -> api.Response:
+async def update_profile(request: Request, profile: core.Record, shortname=Depends(JWTBearer())) -> api.Response:
     """Update user profile"""
     profile_user = core.Meta.check_record(record=profile, owner_shortname=profile.shortname)
 
@@ -774,6 +774,14 @@ async def update_profile(profile: core.Record, shortname=Depends(JWTBearer())) -
 
     if settings.logout_on_pwd_change and profile_user.password:
         await db.remove_user_session(shortname)
+
+    if firebase_token := profile.attributes.get("firebase_token"):
+        try:
+            auth_token = request.headers.get("authorization", "").removeprefix("Bearer ") or request.cookies.get("auth_token", "")
+        except Exception:
+            auth_token = ""
+        if auth_token:
+            await db.update_session_firebase_token(shortname, auth_token, firebase_token)
 
     await plugin_manager.after_action(
         core.Event(
@@ -1028,7 +1036,7 @@ async def reset_password(user_request: PasswordResetRequest) -> api.Response:
     response_model=api.Response,
     response_model_exclude_none=True,
 )
-async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())) -> api.Response:
+async def confirm_otp(request: Request, user_request: ConfirmOTPRequest, user=Depends(JWTBearer())) -> api.Response:
     """Confirm OTP"""
 
     result = user_request.check_fields()
@@ -1062,7 +1070,7 @@ async def confirm_otp(user_request: ConfirmOTPRequest, user=Depends(JWTBearer())
 
     await db.save_otp(key, confirmation)
 
-    response = await update_profile(data, shortname=user)
+    response = await update_profile(request, data, shortname=user)
 
     if response.status == Status.success:
         return api.Response(status=api.Status.success, records=[])
