@@ -2770,6 +2770,19 @@ class SQLAdapter(BaseDataAdapter):
                     tokens.append(r.firebase_token)
             return tokens
 
+    async def update_session_firebase_token(self, user_shortname: str, token: str, firebase_token: str) -> bool:
+        async with self.get_session() as session:
+            statement = select(Sessions).where(col(Sessions.shortname) == user_shortname)
+            results = (await session.execute(statement)).all()
+            for result in results:
+                r = result[0]
+                if verify_password(token, r.token):
+                    r.firebase_token = firebase_token
+                    session.add(r)
+                    await session.commit()
+                    return True
+        return False
+
     async def set_invitation(self, invitation_token: str, invitation_value):
         async with self.get_session() as session:
             timestamp = datetime.now()
