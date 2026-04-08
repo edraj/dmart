@@ -19,7 +19,7 @@ from utils.settings import settings
 
 # Pattern for validating field paths used in search, sort_by, aggregation
 # Only allows alphanumeric, underscore, dot (for JSON paths), hyphen, and optional @ prefix
-_SAFE_FIELD_PATH = re.compile(r"^@?[a-zA-Z0-9_.\-]+$")
+_SAFE_FIELD_PATH = re.compile(r"^@?[a-zA-Z0-9_.\-\s,]+$")
 # Blocklist of dangerous jq builtins that can leak server info
 _JQ_DANGEROUS = re.compile(r"\benv\b|\$ENV\b|\binput\b|\bdebug\b|\bstderr\b|\bpath\b\(", re.IGNORECASE)
 

@@ -120,12 +120,21 @@ app = FastAPI(
 
 
 async def capture_body(request: Request):
-    """Capture request body metadata for logging. Avoids re-parsing JSON
-    (FastAPI already parses it); only captures lightweight metadata for
-    multipart uploads."""
+    """Capture request body metadata for logging. Captures JSON bodies
+    directly and lightweight metadata for multipart uploads."""
     request.state.request_body = {}
 
     content_type = request.headers.get("content-type", "")
+
+    if "application/json" in content_type:
+        try:
+            body = await request.body()
+            if body:
+                request.state.request_body = json.loads(body)
+        except Exception:
+            pass
+        return
+
     if request.method != "POST":
         return
 
@@ -297,10 +306,7 @@ async def middle(request: Request, call_next):
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
         content_type = response.headers.get("content-type", "")
-        # Only buffer response body for error responses (for logging).
-        # Skip buffering for successful responses to avoid loading large
-        # query results into memory just for logging.
-        if "application/json" in content_type and response.status_code >= 400:
+        if "application/json" in content_type:
             raw_response = [section async for section in response.body_iterator]
             response.body_iterator = iterate_in_threadpool(iter(raw_response))
             raw_data = b"".join(raw_response)

@@ -959,8 +959,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
 
     try:
         if not is_for_count and query.sort_by:
-            if query.sort_by.startswith("attributes."):
-                query.sort_by = query.sort_by[11:]
+            query.sort_by = str(query.sort_by).replace("attributes.", "")
             if "." in query.sort_by:
                 # Normalize JSON path for sorting as well (handle leading '@' and body.* shortcut)
                 sort_expression = transform_keys_to_sql(
