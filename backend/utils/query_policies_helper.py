@@ -104,11 +104,9 @@ async def get_user_query_policies(
                 sql_query_policies.append(f"{perm_key}:true:{user_group}")
         elif ConditionType.is_active in permission["conditions"]:
             sql_query_policies.append(f"{perm_key}:true:*")
-        # TBD The following seems useless ... needs review
-        # elif ConditionType.own in permission["conditions"]:
-        #     for user_group in user_groups:
-        #         sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
-        #         sql_query_policies.append(f"{perm_key}:false:{user_shortname}")
+        elif ConditionType.own in permission["conditions"]:
+            sql_query_policies.append(f"{perm_key}:true:{user_shortname}")
+            sql_query_policies.append(f"{perm_key}:false:{user_shortname}")
 
         else:
             sql_query_policies.append(f"{perm_key}:*")
