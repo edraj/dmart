@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import sys
 from datetime import datetime
@@ -1552,10 +1553,8 @@ async def import_resources_from_csv_handler(
         if isinstance(value, str):
             stripped = value.strip()
             if stripped and stripped[0] in ("{", "["):
-                try:
+                with contextlib.suppress(json.JSONDecodeError, ValueError):
                     value = json.loads(stripped)
-                except (json.JSONDecodeError, ValueError):
-                    pass
 
         keys_list = [i.strip() for i in key.split(".")]
         if keys_list[0] in meta_class_attributes:
