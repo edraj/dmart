@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import sys
 from datetime import datetime
@@ -70,6 +71,18 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
             column_title = folder_view.get("name")
             attribute_val = flattened_doc.get(column_key)
 
+            if attribute_val is None and not column_key.startswith("attachments."):
+                parts = column_key.split(".")
+                current = redis_document
+                for part in parts:
+                    if isinstance(current, dict):
+                        current = current.get(part)
+                    else:
+                        current = None
+                        break
+                if isinstance(current, (dict, list)):
+                    attribute_val = current
+
             if column_key.startswith("attachments.") and attribute_val is None:
                 parts = column_key.split(".")
                 if len(parts) >= 3:
@@ -93,35 +106,11 @@ def csv_entries_prepare_docs(query, docs_dicts, folder_views, keys_existence):
 
             if attribute_val is not None:
                 keys_existence[column_title] = True
-            """
-            Extract array items in a separate row per item
-            - list_new_rows = []
-            - for row in rows:
-            -      for item in new_list[1:]:
-            -          new_row = row
-            -          add item attributes to the new_row
-            -          list_new_rows.append(new_row)
-             -      add new_list[0] attributes to row
-             -
-             -  rows += list_new_rows
-            """
-            if isinstance(attribute_val, list) and len(attribute_val) > 0:
-                if isinstance(attribute_val[0], dict):
-                    joined_values = []
-                    for item in attribute_val:
-                        if isinstance(item, dict):
-                            item_values = [str(v) for v in item.values()]
-                            joined_values.extend(item_values)
-                        else:
-                            joined_values.append(str(item))
-                    new_col = "|".join(joined_values)
-                else:
-                    new_col = "|".join(str(item) for item in attribute_val)
-
+            if isinstance(attribute_val, (dict, list)):
+                new_col = json.dumps(attribute_val, ensure_ascii=False)
                 for row in rows:
                     row[column_title] = new_col
-
-            elif attribute_val is not None and not isinstance(attribute_val, list):
+            elif attribute_val is not None:
                 new_col = (
                     attribute_val
                     if column_key not in timestamp_fields
@@ -1561,11 +1550,19 @@ async def import_resources_from_csv_handler(
             shortname = value
             continue
 
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped and stripped[0] in ("{", "["):
+                with contextlib.suppress(json.JSONDecodeError, ValueError):
+                    value = json.loads(stripped)
+
         keys_list = [i.strip() for i in key.split(".")]
         if keys_list[0] in meta_class_attributes:
             match len(keys_list):
                 case 1:
-                    if str(meta_class_attributes[keys_list[0]].annotation).startswith("list"):
+                    if isinstance(value, (dict, list)):
+                        meta_object[keys_list[0].strip()] = value
+                    elif str(meta_class_attributes[keys_list[0]].annotation).startswith("list"):
                         meta_object[keys_list[0].strip()] = [
                             e.strip().strip("'").strip('"') for e in value.strip("[]").split(",")
                         ]
@@ -1575,6 +1572,10 @@ async def import_resources_from_csv_handler(
                     if keys_list[0].strip() not in meta_object:
                         meta_object[keys_list[0].strip()] = []
                     meta_object[keys_list[0].strip()][keys_list[1].strip()] = value
+            continue
+
+        if isinstance(value, (dict, list)):
+            payload_object[keys_list[0].strip()] = value
             continue
 
         if schema_content is not None:
