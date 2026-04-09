@@ -56,6 +56,7 @@ commands = """
     apply_plugin_config
     ws
     wt
+    init-ac
 """
 
 sentinel = object()
@@ -1036,6 +1037,70 @@ def main():
                 sys.exit(e.returncode)
         case "apply_plugin_config":
             patch_plugin_configs()
+        case "init-ac":
+            fish_completions_dir = Path.home() / ".config" / "fish" / "completions"
+            fish_completions_dir.mkdir(parents=True, exist_ok=True)
+            fish_completions_file = fish_completions_dir / "dmart.fish"
+
+            # All subcommands from the commands list
+            subcommands = [cmd.strip() for cmd in commands.strip().splitlines() if cmd.strip()]
+
+            lines = [
+                "# Auto-generated fish completions for dmart.py",
+                "",
+                "# Disable file completions by default",
+                "complete -c dmart.py -f",
+                "",
+                "# Subcommands",
+            ]
+
+            for cmd in subcommands:
+                lines.append(f"complete -c dmart.py -n '__fish_use_subcommand' -a '{cmd}' -d '{cmd}'")
+
+            # Add argument completions for subcommands that accept them
+            lines.extend([
+                "",
+                "# serve options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from serve' -l dmart-config -r -d 'Path to dmart config env file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from serve' -l cxb-config -r -d 'Path to CXB config file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from serve' -l open-cxb -d 'Open CXB in browser after start'",
+                "",
+                "# hyper options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l dmart-config -r -d 'Path to dmart config env file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l cxb-config -r -d 'Path to CXB config file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l open-cxb -d 'Open CXB in browser after start'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -s b -l bind -r -d 'The TCP host/address to bind to'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l insecure-bind -r -d 'The TCP host/address to connect to for plain HTTP'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l quic-bind -r -d 'The UDP/QUIC host/address to bind to'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l certfile -r -d 'Path to the SSL certificate file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l keyfile -r -d 'Path to the SSL key file'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l reload -d 'Enable automatic reloads on code changes'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l debug -d 'Enable debug mode'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l access-logfile -r -d 'The target location for the access log'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l error-logfile -r -d 'The target location for the error log'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -l log-level -r -d 'The (error) log level'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -s w -l workers -r -d 'The number of workers to spawn'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from hyper' -s k -l worker-class -r -d 'The type of worker to use'",
+                "",
+                "# cli options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from cli' -l config -r -d 'Path to CLI config file'",
+                "",
+                "# ws options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from ws' -l dmart-config -r -d 'Path to dmart config env file'",
+                "",
+                "# wt options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from wt' -l dmart-config -r -d 'Path to dmart config env file'",
+                "",
+                "# export options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from export' -l space_name -r -d 'Space name to export'",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from export' -l output -r -d 'Output zip file path'",
+                "",
+                "# import options",
+                "complete -c dmart.py -n '__fish_seen_subcommand_from import' -F -d 'Target zip file or folder to import'",
+            ])
+
+            fish_completions_file.write_text("\n".join(lines) + "\n")
+            print(f"Fish completions installed at {fish_completions_file}")
 
 
 if __name__ == "__main__":
