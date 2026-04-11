@@ -6,12 +6,23 @@
             "type"
           ],
           "properties": {
+            "type": {
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "array",
+                "null"
+              ],
+              "type": "string"
+            },
             "title": {
               "type": "string",
               "title": "",
               "description": ""
             },
-            "type": {
+            "prop_type": {
               "enum": [
                 "string",
                 "number",
@@ -40,12 +51,18 @@
             "type"
           ],
           "properties": {
+            "type": {
+              "enum": [
+                "object"
+              ],
+              "type": "string"
+            },
             "title": {
               "type": "string",
               "title": "",
               "description": ""
             },
-            "type": {
+            "prop_type": {
               "enum": [
                 "object"
               ],
