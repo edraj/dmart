@@ -22,19 +22,6 @@
               "title": "",
               "description": ""
             },
-            "prop_type": {
-              "enum": [
-                "string",
-                "number",
-                "integer",
-                "boolean",
-                "array",
-                "null"
-              ],
-              "type": "string",
-              "title": "",
-              "description": ""
-            },
             "description": {
               "type": "string",
               "title": "",
@@ -56,14 +43,6 @@
               "type": "string"
             },
             "title": {
-              "type": "string",
-              "title": "",
-              "description": ""
-            },
-            "prop_type": {
-              "enum": [
-                "object"
-              ],
               "type": "string",
               "title": "",
               "description": ""
