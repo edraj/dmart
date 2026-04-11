@@ -1,74 +1,113 @@
 {
-  "oneOf": [
-    {
-      "$ref": "#/$defs/type_object"
-    },
-    {
-      "$ref": "#/$defs/type_leaf"
-    }
-  ],
-  "$defs": {
-    "type_object": {
-      "type": "object",
-      "properties": {
-        "prop_type": {
-          "type": "string",
-          "enum": [
-            "object"
-          ]
-        },
-        "title": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "additionalProperties": {
-          "type": "boolean"
-        },
-        "properties": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/type_object"
+      "$defs": {
+        "type_leaf": {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "title": "",
+              "description": ""
             },
-            {
-              "$ref": "#/$defs/type_leaf"
+            "prop_type": {
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "array",
+                "null"
+              ],
+              "type": "string",
+              "title": "",
+              "description": ""
+            },
+            "description": {
+              "type": "string",
+              "title": "",
+              "description": ""
             }
-          ]
+          }
+        },
+        "type_object": {
+          "type": "object",
+          "required": [
+            "title",
+            "additionalProperties",
+            "properties",
+            "type"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "title": "",
+              "description": ""
+            },
+            "prop_type": {
+              "enum": [
+                "object"
+              ],
+              "type": "string",
+              "title": "",
+              "description": ""
+            },
+            "properties": {
+              "0": {
+                "0": {
+                  "$ref": "#/$defs/type_object"
+                },
+                "1": {
+                  "$ref": "#/$defs/type_leaf"
+                },
+                "name": "oneOf",
+                "title": "",
+                "description": ""
+              },
+              "1": {
+                "0": {
+                  "$ref": "#/$defs/type_object"
+                },
+                "1": {
+                  "$ref": "#/$defs/type_leaf"
+                },
+                "name": "oneOf",
+                "title": "",
+                "description": ""
+              },
+              "2": {
+                "name": "title",
+                "title": "",
+                "description": ""
+              },
+              "3": {
+                "name": "description",
+                "title": "",
+                "description": ""
+              },
+              "title": "",
+              "description": ""
+            },
+            "description": {
+              "type": "string",
+              "title": "",
+              "description": ""
+            },
+            "additionalProperties": {
+              "type": "boolean",
+              "title": "",
+              "description": ""
+            }
+          }
         }
       },
-      "required": [
-        "title",
-        "additionalProperties",
-        "properties",
-        "type"
-      ]
-    },
-    "type_leaf": {
-      "type": "object",
-      "properties": {
-        "prop_type": {
-          "type": "string",
-          "enum": [
-            "string",
-            "number",
-            "integer",
-            "boolean",
-            "array",
-            "null"
-          ]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/type_object"
         },
-        "title": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
+        {
+          "$ref": "#/$defs/type_leaf"
         }
-      },
-      "required": [
-        "title",
-        "type"
       ]
     }
-  }
-}
