@@ -6,11 +6,6 @@
             "type"
           ],
           "properties": {
-            "title": {
-              "type": "string",
-              "title": "",
-              "description": ""
-            },
             "type": {
               "enum": [
                 "string",
@@ -20,6 +15,9 @@
                 "array",
                 "null"
               ],
+              "type": "string"
+            },
+            "title": {
               "type": "string",
               "title": "",
               "description": ""
@@ -34,21 +32,17 @@
         "type_object": {
           "type": "object",
           "required": [
-            "title",
-            "additionalProperties",
             "properties",
             "type"
           ],
           "properties": {
-            "title": {
-              "type": "string",
-              "title": "",
-              "description": ""
-            },
             "type": {
               "enum": [
                 "object"
               ],
+              "type": "string"
+            },
+            "title": {
               "type": "string",
               "title": "",
               "description": ""
