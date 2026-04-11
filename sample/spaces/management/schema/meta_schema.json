@@ -45,8 +45,6 @@
         "type_object": {
           "type": "object",
           "required": [
-            "title",
-            "additionalProperties",
             "properties",
             "type"
           ],
