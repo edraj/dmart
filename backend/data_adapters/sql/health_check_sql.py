@@ -195,10 +195,7 @@ async def _check_enum_values(
         if subpath not in report:
             report[subpath] = {"total_entries": 0, "issues": []}
 
-        if not _should_check(entry, schemas_filter):
-            continue
-
-        # Check resource_type
+        # Check resource_type for every entry (not gated by schema filter)
         if entry.resource_type and entry.resource_type not in valid_resource_types:
             report[subpath]["issues"].append({
                 "check": "enum_validation",
@@ -207,6 +204,9 @@ async def _check_enum_values(
                 "resource_type": entry.resource_type,
                 "message": f"Invalid resource_type: '{entry.resource_type}'",
             })
+
+        if not _should_check(entry, schemas_filter):
+            continue
 
         # Check content_type in payload
         payload = _parse_payload(entry.payload)
