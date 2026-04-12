@@ -37,6 +37,7 @@ commands = """
     serve
     hyper
     cli
+    check
     health-check
     create-index
     export
@@ -738,22 +739,29 @@ def main():
             from main import main as server
 
             asyncio.run(server())
-        # TBD : Check if we still need this
-        # case "health-check":
-        #     from data_adapters.file.health_check import main as health_check
-        #
-        #     parser = argparse.ArgumentParser(
-        #         description="This created for doing health check functionality",
-        #         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        #     )
-        #     parser.add_argument("-t", "--type", help="type of health check (soft or hard)")
-        #     parser.add_argument("-s", "--space", help="hit the target space or pass (all) to make the full health check")
-        #     parser.add_argument("-m", "--schemas", nargs="*", help="hit the target schema inside the space")
-        #
-        #     args = parser.parse_args()
-        #     before_time = time.time()
-        #     asyncio.run(health_check(args.type, args.space, args.schemas))
-        #     print(f"total time: {f'{time.time() - before_time:.2f}'} sec")
+        case "check":
+            from datetime import datetime
+
+            from data_adapters.sql.health_check_sql import main as health_check
+
+            parser = argparse.ArgumentParser(
+                prog="dmart.py check",
+                description="Check data integrity: payload schema validation, enum values, missing references",
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+            )
+            parser.add_argument("-s", "--space", help="Target space (default: all)")
+            parser.add_argument("-m", "--schemas", nargs="*", help="Filter by schema shortnames")
+
+            args = parser.parse_args(sys.argv[1:])
+            before_time = time.time()
+            report = asyncio.run(health_check(args.space, args.schemas))
+            elapsed = time.time() - before_time
+            print(f"Total time: {elapsed:.2f} sec")
+
+            output_file = f"health_check_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(output_file, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+            print(f"Report saved to {output_file}")
         # case "create-index":
         #     from data_adapters.file.create_index import main as create_index
         #
