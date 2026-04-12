@@ -1110,6 +1110,70 @@ def main():
             fish_completions_file.write_text("\n".join(lines) + "\n")
             print(f"Fish completions installed at {fish_completions_file}")
 
+            # Bash completions
+            bash_completions_dir = Path.home() / ".local" / "share" / "bash-completion" / "completions"
+            bash_completions_dir.mkdir(parents=True, exist_ok=True)
+            bash_completions_file = bash_completions_dir / "dmart"
+
+            subcommands_str = " ".join(subcommands)
+            bash_lines = [
+                "# Auto-generated bash completions for dmart.py",
+                "_dmart_completions() {",
+                '    local cur prev subcmd',
+                '    COMPREPLY=()',
+                '    cur="${COMP_WORDS[COMP_CWORD]}"',
+                '    prev="${COMP_WORDS[COMP_CWORD-1]}"',
+                '',
+                '    # Find the subcommand',
+                '    subcmd=""',
+                '    for ((i=1; i < COMP_CWORD; i++)); do',
+                '        case "${COMP_WORDS[i]}" in',
+                f'            {"|".join(subcommands)})',
+                '                subcmd="${COMP_WORDS[i]}"',
+                '                break',
+                '                ;;',
+                '        esac',
+                '    done',
+                '',
+                '    # Complete subcommands if none selected yet',
+                '    if [[ -z "$subcmd" ]]; then',
+                f'        COMPREPLY=($(compgen -W "{subcommands_str}" -- "$cur"))',
+                '        return 0',
+                '    fi',
+                '',
+                '    # Complete options per subcommand',
+                '    case "$subcmd" in',
+                '        serve)',
+                '            COMPREPLY=($(compgen -W "--dmart-config --cxb-config --open-cxb" -- "$cur"))',
+                '            ;;',
+                '        hyper)',
+                '            COMPREPLY=($(compgen -W "--dmart-config --cxb-config --open-cxb -b --bind --insecure-bind --quic-bind --certfile --keyfile --reload --debug --access-logfile --error-logfile --log-level -w --workers -k --worker-class" -- "$cur"))',
+                '            ;;',
+                '        cli)',
+                '            COMPREPLY=($(compgen -W "--config" -- "$cur"))',
+                '            ;;',
+                '        check)',
+                '            COMPREPLY=($(compgen -W "-s --space -m --schemas" -- "$cur"))',
+                '            ;;',
+                '        ws|wt)',
+                '            COMPREPLY=($(compgen -W "--dmart-config" -- "$cur"))',
+                '            ;;',
+                '        export)',
+                '            COMPREPLY=($(compgen -W "--space_name --output" -- "$cur"))',
+                '            ;;',
+                '        import)',
+                '            COMPREPLY=($(compgen -f -- "$cur"))',
+                '            ;;',
+                '    esac',
+                '    return 0',
+                '}',
+                '',
+                'complete -F _dmart_completions dmart.py',
+            ]
+
+            bash_completions_file.write_text("\n".join(bash_lines) + "\n")
+            print(f"Bash completions installed at {bash_completions_file}")
+
 
 if __name__ == "__main__":
     main()
