@@ -37,7 +37,7 @@ async def main(space_param: str | None, schemas_param: list[str] | None) -> dict
 
     full_report: dict[str, Any] = {}
     total_issues = 0
-    for space_name, report in zip(space_names, results):
+    for space_name, report in zip(space_names, results, strict=True):
         full_report[space_name] = report
         issue_count = sum(len(v.get("issues", [])) for v in report.values())
         total_issues += issue_count
@@ -117,15 +117,14 @@ async def _check_payload_structure(
             continue
 
         payload = _parse_payload(entry.payload)
-        if payload is None and isinstance(entry.payload, dict):
-            if _should_check(entry, schemas_filter):
-                report[subpath]["issues"].append({
-                    "check": "payload_structure",
-                    "shortname": entry.shortname,
-                    "uuid": str(entry.uuid),
-                    "resource_type": entry.resource_type,
-                    "message": "Payload dict does not conform to Payload model",
-                })
+        if payload is None and isinstance(entry.payload, dict) and _should_check(entry, schemas_filter):
+            report[subpath]["issues"].append({
+                "check": "payload_structure",
+                "shortname": entry.shortname,
+                "uuid": str(entry.uuid),
+                "resource_type": entry.resource_type,
+                "message": "Payload dict does not conform to Payload model",
+            })
 
     return report
 
@@ -190,7 +189,6 @@ async def _check_enum_values(
     report: dict[str, Any] = {}
 
     valid_resource_types = set(ResourceType.__members__.values())
-    valid_content_types = set(ContentType.__members__.values())
 
     for entry in entries:
         subpath = entry.subpath.lstrip("/") or "/"
