@@ -23,8 +23,11 @@ export function transformEntryToRender(entries: Record<string, unknown>): Record
 }
 
 export function removeEmpty(data: unknown): unknown {
-    // Handle null/undefined
-    if (data === null || data === undefined) {
+    if (data === null) {
+        return null;
+    }
+
+    if (data === undefined) {
         return undefined;
     }
 
