@@ -2458,6 +2458,81 @@ class SQLAdapter(BaseDataAdapter):
                             .where(col(Attachments.space_name) == src_space_name)
                             .values(space_name=dest_shortname)
                         )
+                    elif table is Entries:
+                        src_entry_path = f"{src_subpath}/{old_shortname}".replace("//", "/")
+                        dest_entry_path = f"{dest_subpath}/{dest_shortname}".replace("//", "/")
+
+                        if isinstance(meta, core.Folder):
+                            src_prefix = f"{src_entry_path}/"
+
+                            await session.execute(
+                                update(Entries)
+                                .where(col(Entries.space_name) == src_space_name)
+                                .where(col(Entries.subpath) == src_entry_path)
+                                .values(subpath=dest_entry_path, space_name=dest_space_name)
+                            )
+                            nested_entries = list(
+                                (
+                                    await session.execute(
+                                        select(Entries)
+                                        .where(col(Entries.space_name) == src_space_name)
+                                        .where(col(Entries.subpath).startswith(src_prefix))
+                                    )
+                                ).all()
+                            )
+                            for (entry,) in nested_entries:
+                                entry.subpath = dest_entry_path + entry.subpath[len(src_entry_path):]
+                                entry.space_name = dest_space_name
+                                entry.query_policies = generate_query_policies(
+                                    space_name=dest_space_name,
+                                    subpath=entry.subpath,
+                                    resource_type=entry.resource_type,
+                                    is_active=entry.is_active,
+                                    owner_shortname=entry.owner_shortname,
+                                    owner_group_shortname=entry.owner_group_shortname,
+                                )
+                                session.add(entry)
+
+                            direct_children = list(
+                                (
+                                    await session.execute(
+                                        select(Entries)
+                                        .where(col(Entries.space_name) == dest_space_name)
+                                        .where(col(Entries.subpath) == dest_entry_path)
+                                    )
+                                ).all()
+                            )
+                            for (entry,) in direct_children:
+                                entry.query_policies = generate_query_policies(
+                                    space_name=dest_space_name,
+                                    subpath=entry.subpath,
+                                    resource_type=entry.resource_type,
+                                    is_active=entry.is_active,
+                                    owner_shortname=entry.owner_shortname,
+                                    owner_group_shortname=entry.owner_group_shortname,
+                                )
+                                session.add(entry)
+
+                            folder_attachments = list(
+                                (
+                                    await session.execute(
+                                        select(Attachments)
+                                        .where(col(Attachments.space_name) == src_space_name)
+                                        .where(col(Attachments.subpath).startswith(src_entry_path))
+                                    )
+                                ).all()
+                            )
+                            for (att,) in folder_attachments:
+                                att.subpath = dest_entry_path + att.subpath[len(src_entry_path):]
+                                att.space_name = dest_space_name
+                                session.add(att)
+                        else:
+                            await session.execute(
+                                update(Attachments)
+                                .where(col(Attachments.space_name) == src_space_name)
+                                .where(col(Attachments.subpath) == src_entry_path)
+                                .values(subpath=dest_entry_path, space_name=dest_space_name)
+                            )
                 except Exception as e:
                     origin.shortname = old_shortname
                     if hasattr(origin, "subpath"):
