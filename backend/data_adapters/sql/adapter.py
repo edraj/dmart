@@ -29,6 +29,7 @@ import models.api as api
 import models.core as core
 from data_adapters.base_data_adapter import BaseDataAdapter, MetaChild
 from data_adapters.helpers import get_nested_value, trans_magic_words
+
 from data_adapters.sql.adapter_helpers import (
     events_query,
     get_next_date_value,
