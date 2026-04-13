@@ -29,6 +29,12 @@
         return Promise.reject(error);
     });
     Dmart.setAxiosInstance(dmartAxios);
+
+    const storedToken = typeof localStorage !== 'undefined' && localStorage.getItem("authToken");
+    if (storedToken) {
+        Dmart.setToken(storedToken);
+    }
+
     getSpaces();
 
     const profilePromise = Dmart.getProfile();
@@ -49,6 +55,6 @@
             </div>
         </div>
     {/if}
-{:catch _}
+{:catch error}
     <Login />
 {/await}

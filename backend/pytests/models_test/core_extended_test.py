@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from models.api import Query, RedisAggregate, RedisReducer
 from models.core import (
     Content,
-    Meta,
     Notification,
     Payload,
     Record,
@@ -15,13 +14,11 @@ from models.core import (
 )
 from models.enums import (
     ContentType,
-    NotificationPriority,
     NotificationType,
     QueryType,
     ResourceType,
 )
 from utils.ticket_sys_utils import check_open_state, post_transite, transite
-
 
 # ==================== deep_update ====================
 

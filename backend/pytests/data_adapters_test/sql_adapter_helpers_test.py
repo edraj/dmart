@@ -8,6 +8,7 @@ from data_adapters.sql.adapter_helpers import (
     get_next_date_value,
     is_date_time_value,
     parse_search_array,
+    parse_search_expression,
     parse_search_string,
     set_table_for_query,
     subpath_checker,
@@ -16,7 +17,6 @@ from data_adapters.sql.adapter_helpers import (
 )
 from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Spaces, Users
 from models.enums import QueryType
-
 
 # --- subpath_checker ---
 
@@ -431,3 +431,120 @@ def test_build_filter_dedup():
 def test_build_filter_empty_strings_skipped():
     result = build_query_filter_for_allowed_field_values({"role": ["admin", "", "user"]})
     assert result == "@role:admin|user"
+
+
+# --- parse_search_expression ---
+
+
+def test_parse_search_expression_simple_backward_compat():
+    """No operators — single group, same as parse_search_string."""
+    result = parse_search_expression("@field:value")
+    assert len(result) == 1
+    assert "field" in result[0]["fields"]
+    assert result[0]["fields"]["field"]["values"] == ["value"]
+    assert result[0]["text_terms"] == []
+
+
+def test_parse_search_expression_multiple_fields_backward_compat():
+    """Space-separated fields without operators — single AND group."""
+    result = parse_search_expression("@name:john @age:>25")
+    assert len(result) == 1
+    assert "name" in result[0]["fields"]
+    assert "age" in result[0]["fields"]
+
+
+def test_parse_search_expression_and_keyword():
+    """Explicit 'and' between terms — still one group (AND)."""
+    result = parse_search_expression("@payload.body.x:1 and @is_active:true")
+    assert len(result) == 1
+    assert "payload.body.x" in result[0]["fields"]
+    assert "is_active" in result[0]["fields"]
+
+
+def test_parse_search_expression_and_with_text_term():
+    """'and' chain with a plain text term."""
+    result = parse_search_expression("@payload.body.x:1 and @is_active:true and dummy")
+    assert len(result) == 1
+    assert "payload.body.x" in result[0]["fields"]
+    assert "is_active" in result[0]["fields"]
+    assert result[0]["text_terms"] == ["dummy"]
+
+
+def test_parse_search_expression_and_case_insensitive():
+    """'AND' keyword is case-insensitive."""
+    result = parse_search_expression("@a:1 AND @b:2")
+    assert len(result) == 1
+    assert "a" in result[0]["fields"]
+    assert "b" in result[0]["fields"]
+
+
+def test_parse_search_expression_paren_grouping_or():
+    """Parenthesized group + standalone term → two groups (OR)."""
+    result = parse_search_expression("(@payload.body.x:1 and @is_active:true) @roles:admin")
+    assert len(result) == 2
+    # Group 0: payload.body.x AND is_active
+    assert "payload.body.x" in result[0]["fields"]
+    assert "is_active" in result[0]["fields"]
+    # Group 1: roles
+    assert "roles" in result[1]["fields"]
+    assert result[1]["fields"]["roles"]["values"] == ["admin"]
+
+
+def test_parse_search_expression_two_paren_groups():
+    """Two parenthesized groups → OR."""
+    result = parse_search_expression("(@a:1) (@b:2)")
+    assert len(result) == 2
+    assert "a" in result[0]["fields"]
+    assert "b" in result[1]["fields"]
+
+
+def test_parse_search_expression_leading_terms_then_group():
+    """Non-grouped terms followed by a group → two groups (OR)."""
+    result = parse_search_expression("@a:1 @b:2 (@c:3 and @d:4)")
+    assert len(result) == 2
+    # Group 0: a AND b
+    assert "a" in result[0]["fields"]
+    assert "b" in result[0]["fields"]
+    # Group 1: c AND d
+    assert "c" in result[1]["fields"]
+    assert "d" in result[1]["fields"]
+
+
+def test_parse_search_expression_single_paren_group():
+    """Single parenthesized group — still one group."""
+    result = parse_search_expression("(@a:1 and @b:2)")
+    assert len(result) == 1
+    assert "a" in result[0]["fields"]
+    assert "b" in result[0]["fields"]
+
+
+def test_parse_search_expression_negative_field():
+    """Negative field inside groups."""
+    result = parse_search_expression("(-@status:deleted) @type:content")
+    assert len(result) == 2
+    assert result[0]["fields"]["status"]["negative"] is True
+    assert "type" in result[1]["fields"]
+
+
+def test_parse_search_expression_text_term_in_group():
+    """Text term inside a parenthesized group."""
+    result = parse_search_expression("(@a:1 and search_text) @b:2")
+    assert len(result) == 2
+    assert "a" in result[0]["fields"]
+    assert result[0]["text_terms"] == ["search_text"]
+    assert "b" in result[1]["fields"]
+
+
+def test_parse_search_expression_empty_parens():
+    """Empty parentheses are ignored — only non-empty groups are kept."""
+    result = parse_search_expression("() @a:1")
+    assert len(result) == 1
+    assert "a" in result[0]["fields"]
+
+
+def test_parse_search_expression_preserves_pipe_or():
+    """Pipe OR syntax within field values is preserved."""
+    result = parse_search_expression("(@status:active|pending) @role:admin")
+    assert len(result) == 2
+    assert result[0]["fields"]["status"]["values"] == ["active", "pending"]
+    assert result[0]["fields"]["status"]["operation"] == "OR"

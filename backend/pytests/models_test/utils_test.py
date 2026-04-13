@@ -5,7 +5,6 @@ Targets: utils/jwt.py, utils/generate_email.py, utils/social_sso.py, utils/notif
          data_adapters/helpers.py
 """
 
-import asyncio
 from time import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,7 +21,6 @@ from utils.jwt import decode_jwt, generate_jwt
 from utils.notification import NotificationManager
 from utils.plugin_manager import PluginManager
 from utils.settings import settings
-
 
 # ==================== data_adapters/helpers.py ====================
 

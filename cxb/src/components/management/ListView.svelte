@@ -1,6 +1,6 @@
 <script lang="ts">
     import {Engine, functionCreateDatatable, Pagination, RowsPerPage, Sort,} from "svelte-datatables-net";
-    import {Dmart, type ApiResponseRecord, type QueryRequest, QueryType, SortyType,} from "@edraj/tsdmart";
+    import {Dmart, DmartScope, type ApiResponseRecord, type QueryRequest, QueryType, SortyType,} from "@edraj/tsdmart";
     import cols from "@/utils/jsons/list_cols.json";
     import {searchListView} from "@/stores/management/triggers";
     import Prism from "@/components/Prism.svelte";
@@ -46,7 +46,7 @@
         is_clickable = $bindable(true),
         canDelete = $bindable(false),
         exact_subpath = $bindable(true),
-        scope = $bindable("managed"),
+        scope = $bindable(DmartScope.managed),
     }: {
         space_name?: string;
         subpath?: string;
@@ -59,7 +59,7 @@
         is_clickable?: boolean;
         canDelete?: boolean;
         exact_subpath?: boolean;
-        scope?: string;
+        scope?: DmartScope;
     } = $props();
 
     $currentListView = {fetchPageRecords};
@@ -196,7 +196,7 @@
         if (query?.type && query?.search) {
             _search += ` ${query.search.trim()}`;
         }
-        let _subpath = subpath.replaceAll('-', '/')
+        let _subpath = (subpath ?? '').replaceAll('-', '/')
         queryObject = {
             filter_shortnames: shortname ? [shortname] : [],
             type,

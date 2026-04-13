@@ -362,12 +362,15 @@ async def test_array_payload_queries(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_string_payload_queries(client: AsyncClient) -> None:
+    test_users = ["user1", "user2"]
+
     response = await client.post(
         "/managed/query",
         json={
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.account_type:business",
         },
     )
@@ -382,6 +385,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.account_type:business",
         },
     )
@@ -396,6 +400,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.account_type:personal @payload.body.user_gender:female",
         },
     )
@@ -410,6 +415,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.account_type:business -@payload.body.user_gender:male",
         },
     )
@@ -424,6 +430,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.account_type:business|personal",
         },
     )
@@ -438,6 +445,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.account_type:business|personal",
         },
     )
@@ -452,6 +460,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.account_number:100",
         },
     )
@@ -466,6 +475,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.account_number:100",
         },
     )
@@ -480,6 +490,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.rating:5",
         },
     )
@@ -494,6 +505,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.rating:5",
         },
     )
@@ -508,6 +520,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "@payload.body.rating:5|4",
         },
     )
@@ -522,6 +535,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
             "type": QueryType.search,
             "space_name": MANAGEMENT_SPACE,
             "subpath": USERS_SUBPATH,
+            "filter_shortnames": test_users,
             "search": "-@payload.body.rating:5|4",
         },
     )

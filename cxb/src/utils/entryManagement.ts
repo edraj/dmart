@@ -82,7 +82,7 @@ export async function saveEntry(
                 resource_type: resource_type,
                 shortname: shortname,
                 subpath: _subpath,
-                attributes: removeEmpty(content) as Record<string, any>
+                attributes: content as Record<string, any>
             }]
         });
         showToast(Level.info, `Entry has been updated successfully!`);
