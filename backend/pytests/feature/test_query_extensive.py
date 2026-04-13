@@ -388,7 +388,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
     json_response = response.json()
     assert json_response["status"] == "success"
-    assert json_response["attributes"]["returned"] == 1
+    assert json_response["attributes"]["returned"] == 2
 
     response = await client.post(
         "/managed/query",
@@ -444,7 +444,7 @@ async def test_string_payload_queries(client: AsyncClient) -> None:
     assert_code_and_status_success(response)
     json_response = response.json()
     assert json_response["status"] == "success"
-    assert json_response["attributes"]["returned"] == 0
+    assert json_response["attributes"]["returned"] == 1
 
     response = await client.post(
         "/managed/query",

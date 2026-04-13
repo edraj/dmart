@@ -944,12 +944,6 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                         join_operator = " AND " if negative else (" AND " if operation == "AND" else " OR ")
                                         field_conditions.append("(" + join_operator.join(conditions) + ")")
 
-                                if conditions:
-                                    if negative:
-                                        join_operator = " OR " if operation == "AND" else " AND "
-                                    else:
-                                        join_operator = " AND " if operation == "AND" else " OR "
-                                    field_conditions.append("(" + join_operator.join(conditions) + ")")
                         except Exception as e:
                             print(f"Error handling field {field}: {e}")
 
