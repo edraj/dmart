@@ -14,10 +14,9 @@ from api.user.service import (
     send_email,
     set_user_profile,
 )
-from models.core import Content, Record, Translation, User, deep_update
+from models.core import Record, Translation, User
 from models.enums import Language, ResourceType
 from utils.settings import settings
-
 
 # ==================== gen_numeric / gen_alphanumeric ====================
 
