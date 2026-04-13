@@ -2,13 +2,12 @@ import pytest
 from fastapi import status
 from httpx import AsyncClient
 
-from models.enums import QueryType, RequestType
+from models.enums import QueryType
 from pytests.base_test import (
     DEMO_SPACE,
     DEMO_SUBPATH,
 )
 from pytests.feature.test_resource_and_attachment import json_entry_shortname
-from utils.settings import settings
 
 
 @pytest.mark.run(order=3)

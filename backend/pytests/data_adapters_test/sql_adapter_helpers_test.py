@@ -18,7 +18,6 @@ from data_adapters.sql.adapter_helpers import (
 from data_adapters.sql.create_tables import Entries, Histories, Permissions, Roles, Spaces, Users
 from models.enums import QueryType
 
-
 # --- subpath_checker ---
 
 
