@@ -366,6 +366,63 @@ def parse_search_string(string):
     return result
 
 
+def parse_search_expression(string: str) -> list[dict]:
+    has_parens = "(" in string or ")" in string
+
+    if not has_parens:
+        tokens = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
+        field_tokens = []
+        text_terms = []
+        for t in tokens:
+            if t.lower() == "and":
+                continue
+            if t.startswith("@") or t.startswith("-@"):
+                field_tokens.append(t)
+            else:
+                text_terms.append(t)
+        fields = parse_search_string(" ".join(field_tokens)) if field_tokens else {}
+        return [{"fields": fields, "text_terms": text_terms}]
+
+    normalized = string.replace("(", " ( ").replace(")", " ) ")
+    tokens = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', normalized)
+
+    groups: list[dict] = []
+    current_field_tokens: list[str] = []
+    current_text_terms: list[str] = []
+    paren_depth = 0
+
+    def _flush_current():
+        if current_field_tokens or current_text_terms:
+            fields = parse_search_string(" ".join(current_field_tokens)) if current_field_tokens else {}
+            groups.append({"fields": fields, "text_terms": list(current_text_terms)})
+
+    for token in tokens:
+        if token == "(":
+            if paren_depth == 0:
+                _flush_current()
+                current_field_tokens.clear()
+                current_text_terms.clear()
+            paren_depth += 1
+            continue
+        if token == ")":
+            paren_depth = max(0, paren_depth - 1)
+            if paren_depth == 0:
+                _flush_current()
+                current_field_tokens.clear()
+                current_text_terms.clear()
+            continue
+        if token.lower() == "and":
+            continue
+        if token.startswith("@") or token.startswith("-@"):
+            current_field_tokens.append(token)
+        else:
+            current_text_terms.append(token)
+
+    _flush_current()
+
+    return groups if groups else [{"fields": {}, "text_terms": []}]
+
+
 async def events_query(query: api.Query, user_shortname: str | None = None) -> tuple[int, list[core.Record]]:
     from utils.access_control import access_control
 
