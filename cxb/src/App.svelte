@@ -4,7 +4,9 @@
     import {SvelteToast, type SvelteToastOptions} from "@zerodevx/svelte-toast";
     import './app.css'
 
-    const prefix = (import.meta.env.BASE_URL || '/cxb').replace(/^\/|\/$/g, '');
+    // Derive router prefix from <base href> in index.html (strip leading/trailing slashes)
+    const baseHref = document.querySelector("base")?.getAttribute("href") || "/";
+    const prefix = baseHref.replace(/^\/|\/$/g, "");
 
   const options: SvelteToastOptions = {
     duration: 2500, // duration of progress bar tween to the `next` value

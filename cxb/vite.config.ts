@@ -9,7 +9,6 @@ import tailwindcss from "@tailwindcss/vite"
 import {execSync} from "node:child_process";
 
 const production = process.env.NODE_ENV === "production";
-const basePath = process.env.VITE_BASE_PATH || "/cxb";
 const gitHash = (() => {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim();
@@ -19,7 +18,7 @@ const gitHash = (() => {
 })();
 
 export default defineConfig({
-  base: basePath,
+  base: "./",
   clearScreen: false,
   define: {
     'import.meta.env.VITE_GIT_HASH': JSON.stringify(gitHash),
