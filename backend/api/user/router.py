@@ -314,7 +314,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
+                        type="auth", code=InternalErrorCode.USERNAME_NOT_EXIST, message="Invalid username or password"
                     ),
                 )
 
@@ -323,7 +323,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
+                        type="auth", code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST, message="Invalid username or password"
                     ),
                 )
             if (
@@ -345,7 +345,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
+                        type="auth", code=InternalErrorCode.SHORTNAME_DOES_NOT_EXIST, message="Invalid username or password"
                     ),
                 )
 
@@ -410,7 +410,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 status.HTTP_401_UNAUTHORIZED,
                 api.Error(
                     type="auth",
-                    code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                    code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
                     message="Invalid username or password",
                 ),
             )
@@ -419,7 +419,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 raise api.Exception(
                     status.HTTP_401_UNAUTHORIZED,
                     api.Error(
-                        type="auth", code=InternalErrorCode.INVALID_USERNAME_AND_PASS, message="Invalid username or password"
+                        type="auth", code=InternalErrorCode.MISSING_DATA, message="Invalid username or password"
                     ),
                 )
 
@@ -444,7 +444,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
                             type="auth",
-                            code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                            code=InternalErrorCode.USERNAME_NOT_EXIST,
                             message="Invalid username or password",
                         ),
                     )
@@ -511,7 +511,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                code=InternalErrorCode.PASSWORD_NOT_VALIDATED,
                 message="Invalid username or password",
             ),
         )
@@ -522,7 +522,7 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="auth",
-                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                code=InternalErrorCode.SOMETHING_WRONG,
                 message="Invalid username or password",
             ),
         ) from _
@@ -636,7 +636,7 @@ async def update_profile(request: Request, profile: core.Record, shortname=Depen
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
                 type="jwtauth",
-                code=InternalErrorCode.INVALID_USERNAME_AND_PASS,
+                code=InternalErrorCode.INVALID_PASSWORD_RULES,
                 message="Invalid username or password",
             ),
         )
