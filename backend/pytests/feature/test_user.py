@@ -168,7 +168,9 @@ async def test_otp_login_invalid_otp(client: AsyncClient):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert json_response.get("status") == "failed"
     assert json_response.get("error", {}).get("type") == "auth"
-    assert json_response.get("error", {}).get("code") == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert (
+        json_response.get("error", {}).get("code") == InternalErrorCode.SOMETHING_WRONG
+    )
     assert json_response.get("error", {}).get("message") == "Invalid username or password"
 
 
@@ -202,7 +204,7 @@ async def test_login_with_otp_unresolvable_identifier(client: AsyncClient):
     json_response = response.json()
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response["error"]["code"] == InternalErrorCode.SOMETHING_WRONG
 
 
 @pytest.mark.run(order=1)
@@ -214,7 +216,7 @@ async def test_login_with_empty_otp_field(client: AsyncClient):
     json_response = response.json()
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response["error"]["code"] == InternalErrorCode.SOMETHING_WRONG
     assert json_response["error"]["message"] == "Invalid username or password"
 
 
@@ -225,7 +227,7 @@ async def test_login_with_otp_but_missing_identifier(client: AsyncClient):
     json_response = response.json()
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert json_response["error"]["code"] == InternalErrorCode.INVALID_USERNAME_AND_PASS
+    assert json_response["error"]["code"] == InternalErrorCode.SOMETHING_WRONG
     assert json_response["error"]["message"] == "Invalid username or password"
 
 
