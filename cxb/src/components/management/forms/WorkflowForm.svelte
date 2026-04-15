@@ -18,9 +18,16 @@
 
     content = {
         name: content.name || "",
-        states: content.states || [],
+        states: (content.states || []).map((state) => ({
+            ...state,
+            next: (state.next || []).map((t) => ({ ...t, roles: t.roles || [] })),
+            resolutions: state.resolutions || [],
+        })),
         illustration: content.illustration || "",
-        initial_state: content.initial_state || [],
+        initial_state: (content.initial_state || []).map((is) => ({
+            ...is,
+            roles: is.roles || [],
+        })),
     };
 
     function addState() {

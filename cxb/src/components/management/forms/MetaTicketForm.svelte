@@ -10,6 +10,7 @@
     } from "flowbite-svelte";
     import { Dmart, ResourceType } from "@edraj/tsdmart";
     import { Level, showToast } from "@/utils/toast";
+    import { untrack } from "svelte";
 
     let {
         space_name,
@@ -26,12 +27,10 @@
         // Corrupted localStorage data
     }
 
-    let ticketElement = $state(null);
     let ticket_status: string | null = $state(null);
     let ticket_action: string | null = $state(null);
     let resolution: string | null = $state(null);
     let comment = $state("");
-    // let to_shortname = $state("");
 
     let ticketPayload: any = $state(null);
     let ticketStates: any[] = $state([]);
@@ -39,7 +38,7 @@
     let errorMessage = $state("");
 
     async function get_ticket_payload() {
-        ticketPayload = await Dmart.retrieveEntry({
+        const response = await Dmart.retrieveEntry({
             resource_type: ResourceType.content,
             space_name,
             subpath: "workflows",
@@ -48,21 +47,17 @@
             retrieve_attachments: false,
             validate_schema: true,
         });
-        ticketPayload = ticketPayload?.payload?.body ?? null;
-
-        if (ticketPayload) {
+        const payload = response?.payload?.body ?? null;
+        ticketPayload = payload;
+        if (payload) {
             ticketStates =
-                ticketPayload.states.filter((e) => e.state === meta.state)[0]
+                payload.states.filter((e) => e.state === meta.state)[0]
                     ?.next || [];
-
-            if ((ticketStates || []).length) {
-                ticketResolutions =
-                    ticketPayload.states.filter(
-                        (e) => e.state === ticket_status,
-                    )[0]?.resolutions || [];
-            }
         }
     }
+
+    // Store the promise once at initialization to avoid re-calling on re-renders
+    const ticketPromise = get_ticket_payload();
 
     $effect(() => {
         ticket_action =
@@ -71,7 +66,7 @@
     });
 
     $effect(() => {
-        if ((ticketStates || []).length) {
+        if (ticketStates.length) {
             ticketResolutions =
                 ticketPayload?.states?.filter((e: any) => e.state === ticket_status)[0]
                     ?.resolutions || [];
@@ -79,15 +74,20 @@
     });
 
     $effect(() => {
-        if (resolution) {
-            formData.resolution = resolution;
-        }
-        if (ticket_action) {
-            formData.action = ticket_action;
-        }
-        if (comment) {
-            formData.comment = comment;
-        }
+        const _resolution = resolution;
+        const _ticket_action = ticket_action;
+        const _comment = comment;
+        untrack(() => {
+            if (_resolution) {
+                formData.resolution = _resolution;
+            }
+            if (_ticket_action) {
+                formData.action = _ticket_action;
+            }
+            if (_comment) {
+                formData.comment = _comment;
+            }
+        });
     });
 
     /**
@@ -127,7 +127,7 @@
 
     {#if meta.is_open}
         <form class="flex flex-col space-y-4" onsubmit={progressTicket}>
-            {#await get_ticket_payload()}
+            {#await ticketPromise}
                 <TextPlaceholder class="m-5" size="lg" style="width: 100%" />
                 <TextPlaceholder class="m-5" size="lg" style="width: 100%" />
             {:then _}
