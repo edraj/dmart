@@ -815,7 +815,7 @@
                 class={activeTab === TabMode.entry ? "" : "hidden"}
                 role="tabpanel"
         >
-            {#if jeContent.text || jeContent.json}
+            {#if activeTab === TabMode.entry && (jeContent.text || jeContent.json)}
                 <JSONEditor bind:content={jeContent} mode={Mode.text} />
             {/if}
             {#if errorMessage}
@@ -902,7 +902,7 @@
                             properties={entry.payload?.body?.properties}
                     />
                 {/if}
-                {#if subpath === "workflows"}
+                {#if subpath === "workflows" && entry?.payload?.body}
                     <WorkflowDiagram
                             shortname={entry.shortname}
                             workflowContent={entry?.payload?.body}

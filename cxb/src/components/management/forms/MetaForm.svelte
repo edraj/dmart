@@ -23,20 +23,41 @@
     } = $props();
 
 
+    function toStringOrNull(value: any): string | null {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+            // Detect and unwrap stringified i18n objects from previous corrupted saves
+            if (value.startsWith('{"en":') || value.startsWith('{\"en\":')) {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (typeof parsed === 'object' && parsed !== null && 'en' in parsed) {
+                        return toStringOrNull(parsed.en);
+                    }
+                } catch {}
+            }
+            return value || null;
+        }
+        if (typeof value === 'object') {
+            if ('en' in value) return toStringOrNull(value.en);
+            return null;
+        }
+        return null;
+    }
+
     formData = {
         ...formData,
         shortname: formData.shortname || null,
         is_active: formData.is_active,
         slug: formData.slug || null,
         displayname: {
-            en: formData.displayname?.en || null,
-            ar: formData.displayname?.ar || null,
-            ku: formData.displayname?.ku || null
+            en: toStringOrNull(formData.displayname?.en),
+            ar: toStringOrNull(formData.displayname?.ar),
+            ku: toStringOrNull(formData.displayname?.ku)
         },
         description: {
-            en: formData.description?.en || null,
-            ar: formData.description?.ar || null,
-            ku: formData.description?.ku || null
+            en: toStringOrNull(formData.description?.en),
+            ar: toStringOrNull(formData.description?.ar),
+            ku: toStringOrNull(formData.description?.ku)
         },
     }
     if(formData.is_active === undefined || formData.is_active === null){
