@@ -31,6 +31,7 @@
             error.response?.status === 401
             && [47, 48, 49].includes(error.response?.data?.error?.code)
             && !isRedirectingToLogin
+            && localStorage.getItem("authToken")
         ) {
             isRedirectingToLogin = true;
             localStorage.removeItem("authToken");
