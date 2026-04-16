@@ -20,11 +20,23 @@
         withCredentials: true,
         timeout: website.backend_timeout,
     });
+    let isRedirectingToLogin = false;
     dmartAxios.interceptors.response.use((request) => {
         return request;
     }, (error) => {
         if(error.code === 'ERR_NETWORK'){
             debouncedShowToast(Level.warn, "Network error.\nPlease check your connection or the server is down.");
+        }
+        if (
+            error.response?.status === 401
+            && [47, 48, 49].includes(error.response?.data?.error?.code)
+            && !isRedirectingToLogin
+            && localStorage.getItem("authToken")
+        ) {
+            isRedirectingToLogin = true;
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("user");
+            window.location.reload();
         }
         return Promise.reject(error);
     });
