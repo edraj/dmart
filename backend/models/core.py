@@ -357,6 +357,7 @@ class User(Actor):
     language: Language = Language.ar
     google_id: str | None = None
     facebook_id: str | None = None
+    apple_id: str | None = None
     social_avatar_url: str | None = None
     last_login: dict | None = None
     notes: str | None = None
