@@ -58,6 +58,7 @@ commands = """
     ws
     wt
     init-ac
+    create-users-folders
 """
 
 sentinel = object()
@@ -900,6 +901,10 @@ def main():
             from data_adapters.sql.db_to_json_migration import main as db_to_json_migration
 
             db_to_json_migration()
+        case "create-users-folders":
+            from data_adapters.sql.create_users_folders import main as create_users_folders
+
+            asyncio.run(create_users_folders())
         case "update_query_policies":
             from data_adapters.sql.update_query_policies import main as update_query_policies
 
