@@ -1711,3 +1711,41 @@ def get_mime_type(content_type: ContentType, payload_body: str | None = None) ->
                 return "image/webp"
         return mime_types[content_type]
     return "application/octet-stream"
+
+
+def simplify_records(records: list, context: str = "success") -> list:
+    simplified_records = []
+
+    for r in records:
+        if not r:
+            continue
+        
+        if not isinstance(r, dict):
+            simplified_records.append(r)
+            continue
+
+        if context == "success":
+            if "shortname" in r and "subpath" in r:
+                simplified_records.append({
+                    "shortname": r.get("shortname"),
+                    "subpath": r.get("subpath")
+                })
+            else:
+                simplified_records.append(r)
+
+        elif context == "failed":
+            rec = r.get("record", {})
+            if not rec or not isinstance(rec, dict):
+                simplified_records.append(r)
+                continue
+            if "shortname" in rec and "subpath" in rec:
+                simplified_records.append({
+                    "shortname": rec.get("shortname"),
+                    "subpath": rec.get("subpath"),
+                    "error": r.get("error"),
+                    "error_code": r.get("error_code")
+                })
+            else:
+                simplified_records.append(r)
+
+    return simplified_records

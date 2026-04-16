@@ -44,6 +44,7 @@ from api.managed.utils import (
     serve_request_patch,
     serve_request_update,
     serve_request_update_acl,
+    simplify_records,
     update_state_handle_resolution,
 )
 from data_adapters.adapter import data_adapter as db
@@ -436,17 +437,20 @@ async def serve_request(
 
         case api.RequestType.move:
             records, failed_records = await serve_request_move(request, owner_shortname)
+    
+    records = simplify_records(records, "success")
 
     if len(failed_records) == 0:
         return api.Response(status=api.Status.success, records=records)
     else:
+        failed_records = simplify_records(failed_records, "failed")
         raise api.Exception(
             status_code=400,
             error=api.Error(
                 type="request",
                 code=InternalErrorCode.SOMETHING_WRONG,
                 message="Something went wrong",
-                info=[{"successfull": records, "failed": failed_records}],
+                info=[{"successful": records, "failed": failed_records}],
             ),
         )
 
