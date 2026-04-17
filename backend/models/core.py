@@ -289,7 +289,7 @@ class Meta(Resource):
                 body=f"{record.shortname}.json",
             )
 
-        if self.payload and "payload" in record.attributes:
+        if self.payload and "payload" in record.attributes and isinstance(record.attributes["payload"], dict):
             return self.payload.update(payload=record.attributes["payload"], old_body=old_body, replace=replace)
         return None
 
@@ -357,6 +357,7 @@ class User(Actor):
     language: Language = Language.ar
     google_id: str | None = None
     facebook_id: str | None = None
+    apple_id: str | None = None
     social_avatar_url: str | None = None
     last_login: dict | None = None
     notes: str | None = None
