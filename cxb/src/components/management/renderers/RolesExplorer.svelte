@@ -1,8 +1,7 @@
 <script lang="ts">
     import PermissionsExplorer from "@/components/management/renderers/PermissionsExplorer.svelte";
     import SpaceMapView from "@/components/management/renderers/SpaceMapView.svelte";
-    import { Dmart } from "@edraj/tsdmart";
-    import { ResourceType } from "@edraj/tsdmart/dmart.model";
+    import { Dmart, ResourceType } from "@edraj/tsdmart";
     import { Card } from "flowbite-svelte";
     import { goto } from "@roxi/routify";
 

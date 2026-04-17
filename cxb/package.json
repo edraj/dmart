@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@akebifiky/remark-simple-plantuml": "^1.0.2",
-    "@edraj/tsdmart": "^5.1.0",
+    "@edraj/tsdmart": "^5.3.2",
     "@roxi/routify": "^3.6.4",
     "@tailwindcss/vite": "^4.1.10",
     "@zerodevx/svelte-toast": "^0.9.6",

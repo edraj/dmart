@@ -31,7 +31,7 @@
         addDateFilters,
         createBaseQuery,
     } from "@/utils/routes/queryHelpers";
-    import { headers } from "@edraj/tsdmart/dmart.model";
+    import { headers } from "@edraj/tsdmart";
 
     // Constants
     const DEFAULT_QUERY_LIMIT = 10;

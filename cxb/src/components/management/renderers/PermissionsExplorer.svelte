@@ -1,7 +1,6 @@
 <script lang="ts">
     import { Card } from "flowbite-svelte";
-    import { Dmart } from "@edraj/tsdmart";
-    import { ResourceType } from "@edraj/tsdmart/dmart.model";
+    import { Dmart, ResourceType } from "@edraj/tsdmart";
     import MetaPermissionForm from "@/components/management/forms/MetaPermissionForm.svelte";
     import SpaceMapView from "@/components/management/renderers/SpaceMapView.svelte";
     import { goto } from "@roxi/routify";
