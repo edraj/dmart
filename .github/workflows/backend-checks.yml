@@ -2,10 +2,10 @@ name: Backend checks
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths: ["backend/**"]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths: ["backend/**"]
 
 permissions:

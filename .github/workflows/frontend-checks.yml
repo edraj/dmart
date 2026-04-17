@@ -2,10 +2,10 @@ name: CXB checks
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths: ["cxb/**"]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths: ["cxb/**"]
 
 permissions:
