@@ -1,11 +1,6 @@
 name: Docker Build and Push
 
 on:
-  push:
-    tags:
-      - 'v*' # Triggers on tags matching the pattern 'v*'
-    branches:
-      - main
   release:
     types: [published] # Triggers when a new release is published
 
