@@ -24,6 +24,7 @@
     import {spaces} from "@/stores/management/spaces";
     import {getSpaces} from "@/lib/dmart_services";
     import {Level, showToast} from "@/utils/toast";
+    import EmptyState from "@/components/ui/EmptyState.svelte";
     import ListViewActionBar from "@/components/management/ListViewActionBar.svelte";
     import {currentListView} from "@/stores/global";
     import {untrack} from "svelte";
@@ -438,16 +439,13 @@
             );
             if (spanButton) {
                 spanButton.style.cssText =
-                    "cursor:pointer;display: flex;white-space: nowrap;";
+                    "cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;white-space:nowrap;";
 
-                const children = Array.from(spanButton.childNodes);
-                spanButton.innerHTML = "";
-
-                children.reverse().forEach((child: any) => {
-                    if (child.nodeName === "svg") {
-                        child.classList.add("mr-2");
-                    }
-                    spanButton.appendChild(child);
+                const svgs = spanButton.querySelectorAll("svg");
+                svgs.forEach((svg: SVGElement) => {
+                    svg.classList.add("text-[color:var(--color-text-muted)]");
+                    svg.setAttribute("width", "14");
+                    svg.setAttribute("height", "14");
                 });
             }
         }, 0);
@@ -457,6 +455,16 @@
                 clearTimeout(timer);
             },
         };
+    }
+
+    function cellText(row: any, col: string): string {
+        const raw = getValueByPath(
+            columns?.[col]?.path?.split(".") ?? [],
+            row,
+            columns?.[col]?.type ?? "string",
+        );
+        if (raw === null || raw === undefined) return "";
+        return typeof raw === "string" ? raw : String(raw);
     }
 
     fetchPageRecords(true, {});
@@ -516,22 +524,28 @@
             {/if}
             <div class="mx-3" transition:fade={{ delay: 25 }}>
                 {#if objectDatatable?.arraySearched.length === 0}
-                    <div class="text-center pt-5 text-lg font-semibold text-gray-700">
-                        No records found.
+                    <div class="py-6">
+                        <EmptyState
+                            title="No records found"
+                            hint={$searchListView
+                                ? "Try clearing the search or adjusting filters."
+                                : "This folder is empty. Create a new entry to get started."}
+                        />
                     </div>
                 {:else}
+                    <div class="rounded-[var(--radius-md)] border border-[color:var(--color-border)] overflow-x-auto mt-2 shadow-[var(--shadow-card)]">
                     <Table
                             striped={true}
-                            class="border-collapse border w-full border-gray-300 mt-2"
+                            class="border-collapse w-full"
                     >
-                        <TableHead class="bg-gray-100">
+                        <TableHead class="bg-[color:var(--color-surface)] text-[color:var(--color-text-muted)]">
                             {#if canDelete}
-                                <TableHeadCell class="p-2 border border-gray-300">
-                                    <Checkbox class="bg-white" onchange={handleAllBulk}/>
+                                <TableHeadCell class="p-2 border-b border-[color:var(--color-border)] w-10">
+                                    <Checkbox class="bg-[color:var(--color-bg)]" onchange={handleAllBulk}/>
                                 </TableHeadCell>
                             {/if}
                             {#each Object.keys(columns ?? {}) as col}
-                                <TableHeadCell class="border border-gray-300">
+                                <TableHeadCell class="p-2 border-b border-[color:var(--color-border)] font-semibold text-xs uppercase tracking-wide">
                                     <div use:handleSortRendered>
                                         <Sort bind:propDatatable={objectDatatable} propColumn={col}>
                                             {columns?.[col]?.title}
@@ -544,7 +558,7 @@
                             {#each objectDatatable.arrayRawData as row, index}
                                 {@const typedRow = row as any}
                                 <TableBodyRow
-                                        class="hover:bg-gray-200"
+                                        class="hover:bg-[color:var(--color-surface-hover)] transition-colors"
                                         onclick={(e) => onListClick(e, typedRow)}
                 >
                                     <div style="all: unset;display: contents;">
@@ -568,9 +582,9 @@
                           }
                         }}
                       >
-                        <TableBodyCell class="p-2 border border-gray-300">
+                        <TableBodyCell class="p-2 border-b border-[color:var(--color-border)]">
                           <Checkbox
-                                  class="bg-white"
+                                  class="bg-[color:var(--color-bg)]"
                                   id={typedRow.shortname}
                                   name={index.toString()}
                                   checked={$bulkBucket.some(
@@ -583,14 +597,11 @@
                       </span>
                                         {/if}
                                         {#each Object.keys(columns ?? {}) as col}
+                                            {@const value = cellText(typedRow, col)}
                                             <TableBodyCell
-                                                    class="p-2 border border-gray-300 cursor-pointer"
+                                                    class="p-2 border-b border-[color:var(--color-border)] cursor-pointer max-w-xs"
                                             >
-                                                {getValueByPath(
-                                                    columns?.[col]?.path?.split(".") ?? [],
-                                                    typedRow,
-                                                    columns?.[col]?.type ?? "string",
-                                                )}
+                                                <span class="block truncate" title={value}>{value}</span>
                                             </TableBodyCell>
                                         {/each}
                                     </div>
@@ -598,8 +609,9 @@
                             {/each}
                         </TableBody>
                     </Table>
+                    </div>
                     <div
-                            class="flex flex-col md:flex-row justify-between items-center mt-4"
+                            class="flex flex-col md:flex-row justify-between items-center gap-2 mt-4"
                     >
                         <RowsPerPage
                                 bind:propDatatable={objectDatatable}
@@ -610,7 +622,7 @@
                             <option value="50">50</option>
                             <option value="100">100</option>
                         </RowsPerPage>
-                        <p class="text-sm text-gray-600">
+                        <p class="text-sm text-[color:var(--color-text-muted)]">
                             Showing {paginationBottomInfoFrom} to {paginationBottomInfoTo} of {total}
                             entries
                         </p>

@@ -3,6 +3,10 @@
     import routes from "../.routify/routes.default";
     import {SvelteToast, type SvelteToastOptions} from "@zerodevx/svelte-toast";
     import './app.css'
+    import {theme} from "@/stores/theme.svelte";
+
+    // Initialise theme controller (side-effect: sets .dark class and color-scheme)
+    void theme;
 
     const prefix = (import.meta.env.BASE_URL || '/cxb').replace(/^\/|\/$/g, '');
 
@@ -140,14 +144,26 @@
 </div>
 
 <style lang="postcss">
+  :global(.custom-toast.success),
   :global(.custom-toast.info) {
-    --toastBackground: rgba(72, 187, 120, 0.9);
-    --toastBarBackground: #2f855a;
+    --toastBackground: var(--color-success);
+    --toastBarBackground: #0f7a36;
     z-index: 999;
   }
+  :global(.custom-toast.error),
   :global(.custom-toast.warn) {
-    --toastBackground: #bb4848e6;
-    --toastBarBackground: #852f2f;
+    --toastBackground: var(--color-danger);
+    --toastBarBackground: #8e1a1a;
     --toastContainerZIndex: 99999999999999;
+  }
+  :global(.custom-toast.warning) {
+    --toastBackground: var(--color-warning);
+    --toastBarBackground: #a0560a;
+    z-index: 999;
+  }
+  :global(.custom-toast.informative) {
+    --toastBackground: var(--color-info);
+    --toastBarBackground: #1d4fa4;
+    z-index: 999;
   }
 </style>
