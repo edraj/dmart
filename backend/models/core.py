@@ -289,7 +289,7 @@ class Meta(Resource):
                 body=f"{record.shortname}.json",
             )
 
-        if self.payload and "payload" in record.attributes:
+        if self.payload and "payload" in record.attributes and isinstance(record.attributes["payload"], dict):
             return self.payload.update(payload=record.attributes["payload"], old_body=old_body, replace=replace)
         return None
 
