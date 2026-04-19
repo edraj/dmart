@@ -1,9 +1,10 @@
 name: Docker Build and Push
 
 on:
-  release:
-    types: [published] # Triggers when a new release is published
-
+  push:
+    branches: [ "main" ]
+    paths: ["backend/**"]
+    
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
