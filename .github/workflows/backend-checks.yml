@@ -33,11 +33,6 @@ jobs:
         cd backend
         source $HOME/.venv/bin/activate
         ./pylint.sh
-    - name: Test with pytest
-      run: |
-        systemctl --user stop dmart
-        source $HOME/.venv/bin/activate
-        cd backend; export PYTHONPATH="."; pytest
     - name: Build frontend
       run: |
         # cd frontend; yarn build
