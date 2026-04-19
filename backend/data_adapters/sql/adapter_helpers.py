@@ -238,7 +238,11 @@ def is_date_time_value(value):
 
 def parse_search_string(string):
     result = {}
-    terms = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
+    # Bracket alternative `-?@field:[A B]` must come FIRST so range values
+    # containing whitespace (e.g. `[10 20]`) match as a single token. Without
+    # it, `\S+` splits on the space and the second half becomes a stray text
+    # term, losing the range semantics.
+    terms = re.findall(r'-?@[^:\s]+:\[[^\]]*\]|-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
 
     # Match comparison operators at the start of value: !, >, >=, <, <=
     comparison_pattern = re.compile(r"^(>=|<=|>|<|!)(.+)$")
@@ -370,7 +374,7 @@ def parse_search_expression(string: str) -> list[dict]:
     has_parens = "(" in string or ")" in string
 
     if not has_parens:
-        tokens = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
+        tokens = re.findall(r'-?@[^:\s]+:\[[^\]]*\]|-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', string)
         field_tokens = []
         text_terms = []
         for t in tokens:
@@ -384,7 +388,7 @@ def parse_search_expression(string: str) -> list[dict]:
         return [{"fields": fields, "text_terms": text_terms}]
 
     normalized = string.replace("(", " ( ").replace(")", " ) ")
-    tokens = re.findall(r'-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', normalized)
+    tokens = re.findall(r'-?@[^:\s]+:\[[^\]]*\]|-?@[^:\s]+:"[^"]*"|-?@[^:\s]+:[^\s]+|\S+', normalized)
 
     groups: list[dict] = []
     current_field_tokens: list[str] = []
