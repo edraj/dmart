@@ -33,28 +33,11 @@ jobs:
         cd backend
         source $HOME/.venv/bin/activate
         ./pylint.sh
-    - name: Start dmart service and run curl.sh
-      run: |
-        export XDG_RUNTIME_DIR="/run/user/$UID"
-        export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
-        source $HOME/.venv/bin/activate
-        cd backend
-        systemctl --user stop dmart
-        dropdb --if-exists -h 127.0.0.1 -U dmart dmart
-        createdb -h 127.0.0.1 -U dmart dmart
-        alembic upgrade head
-        ./migrate.py json_to_db
-        ./reload.sh
-        ./curl.sh
-        systemctl --user stop dmart
     - name: Test with pytest
       run: |
         systemctl --user stop dmart
         source $HOME/.venv/bin/activate
         cd backend; export PYTHONPATH="."; pytest
-    - name: Install frontend js depdenencies
-      run: |
-        # cd frontend; yarn install
     - name: Build frontend
       run: |
         # cd frontend; yarn build
