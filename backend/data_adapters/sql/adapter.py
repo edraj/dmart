@@ -420,6 +420,58 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                             _payload_text_extract = f"payload::jsonb->>{payload_path}"
                         conditions = []
 
+                        if is_array_query and field_data.get("is_range", False) and len(field_data.get("range_values", [])) == 2:
+                            # Range query against array elements — "ALL" semantic:
+                            # every element must fall within the range. Expressed
+                            # as NOT EXISTS of the inverse (no element lies
+                            # outside [v1, v2]). Plain EXISTS BETWEEN would match
+                            # products with any one in-range variant, which the
+                            # natural reading of "price between 10 and 20" as a
+                            # filter contradicts.
+                            val1, val2 = field_data["range_values"]
+                            all_numeric_range = value_type == "numeric"
+                            if all_numeric_range:
+                                try:
+                                    val1 = float(val1)
+                                    val2 = float(val2)
+                                    if val1 > val2:
+                                        val1, val2 = val2, val1
+                                except (TypeError, ValueError):
+                                    all_numeric_range = False
+
+                            p1 = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p1] = val1
+                            p2 = f"s_p_{param_counter}"
+                            param_counter += 1
+                            bind_params[p2] = val2
+
+                            if not remaining_path_parts:
+                                if all_numeric_range:
+                                    outside_expr = f"e::float NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float)"
+                                else:
+                                    outside_expr = f"e NOT BETWEEN :{p1} AND :{p2}"
+                                membership = f"NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE {outside_expr})"
+                            else:
+                                if len(remaining_path_parts) > 1:
+                                    _rem_nested = "->".join([f"'{p}'" for p in remaining_path_parts[:-1]])
+                                    _rem_last = remaining_path_parts[-1]
+                                    sub_extract = f"x->{_rem_nested}->>'{_rem_last}'"
+                                    nested_path_for_comparison = f"x->{_rem_nested}->'{_rem_last}'"
+                                else:
+                                    sub_extract = f"x->>'{remaining_path_parts[0]}'"
+                                    nested_path_for_comparison = f"x->'{remaining_path_parts[0]}'"
+                                if all_numeric_range:
+                                    outside_expr = f"({nested_path_for_comparison})::float NOT BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float)"
+                                else:
+                                    outside_expr = f"{sub_extract} NOT BETWEEN :{p1} AND :{p2}"
+                                membership = f"NOT EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {outside_expr})"
+
+                            base = f"jsonb_typeof(payload::jsonb->{array_prefix_path}) = 'array' AND {membership}"
+                            cond = f"({base})" if not negative else f"(NOT ({base}))"
+                            field_conditions.append(cond)
+                            continue
+
                         if is_array_query:
                             for value in values:
                                 p_val = f"s_p_{param_counter}"
@@ -443,10 +495,15 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bind_params[p_text_val] = str(value)
 
                                     if comparison_operator and is_numeric:
+                                        # "ALL" semantic: every element must
+                                        # satisfy the comparison. Expressed as
+                                        # NOT EXISTS of the inverted operator.
+                                        invert_map = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}
+                                        inverted_op = invert_map.get(comparison_operator, "=")
                                         p_num_val = f"s_p_{param_counter}"
                                         param_counter += 1
                                         bind_params[p_num_val] = num_val
-                                        membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e::float {sql_op} CAST(:{p_num_val} AS float))"
+                                        membership = f"NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e::float {inverted_op} CAST(:{p_num_val} AS float))"
                                     elif comparison_operator == "!":
                                         membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(payload::jsonb->{array_prefix_path}) AS e WHERE e != :{p_text_val})"
                                     elif is_numeric:
@@ -474,10 +531,13 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     bind_params[p_text_val] = str(value)
 
                                     if comparison_operator and is_numeric:
+                                        # "ALL" semantic (see primitive-array branch).
+                                        invert_map = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}
+                                        inverted_op = invert_map.get(comparison_operator, "=")
                                         p_num_val = f"s_p_{param_counter}"
                                         param_counter += 1
                                         bind_params[p_num_val] = num_val
-                                        membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE ({nested_path_for_comparison})::float {sql_op} CAST(:{p_num_val} AS float))"
+                                        membership = f"NOT EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE ({nested_path_for_comparison})::float {inverted_op} CAST(:{p_num_val} AS float))"
                                     elif comparison_operator == "!":
                                         membership = f"EXISTS (SELECT 1 FROM jsonb_array_elements(payload::jsonb->{array_prefix_path}) AS x WHERE {sub_extract} != :{p_text_val})"
                                     elif is_numeric:
@@ -530,7 +590,21 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                                     f"(jsonb_typeof(payload::jsonb->{payload_path}) = 'number' AND (payload::jsonb->{payload_path})::float BETWEEN CAST(:{p1} AS float) AND CAST(:{p2} AS float))"
                                 )
 
+                        # Skip per-value iteration for numeric ranges — the BETWEEN
+                        # condition above already covers the whole range. Otherwise
+                        # the for loop would add per-endpoint `= v1` / `= v2`
+                        # equality conditions on top of BETWEEN, which are redundant
+                        # (positive case) and actively wrong (negative case with
+                        # AND join flips to matching endpoints-only).
+                        _skip_value_loop = (
+                            value_type == "numeric"
+                            and field_data.get("is_range", False)
+                            and len(field_data.get("range_values", [])) == 2
+                        )
+
                         for value in values:
+                            if _skip_value_loop:
+                                break
                             if value_type == "datetime":
                                 if field_data.get("is_range", False) and len(field_data.get("range_values", [])) == 2:
                                     range_values = field_data["range_values"]
